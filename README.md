@@ -1,0 +1,75 @@
+# NIKOLA · Diseño Ops
+
+Herramienta web para que Operaciones diseñe proyectos fotovoltaicos sin AutoCAD: se parte de la foto de dron, se dibujan techos, paneles, strings, equipos y canalización, y sale la lámina A1 (planta de techumbre + unilineal + cuadros de carga) lista para PDF, o un DXF para seguir en AutoCAD si hace falta.
+
+Es un sitio **estático**: HTML, CSS y JavaScript sin compilación. No hay que instalar nada para editarlo.
+
+## Pasos del diseño
+
+| Paso | Qué se hace |
+|---|---|
+| 1 · Escala | Se sube la foto de dron y se traza una medida conocida. Si la foto trae altura de vuelo (EXIF/XMP del dron), se compara con la escala. |
+| 2 · Techos | Cada agua se dibuja como polilínea. Se puede escribir el largo de cada lado en metros (en la dirección del cursor). |
+| 3 · Elementos | Obstáculos, zonas no utilizables, objetos que se retiran y pasillos. |
+| 4 · Paneles | Automático (llena el techo respetando retiro y zonas) o manual por bloques filas × columnas, como un arreglo de AutoCAD. |
+| 5 · Strings | Se asignan paneles a cada MPPT con clic o ventana. Calcula Voc, Voc en frío, Vmp, potencia y caída de tensión, y avisa si algo se sale del rango del inversor. |
+| 6 · Equipos y canalización | Inversor, tableros, medidor, baterías, etc. a escala, y recorridos CC / CA / subterráneo / tierra con su largo. |
+| 7 · Lámina | Cajetín, revisiones, notas, protecciones. Imprimir / PDF en A1, exportar DXF (mm) o SVG. |
+
+## Atajos (estilo AutoCAD)
+
+- Rueda del mouse: zoom en el cursor · botón del medio o barra espaciadora: mover la vista
+- **F3** referencia a objetos · **F7** rejilla de 1 m · **F8** orto
+- **Enter** termina / cierra · **Esc** cancela · **Supr** borra lo seleccionado
+- **Ctrl+Z / Ctrl+Y** deshacer / rehacer · **Ctrl+S** guardar
+- Línea de comandos: `TECHO`, `ZONA`, `COTA`, `TEXTO`, `NORTE`, `CC`, `CA`, `SUB`, `EQUIPO`, `BORRAR`, `ZOOM`, `STRING`, `AUTOSTRING`, `PASO 1-7`, `AYUDA`. Mientras dibujas, escribe un número (en metros) para el siguiente punto.
+
+## Estructura
+
+```
+index.html          Página única
+css/app.css         Estilos (marca Nikola + interfaz oscura tipo AutoCAD)
+js/app.js           Lista de proyectos, crear / importar / duplicar
+js/editor.js        Editor: pasos, herramientas, línea de comandos, capas, propiedades
+js/render.js        Dibujo del espacio modelo (editor y lámina)
+js/geom.js          Cálculos: escala, paneles, strings, caídas de tensión
+js/lamina.js        Lámina A1 en SVG, unilineal, cuadros de carga, PDF y DXF
+js/equipos-emat.js  ← Base de equipos EMAT (SKU, datos eléctricos y medidas de ficha técnica)
+js/catalogo.js      ← Colores, capas, símbolos y notas; arma paneles e inversores desde equipos-emat.js
+docs/EQUIPOS-EMAT.md  Las mismas medidas en tablas, con fuentes y pendientes
+js/store.js         Guardado en el navegador (IndexedDB) y proyecto de ejemplo
+js/util.js          Utilidades e íconos
+assets/             Logos y foto de dron de ejemplo
+```
+
+### Cambios típicos
+
+- **Agregar un panel, inversor u otro equipo:** `js/equipos-emat.js` (ver `docs/EQUIPOS-EMAT.md`).
+- **Cambiar notas por defecto de la lámina:** `NOTAS_BASE` en `js/catalogo.js`.
+- **Cajetín o tablas de la lámina:** funciones `franja()`, `lamina01()` y `lamina02()` en `js/lamina.js` (unidades en mm de la hoja A1).
+- **Colores de strings o canalización:** `COLORES_STRING` y `CANAL` en `js/catalogo.js`.
+
+## Correr en tu computador
+
+Los módulos de JavaScript necesitan un servidor local (no funciona con doble clic en `index.html`):
+
+- En VS Code con la extensión **Live Server**: clic derecho en `index.html` → *Open with Live Server*, o
+- En la terminal: `npm run dev` y abre http://localhost:5173
+
+## Publicar en Vercel
+
+1. Crea un repositorio en GitHub y sube esta carpeta (en VS Code: *Source Control* → *Initialize Repository* → commit → *Publish Branch*).
+2. En vercel.com → **Add New… → Project** → importa el repositorio.
+3. Framework Preset: **Other**. Build Command: vacío. Output Directory: vacío (la raíz). → **Deploy**.
+4. Cada `git push` publica la versión nueva sola.
+
+## Guardado (prototipo)
+
+Por ahora los proyectos se guardan en el navegador de cada persona (IndexedDB). Para compartir un proyecto se usa el botón de exportar (.json) y en la lista **Importar .json**. El siguiente paso natural es mover `listar / guardar / borrar` de `js/store.js` a Supabase (como el resto de las apps de Nikola) para que todo Ops vea los mismos proyectos.
+
+## Pendientes sugeridos
+
+- Guardar en Supabase con usuarios de Ops.
+- Importar la cubicación de la visita comercial (techos, zonas y paneles ya marcados).
+- Mapa real en el croquis de ubicación.
+- Varios inversores (UG B, C…) en los cuadros de carga.
