@@ -1,0 +1,5 @@
+# Lo que no se publica en Vercel
+README.md
+package.json
+scripts/
+docs/

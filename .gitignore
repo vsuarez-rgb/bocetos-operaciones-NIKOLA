@@ -1,0 +1,11 @@
+node_modules/
+.vercel/
+.DS_Store
+Thumbs.db
+*.log
+
+# Datos privados de clientes o instaladores: nunca al repo
+*.xlsm
+*.xlsx
+_privado/
+_validacion-paso0/
