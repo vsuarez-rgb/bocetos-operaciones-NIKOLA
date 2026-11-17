@@ -1,0 +1,301 @@
+{
+ "generado": "2026-11-17",
+ "plantilla": "Campos Autocad -.xlsm",
+ "script": "scripts/extraer-catalogos.mjs",
+ "empalmes": {
+  "Monofásico": [
+   {
+    "interruptor": 6,
+    "pnomKw": 1,
+    "smaxKva": 1.3,
+    "tipos": {
+     "Aéreo": "A-6-6",
+     "Subterráneo": "S-6-6"
+    },
+    "fuente": "Equipos!159"
+   },
+   {
+    "interruptor": 10,
+    "pnomKw": 2,
+    "smaxKva": 2.2,
+    "tipos": {
+     "Aéreo": "A-6-10",
+     "Subterráneo": "S-6-10"
+    },
+    "fuente": "Equipos!160"
+   },
+   {
+    "interruptor": 16,
+    "pnomKw": 3,
+    "smaxKva": 3.5,
+    "tipos": {
+     "Aéreo": "A-6-16",
+     "Subterráneo": "S-6-16"
+    },
+    "fuente": "Equipos!161"
+   },
+   {
+    "interruptor": 20,
+    "pnomKw": 4,
+    "smaxKva": 4.4,
+    "tipos": {
+     "Aéreo": "A-6-20",
+     "Subterráneo": "S-6-20"
+    },
+    "fuente": "Equipos!162"
+   },
+   {
+    "interruptor": 25,
+    "pnomKw": 5,
+    "smaxKva": 5.5,
+    "tipos": {
+     "Aéreo": "A-6-25",
+     "Subterráneo": "S-6-25"
+    },
+    "fuente": "Equipos!163"
+   },
+   {
+    "interruptor": 30,
+    "pnomKw": 6,
+    "smaxKva": 6.6,
+    "tipos": {
+     "Aéreo": "A-9-30",
+     "Subterráneo": "S-9-30"
+    },
+    "fuente": "Equipos!164"
+   },
+   {
+    "interruptor": 32,
+    "pnomKw": 6.5,
+    "smaxKva": 7,
+    "tipos": {
+     "Aéreo": "A-9-32",
+     "Subterráneo": "S-9-32"
+    },
+    "fuente": "Equipos!165"
+   },
+   {
+    "interruptor": 35,
+    "pnomKw": 7,
+    "smaxKva": 7.7,
+    "tipos": {
+     "Aéreo": "A-9-35",
+     "Subterráneo": "S-9-35"
+    },
+    "fuente": "Equipos!166"
+   },
+   {
+    "interruptor": 40,
+    "pnomKw": 8,
+    "smaxKva": 8.8,
+    "tipos": {
+     "Aéreo": "A-9-40",
+     "Subterráneo": "S-9-40"
+    },
+    "fuente": "Equipos!167"
+   },
+   {
+    "interruptor": 50,
+    "pnomKw": 10,
+    "smaxKva": 11,
+    "tipos": {
+     "Aéreo": "A-16-50",
+     "Subterráneo": "S-16-50"
+    },
+    "fuente": "Equipos!168"
+   },
+   {
+    "interruptor": 63,
+    "pnomKw": 13,
+    "smaxKva": 13.8,
+    "tipos": {
+     "Aéreo": "A-16-63",
+     "Subterráneo": "S-16-63"
+    },
+    "fuente": "Equipos!169"
+   }
+  ],
+  "Trifásico": [
+   {
+    "interruptor": 6,
+    "pnomKw": 3.6,
+    "smaxKva": 3.95,
+    "tipos": {
+     "Aéreo": "A-16-6",
+     "Aéreo con medidor de reactivos": "AR-18-6",
+     "Subterráneo": "S-18-6",
+     "Subterráneo con medidor de reactivos": "SR-18-6"
+    },
+    "fuente": "Equipos!176"
+   },
+   {
+    "interruptor": 10,
+    "pnomKw": 6,
+    "smaxKva": 6.58,
+    "tipos": {
+     "Aéreo": "A-16-10",
+     "Aéreo con medidor de reactivos": "AR-18-10",
+     "Subterráneo": "S-18-10",
+     "Subterráneo con medidor de reactivos": "SR-18-10"
+    },
+    "fuente": "Equipos!177"
+   },
+   {
+    "interruptor": 16,
+    "pnomKw": 9.8,
+    "smaxKva": 10.53,
+    "tipos": {
+     "Aéreo": "A-16-16",
+     "Aéreo con medidor de reactivos": "AR-18-16",
+     "Subterráneo": "S-18-16",
+     "Subterráneo con medidor de reactivos": "SR-18-16"
+    },
+    "fuente": "Equipos!178"
+   },
+   {
+    "interruptor": 20,
+    "pnomKw": 12,
+    "smaxKva": 13.16,
+    "tipos": {
+     "Aéreo": "A-16-20",
+     "Aéreo con medidor de reactivos": "AR-18-20",
+     "Subterráneo": "S-18-20",
+     "Subterráneo con medidor de reactivos": "SR-18-20"
+    },
+    "fuente": "Equipos!179"
+   },
+   {
+    "interruptor": 25,
+    "pnomKw": 15,
+    "smaxKva": 16.45,
+    "tipos": {
+     "Aéreo": "A-16-25",
+     "Aéreo con medidor de reactivos": "AR-18-25",
+     "Subterráneo": "S-18-25",
+     "Subterráneo con medidor de reactivos": "SR-18-25"
+    },
+    "fuente": "Equipos!180"
+   },
+   {
+    "interruptor": 30,
+    "pnomKw": 18,
+    "smaxKva": 19.75,
+    "tipos": {
+     "Aéreo": "A-27-30",
+     "Aéreo con medidor de reactivos": "AR-27-30",
+     "Subterráneo": "S-27-30",
+     "Subterráneo con medidor de reactivos": "SR-27-30"
+    },
+    "fuente": "Equipos!181"
+   },
+   {
+    "interruptor": 32,
+    "pnomKw": 19,
+    "smaxKva": 21.06,
+    "tipos": {
+     "Aéreo": "A-27-32",
+     "Aéreo con medidor de reactivos": "AR-27-32",
+     "Subterráneo": "S-27-32",
+     "Subterráneo con medidor de reactivos": "SR-27-32"
+    },
+    "fuente": "Equipos!182"
+   },
+   {
+    "interruptor": 35,
+    "pnomKw": 21,
+    "smaxKva": 23.04,
+    "tipos": {
+     "Aéreo": "A-27-35",
+     "Aéreo con medidor de reactivos": "AR-27-35",
+     "Subterráneo": "S-27-35",
+     "Subterráneo con medidor de reactivos": "SR-27-35"
+    },
+    "fuente": "Equipos!183"
+   },
+   {
+    "interruptor": 40,
+    "pnomKw": 24,
+    "smaxKva": 26.33,
+    "tipos": {
+     "Aéreo": "A-27-40",
+     "Aéreo con medidor de reactivos": "AR-27-40",
+     "Subterráneo": "S-27-40",
+     "Subterráneo con medidor de reactivos": "SR-27-40"
+    },
+    "fuente": "Equipos!184"
+   },
+   {
+    "interruptor": 50,
+    "pnomKw": 30,
+    "smaxKva": 32.91,
+    "tipos": {
+     "Aéreo": null,
+     "Aéreo con medidor de reactivos": "AR-48-50",
+     "Subterráneo": null,
+     "Subterráneo con medidor de reactivos": "SR-48-50"
+    },
+    "fuente": "Equipos!185"
+   },
+   {
+    "interruptor": 63,
+    "pnomKw": 38,
+    "smaxKva": 41.47,
+    "tipos": {
+     "Aéreo": null,
+     "Aéreo con medidor de reactivos": "AR-48-63",
+     "Subterráneo": null,
+     "Subterráneo con medidor de reactivos": "SR-48-63"
+    },
+    "fuente": "Equipos!186"
+   },
+   {
+    "interruptor": 80,
+    "pnomKw": 48,
+    "smaxKva": 52.65,
+    "tipos": {
+     "Aéreo": null,
+     "Aéreo con medidor de reactivos": "AR-75-80",
+     "Subterráneo": null,
+     "Subterráneo con medidor de reactivos": "SR-75-80"
+    },
+    "fuente": "Equipos!187"
+   },
+   {
+    "interruptor": 90,
+    "pnomKw": 55,
+    "smaxKva": 59.24,
+    "tipos": {
+     "Aéreo": null,
+     "Aéreo con medidor de reactivos": "AR-75-90",
+     "Subterráneo": null,
+     "Subterráneo con medidor de reactivos": "SR-75-90"
+    },
+    "fuente": "Equipos!188"
+   },
+   {
+    "interruptor": 100,
+    "pnomKw": 61,
+    "smaxKva": 65.82,
+    "tipos": {
+     "Aéreo": null,
+     "Aéreo con medidor de reactivos": "AR-75-100",
+     "Subterráneo": null,
+     "Subterráneo con medidor de reactivos": "SR-75-100"
+    },
+    "fuente": "Equipos!189"
+   },
+   {
+    "interruptor": 125,
+    "pnomKw": 76,
+    "smaxKva": 82.27,
+    "tipos": {
+     "Aéreo": null,
+     "Aéreo con medidor de reactivos": "AR-100-125",
+     "Subterráneo": null,
+     "Subterráneo con medidor de reactivos": "SR-100-125"
+    },
+    "fuente": "Equipos!190"
+   }
+  ]
+ }
+}

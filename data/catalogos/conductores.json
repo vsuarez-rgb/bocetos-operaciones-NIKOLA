@@ -1,0 +1,1655 @@
+{
+ "generado": "2026-11-17",
+ "plantilla": "Campos Autocad -.xlsm",
+ "script": "scripts/extraer-catalogos.mjs",
+ "conductores": [
+  {
+   "nombre": "PV1-F",
+   "corriente": "CC",
+   "fuente": "Equipos!208"
+  },
+  {
+   "nombre": "RVK Reviflex Monopolar",
+   "corriente": "CA",
+   "fuente": "Equipos!210"
+  },
+  {
+   "nombre": "Evaflex H071Z1-K Monopolar",
+   "corriente": "CA",
+   "fuente": "Equipos!211"
+  },
+  {
+   "nombre": "RZ1 Eco-Revi Monopolar",
+   "corriente": "CA",
+   "fuente": "Equipos!212"
+  },
+  {
+   "nombre": "Aluminio pre-ensamblado BT",
+   "corriente": "CA",
+   "fuente": "Equipos!213"
+  }
+ ],
+ "calibres": [
+  {
+   "sistema": "mm²",
+   "calibre": 1.5,
+   "diametroCable": 5.7,
+   "prensaestopa": "PG-7",
+   "diametroPrensaestopa": 6.9,
+   "fuente": "Cables y canalización!81"
+  },
+  {
+   "sistema": "mm²",
+   "calibre": 2.5,
+   "diametroCable": 6.2,
+   "prensaestopa": "PG-7",
+   "diametroPrensaestopa": 6.9,
+   "fuente": "Cables y canalización!82"
+  },
+  {
+   "sistema": "mm²",
+   "calibre": 4,
+   "diametroCable": 6.6,
+   "prensaestopa": "PG-7",
+   "diametroPrensaestopa": 6.9,
+   "fuente": "Cables y canalización!83"
+  },
+  {
+   "sistema": "mm²",
+   "calibre": 6,
+   "diametroCable": 7.2,
+   "prensaestopa": "PG-9",
+   "diametroPrensaestopa": 7.8,
+   "fuente": "Cables y canalización!84"
+  },
+  {
+   "sistema": "mm²",
+   "calibre": 10,
+   "diametroCable": 8.2,
+   "prensaestopa": "PG-11",
+   "diametroPrensaestopa": 10.8,
+   "fuente": "Cables y canalización!85"
+  },
+  {
+   "sistema": "mm²",
+   "calibre": 16,
+   "diametroCable": 9.3,
+   "prensaestopa": "PG-11",
+   "diametroPrensaestopa": 10.8,
+   "fuente": "Cables y canalización!86"
+  },
+  {
+   "sistema": "mm²",
+   "calibre": 25,
+   "diametroCable": 10.9,
+   "prensaestopa": "PG-13.5",
+   "diametroPrensaestopa": 12.5,
+   "fuente": "Cables y canalización!87"
+  },
+  {
+   "sistema": "mm²",
+   "calibre": 35,
+   "diametroCable": 12,
+   "prensaestopa": "PG-13.5",
+   "diametroPrensaestopa": 12.5,
+   "fuente": "Cables y canalización!88"
+  },
+  {
+   "sistema": "mm²",
+   "calibre": 50,
+   "diametroCable": 13.6,
+   "prensaestopa": "PG-16",
+   "diametroPrensaestopa": 15,
+   "fuente": "Cables y canalización!89"
+  },
+  {
+   "sistema": "mm²",
+   "calibre": 70,
+   "diametroCable": 15.7,
+   "prensaestopa": "PG-21",
+   "diametroPrensaestopa": 18.5,
+   "fuente": "Cables y canalización!90"
+  },
+  {
+   "sistema": "mm²",
+   "calibre": 95,
+   "diametroCable": 17.4,
+   "prensaestopa": "PG-21",
+   "diametroPrensaestopa": 18.5,
+   "fuente": "Cables y canalización!91"
+  },
+  {
+   "sistema": "mm²",
+   "calibre": 120,
+   "diametroCable": 19.3,
+   "prensaestopa": "PG-29",
+   "diametroPrensaestopa": 25.3,
+   "fuente": "Cables y canalización!92"
+  },
+  {
+   "sistema": "AWG",
+   "calibre": 14,
+   "diametroCable": 5.5,
+   "prensaestopa": "PG-7",
+   "diametroPrensaestopa": 6.9,
+   "fuente": "Cables y canalización!93"
+  },
+  {
+   "sistema": "AWG",
+   "calibre": 12,
+   "diametroCable": 5.9,
+   "prensaestopa": "PG-7",
+   "diametroPrensaestopa": 6.9,
+   "fuente": "Cables y canalización!94"
+  },
+  {
+   "sistema": "AWG",
+   "calibre": 10,
+   "diametroCable": 6.6,
+   "prensaestopa": "PG-7",
+   "diametroPrensaestopa": 6.9,
+   "fuente": "Cables y canalización!95"
+  },
+  {
+   "sistema": "AWG",
+   "calibre": 8,
+   "diametroCable": 7.4,
+   "prensaestopa": "PG-9",
+   "diametroPrensaestopa": 7.8,
+   "fuente": "Cables y canalización!96"
+  },
+  {
+   "sistema": "AWG",
+   "calibre": 6,
+   "diametroCable": 8.4,
+   "prensaestopa": "PG-11",
+   "diametroPrensaestopa": 10.8,
+   "fuente": "Cables y canalización!97"
+  },
+  {
+   "sistema": "AWG",
+   "calibre": 4,
+   "diametroCable": 10,
+   "prensaestopa": "PG-11",
+   "diametroPrensaestopa": 10.8,
+   "fuente": "Cables y canalización!98"
+  },
+  {
+   "sistema": "AWG",
+   "calibre": 2,
+   "diametroCable": 11.5,
+   "prensaestopa": "PG-13.5",
+   "diametroPrensaestopa": 12.5,
+   "fuente": "Cables y canalización!99"
+  },
+  {
+   "sistema": "AWG",
+   "calibre": 1,
+   "diametroCable": 12.6,
+   "prensaestopa": "PG-16",
+   "diametroPrensaestopa": 15,
+   "fuente": "Cables y canalización!100"
+  },
+  {
+   "sistema": "AWG",
+   "calibre": "1/0",
+   "diametroCable": 13.7,
+   "prensaestopa": "PG-16",
+   "diametroPrensaestopa": 15,
+   "fuente": "Cables y canalización!101"
+  },
+  {
+   "sistema": "AWG",
+   "calibre": "2/0",
+   "diametroCable": 15.1,
+   "prensaestopa": "PG-21",
+   "diametroPrensaestopa": 18.5,
+   "fuente": "Cables y canalización!102"
+  },
+  {
+   "sistema": "AWG",
+   "calibre": "3/0",
+   "diametroCable": 16.3,
+   "prensaestopa": "PG-21",
+   "diametroPrensaestopa": 18.5,
+   "fuente": "Cables y canalización!103"
+  },
+  {
+   "sistema": "AWG",
+   "calibre": "4/0",
+   "diametroCable": 18.2,
+   "prensaestopa": "PG-21",
+   "diametroPrensaestopa": 18.5,
+   "fuente": "Cables y canalización!104"
+  }
+ ],
+ "cables": {
+  "evaflexMm2": [
+   {
+    "seccion": 2.5,
+    "ductoExterior": {
+     "1": 16,
+     "2": 16,
+     "3": 20,
+     "4": 20,
+     "5": 20,
+     "6": 32,
+     "7": 32,
+     "8": 32,
+     "9": 40,
+     "10": 40,
+     "11": 40,
+     "12": 40
+    },
+    "capacidad": {
+     "A1": 18,
+     "B1": 21,
+     "E": 24
+    },
+    "fuente": "Cables y canalización!6"
+   },
+   {
+    "seccion": 4,
+    "ductoExterior": {
+     "1": 16,
+     "2": 16,
+     "3": 20,
+     "4": 20,
+     "5": 25,
+     "6": 32,
+     "7": 32,
+     "8": 40,
+     "9": 40,
+     "10": 40,
+     "11": 40,
+     "12": 50
+    },
+    "capacidad": {
+     "A1": 24,
+     "B1": 28,
+     "E": 31
+    },
+    "fuente": "Cables y canalización!7"
+   },
+   {
+    "seccion": 6,
+    "ductoExterior": {
+     "1": 16,
+     "2": 16,
+     "3": 20,
+     "4": 25,
+     "5": 25,
+     "6": 32,
+     "7": 40,
+     "8": 40,
+     "9": 40,
+     "10": 40,
+     "11": 50,
+     "12": 50
+    },
+    "capacidad": {
+     "A1": 31,
+     "B1": 36,
+     "E": 43
+    },
+    "fuente": "Cables y canalización!8"
+   },
+   {
+    "seccion": 10,
+    "ductoExterior": {
+     "1": 16,
+     "2": 20,
+     "3": 25,
+     "4": 32,
+     "5": 32,
+     "6": 40,
+     "7": 40,
+     "8": 50,
+     "9": 50,
+     "10": 50,
+     "11": 50,
+     "12": 50
+    },
+    "capacidad": {
+     "A1": 42,
+     "B1": 50,
+     "E": 60
+    },
+    "fuente": "Cables y canalización!9"
+   },
+   {
+    "seccion": 16,
+    "ductoExterior": {
+     "1": 20,
+     "2": 25,
+     "3": 32,
+     "4": 40,
+     "5": 40,
+     "6": 40,
+     "7": 50,
+     "8": 50,
+     "9": 50,
+     "10": 63,
+     "11": 63,
+     "12": 63
+    },
+    "capacidad": {
+     "A1": 56,
+     "B1": 68,
+     "E": 80
+    },
+    "fuente": "Cables y canalización!10"
+   },
+   {
+    "seccion": 25,
+    "ductoExterior": {
+     "1": 20,
+     "2": 32,
+     "3": 40,
+     "4": 40,
+     "5": 50,
+     "6": 50,
+     "7": 63,
+     "8": 63,
+     "9": 63,
+     "10": 63,
+     "11": 63,
+     "12": 75
+    },
+    "capacidad": {
+     "A1": 73,
+     "B1": 89,
+     "E": 101
+    },
+    "fuente": "Cables y canalización!11"
+   }
+  ],
+  "rvkMm2": [
+   {
+    "seccion": 1.5,
+    "ductoExterior": {
+     "1": 16,
+     "2": 16,
+     "3": 16,
+     "4": 20,
+     "5": 25,
+     "6": 25,
+     "7": 32,
+     "8": 32,
+     "9": 32,
+     "10": 32,
+     "11": 40,
+     "12": 40
+    },
+    "ductoSubterraneo": {
+     "1": 25,
+     "2": 25,
+     "3": 25,
+     "4": 32,
+     "5": 32,
+     "6": 32,
+     "7": 40,
+     "8": 40,
+     "9": 40,
+     "10": 40,
+     "11": 50,
+     "12": 50
+    },
+    "capacidad": {
+     "A1": 17,
+     "A2": 17,
+     "B1": 18,
+     "B2": 19,
+     "D1": 19,
+     "D2": 23,
+     "E": 19,
+     "F": null
+    },
+    "fuente": "Cables y canalización!19",
+    "diametroCable": 5.7,
+    "areaCable": 26,
+    "equivalenteAwg": 14,
+    "bandejaExterior": "80x40",
+    "bandejaSubterranea": "80x40"
+   },
+   {
+    "seccion": 2.5,
+    "ductoExterior": {
+     "1": 16,
+     "2": 20,
+     "3": 20,
+     "4": 32,
+     "5": 32,
+     "6": 32,
+     "7": 32,
+     "8": 32,
+     "9": 40,
+     "10": 40,
+     "11": 40,
+     "12": 40
+    },
+    "ductoSubterraneo": {
+     "1": 25,
+     "2": 25,
+     "3": 32,
+     "4": 32,
+     "5": 40,
+     "6": 40,
+     "7": 40,
+     "8": 40,
+     "9": 50,
+     "10": 50,
+     "11": 50,
+     "12": 50
+    },
+    "capacidad": {
+     "A1": 23,
+     "A2": 22,
+     "B1": 24,
+     "B2": 24,
+     "D1": 33,
+     "D2": 38,
+     "E": 32,
+     "F": null
+    },
+    "fuente": "Cables y canalización!20",
+    "diametroCable": 6.2,
+    "areaCable": 30,
+    "equivalenteAwg": 12,
+    "bandejaExterior": "80x40",
+    "bandejaSubterranea": "80x40"
+   },
+   {
+    "seccion": 4,
+    "ductoExterior": {
+     "1": 16,
+     "2": 25,
+     "3": 25,
+     "4": 32,
+     "5": 40,
+     "6": 32,
+     "7": 32,
+     "8": 40,
+     "9": 40,
+     "10": 40,
+     "11": 40,
+     "12": 50
+    },
+    "ductoSubterraneo": {
+     "1": 25,
+     "2": 32,
+     "3": 40,
+     "4": 40,
+     "5": 40,
+     "6": 40,
+     "7": 40,
+     "8": 50,
+     "9": 50,
+     "10": 50,
+     "11": 50,
+     "12": 63
+    },
+    "capacidad": {
+     "A1": 31,
+     "A2": 30,
+     "B1": 37,
+     "B2": 35,
+     "D1": 42,
+     "D2": 59,
+     "E": 42,
+     "F": 42
+    },
+    "fuente": "Cables y canalización!21",
+    "diametroCable": 6.6,
+    "areaCable": 35,
+    "equivalenteAwg": 10,
+    "bandejaExterior": "80x40",
+    "bandejaSubterranea": "80x40"
+   },
+   {
+    "seccion": 6,
+    "ductoExterior": {
+     "1": 16,
+     "2": 25,
+     "3": 32,
+     "4": 32,
+     "5": 40,
+     "6": 32,
+     "7": 40,
+     "8": 40,
+     "9": 40,
+     "10": 40,
+     "11": 50,
+     "12": 50
+    },
+    "ductoSubterraneo": {
+     "1": 32,
+     "2": 32,
+     "3": 50,
+     "4": 50,
+     "5": 50,
+     "6": 40,
+     "7": 50,
+     "8": 50,
+     "9": 50,
+     "10": 50,
+     "11": 63,
+     "12": 63
+    },
+    "capacidad": {
+     "A1": 40,
+     "A2": 38,
+     "B1": 48,
+     "B2": 44,
+     "D1": 52,
+     "D2": 74,
+     "E": 54,
+     "F": 55
+    },
+    "fuente": "Cables y canalización!22",
+    "diametroCable": 7.2,
+    "areaCable": 41,
+    "equivalenteAwg": 8,
+    "bandejaExterior": "80x40",
+    "bandejaSubterranea": "80x40"
+   },
+   {
+    "seccion": 10,
+    "ductoExterior": {
+     "1": 20,
+     "2": 32,
+     "3": 32,
+     "4": 40,
+     "5": 50,
+     "6": 40,
+     "7": 40,
+     "8": 50,
+     "9": 50,
+     "10": 50,
+     "11": 50,
+     "12": 50
+    },
+    "ductoSubterraneo": {
+     "1": 40,
+     "2": 50,
+     "3": 63,
+     "4": 63,
+     "5": 63,
+     "6": 50,
+     "7": 50,
+     "8": 63,
+     "9": 63,
+     "10": 63,
+     "11": 63,
+     "12": 63
+    },
+    "capacidad": {
+     "A1": 54,
+     "A2": 51,
+     "B1": 66,
+     "B2": 60,
+     "D1": 68,
+     "D2": 98,
+     "E": 75,
+     "F": 77
+    },
+    "fuente": "Cables y canalización!23",
+    "diametroCable": 8.2,
+    "areaCable": 53,
+    "equivalenteAwg": 6,
+    "bandejaExterior": "80x40",
+    "bandejaSubterranea": "80x40"
+   },
+   {
+    "seccion": 16,
+    "ductoExterior": {
+     "1": 25,
+     "2": 32,
+     "3": 40,
+     "4": 50,
+     "5": 50,
+     "6": 40,
+     "7": 50,
+     "8": 50,
+     "9": 50,
+     "10": 63,
+     "11": 63,
+     "12": 63
+    },
+    "ductoSubterraneo": {
+     "1": 50,
+     "2": 50,
+     "3": 63,
+     "4": 63,
+     "5": 63,
+     "6": 50,
+     "7": 63,
+     "8": 63,
+     "9": 63,
+     "10": 75,
+     "11": 75,
+     "12": 75
+    },
+    "capacidad": {
+     "A1": 73,
+     "A2": 68,
+     "B1": 88,
+     "B2": 80,
+     "D1": 89,
+     "D2": 126,
+     "E": 100,
+     "F": 105
+    },
+    "fuente": "Cables y canalización!24",
+    "diametroCable": 9.3,
+    "areaCable": 67,
+    "equivalenteAwg": 4,
+    "bandejaExterior": "80x40",
+    "bandejaSubterranea": "80x40"
+   },
+   {
+    "seccion": 25,
+    "ductoExterior": {
+     "1": 25,
+     "2": 40,
+     "3": 50,
+     "4": 50,
+     "5": 63,
+     "6": 50,
+     "7": 63,
+     "8": 63,
+     "9": 63,
+     "10": 63,
+     "11": 63,
+     "12": 75
+    },
+    "ductoSubterraneo": {
+     "1": 63,
+     "2": 63,
+     "3": 75,
+     "4": 75,
+     "5": 75,
+     "6": 63,
+     "7": 75,
+     "8": 75,
+     "9": 75,
+     "10": 75,
+     "11": 75,
+     "12": 90
+    },
+    "capacidad": {
+     "A1": 95,
+     "A2": 89,
+     "B1": 117,
+     "B2": 105,
+     "D1": 113,
+     "D2": 161,
+     "E": 127,
+     "F": 141
+    },
+    "fuente": "Cables y canalización!25",
+    "diametroCable": 10.9,
+    "areaCable": 94,
+    "equivalenteAwg": 2,
+    "bandejaExterior": "100x50",
+    "bandejaSubterranea": "100x50"
+   },
+   {
+    "seccion": 35,
+    "ductoExterior": {
+     "1": 32,
+     "2": 40,
+     "3": 50,
+     "4": 63,
+     "5": 63,
+     "6": 63,
+     "7": 63,
+     "8": 63,
+     "9": 63,
+     "10": 75,
+     "11": 75,
+     "12": 75
+    },
+    "ductoSubterraneo": {
+     "1": 63,
+     "2": 75,
+     "3": 75,
+     "4": 90,
+     "5": 90,
+     "6": 75,
+     "7": 75,
+     "8": 75,
+     "9": 75,
+     "10": 90,
+     "11": 90,
+     "12": 90
+    },
+    "capacidad": {
+     "A1": 117,
+     "A2": 109,
+     "B1": 144,
+     "B2": 128,
+     "D1": 136,
+     "D2": 194,
+     "E": 158,
+     "F": 176
+    },
+    "fuente": "Cables y canalización!26",
+    "diametroCable": 12,
+    "areaCable": 113,
+    "equivalenteAwg": 1,
+    "bandejaExterior": "100x50",
+    "bandejaSubterranea": "125x50"
+   },
+   {
+    "seccion": 50,
+    "ductoExterior": {
+     "1": 32,
+     "2": 50,
+     "3": 63,
+     "4": 63,
+     "5": 75,
+     "6": 63,
+     "7": 63,
+     "8": 75,
+     "9": 75,
+     "10": 75,
+     "11": 100,
+     "12": 100
+    },
+    "ductoSubterraneo": {
+     "1": 75,
+     "2": 75,
+     "3": 90,
+     "4": 90,
+     "5": 110,
+     "6": 75,
+     "7": 75,
+     "8": 90,
+     "9": 90,
+     "10": 90,
+     "11": 110,
+     "12": 110
+    },
+    "capacidad": {
+     "A1": 141,
+     "A2": 130,
+     "B1": 175,
+     "B2": 154,
+     "D1": 159,
+     "D2": 230,
+     "E": 192,
+     "F": 216
+    },
+    "fuente": "Cables y canalización!27",
+    "diametroCable": 13.6,
+    "areaCable": 145,
+    "equivalenteAwg": "1/0",
+    "bandejaExterior": "125x50",
+    "bandejaSubterranea": "150x50"
+   },
+   {
+    "seccion": 70,
+    "ductoExterior": {
+     "1": 40,
+     "2": 50,
+     "3": 63,
+     "4": 75,
+     "5": 75,
+     "6": 75,
+     "7": 75,
+     "8": 100,
+     "9": 100,
+     "10": 100,
+     "11": 100,
+     "12": 100
+    },
+    "ductoSubterraneo": {
+     "1": 90,
+     "2": 90,
+     "3": 110,
+     "4": 110,
+     "5": 110,
+     "6": 90,
+     "7": 90,
+     "8": 110,
+     "9": 110,
+     "10": 110,
+     "11": 110,
+     "12": 140
+    },
+    "capacidad": {
+     "A1": 179,
+     "A2": 164,
+     "B1": 222,
+     "B2": 194,
+     "D1": 197,
+     "D2": 282,
+     "E": 246,
+     "F": 279
+    },
+    "fuente": "Cables y canalización!28",
+    "diametroCable": 15.7,
+    "areaCable": 192,
+    "equivalenteAwg": "2/0",
+    "bandejaExterior": "200x50",
+    "bandejaSubterranea": "200x50"
+   },
+   {
+    "seccion": 95,
+    "ductoExterior": {
+     "1": 40,
+     "2": 63,
+     "3": 75,
+     "4": 100,
+     "5": 100,
+     "6": 75,
+     "7": 100,
+     "8": 100,
+     "9": 100,
+     "10": 100,
+     "11": 125,
+     "12": 125
+    },
+    "ductoSubterraneo": {
+     "1": 110,
+     "2": 110,
+     "3": 110,
+     "4": 140,
+     "5": 140,
+     "6": 90,
+     "7": 110,
+     "8": 110,
+     "9": 140,
+     "10": 140,
+     "11": 140,
+     "12": 140
+    },
+    "capacidad": {
+     "A1": 216,
+     "A2": 197,
+     "B1": 269,
+     "B2": 233,
+     "D1": 232,
+     "D2": 339,
+     "E": 298,
+     "F": 342
+    },
+    "fuente": "Cables y canalización!29",
+    "diametroCable": 17.4,
+    "areaCable": 238,
+    "equivalenteAwg": "3/0",
+    "bandejaExterior": "200x50",
+    "bandejaSubterranea": "150x100"
+   },
+   {
+    "seccion": 120,
+    "ductoExterior": {
+     "1": 50,
+     "2": 63,
+     "3": 75,
+     "4": 100,
+     "5": 100,
+     "6": 100,
+     "7": 100,
+     "8": 100,
+     "9": 125,
+     "10": 125,
+     "11": 125,
+     "12": 125
+    },
+    "ductoSubterraneo": {
+     "1": 140,
+     "2": 140,
+     "3": 160,
+     "4": 160,
+     "5": 160,
+     "6": 110,
+     "7": 110,
+     "8": 140,
+     "9": 140,
+     "10": 140,
+     "11": 160,
+     "12": 160
+    },
+    "capacidad": {
+     "A1": 249,
+     "A2": 227,
+     "B1": 312,
+     "B2": 268,
+     "D1": 263,
+     "D2": 386,
+     "E": 346,
+     "F": 400
+    },
+    "fuente": "Cables y canalización!30",
+    "diametroCable": 19.3,
+    "areaCable": 292,
+    "equivalenteAwg": "4/0",
+    "bandejaExterior": "150x100",
+    "bandejaSubterranea": "150x100"
+   }
+  ],
+  "rvkAwg": [
+   {
+    "seccion": 14,
+    "ductoExterior": {
+     "1": 16,
+     "2": 16,
+     "3": 20,
+     "4": 25,
+     "5": 32,
+     "6": 25,
+     "7": 32,
+     "8": 32,
+     "9": 32,
+     "10": 32,
+     "11": 32,
+     "12": 40
+    },
+    "ductoSubterraneo": {
+     "1": 25,
+     "2": 25,
+     "3": 25,
+     "4": 32,
+     "5": 32,
+     "6": 32,
+     "7": 40,
+     "8": 40,
+     "9": 40,
+     "10": 40,
+     "11": 40,
+     "12": 50
+    },
+    "capacidad": {
+     "A1": 21,
+     "A2": 20,
+     "B1": 24,
+     "B2": 24,
+     "D1": 30,
+     "D2": 31,
+     "E": 28,
+     "F": null
+    },
+    "fuente": "Cables y canalización!38",
+    "diametroCable": 5.5,
+    "areaCable": 24,
+    "equivalenteMm2": 2.08,
+    "bandejaExterior": "80x40",
+    "bandejaSubterranea": "80x40"
+   },
+   {
+    "seccion": 12,
+    "ductoExterior": {
+     "1": 16,
+     "2": 20,
+     "3": 25,
+     "4": 32,
+     "5": 32,
+     "6": 25,
+     "7": 32,
+     "8": 32,
+     "9": 32,
+     "10": 40,
+     "11": 40,
+     "12": 40
+    },
+    "ductoSubterraneo": {
+     "1": 25,
+     "2": 25,
+     "3": 32,
+     "4": 32,
+     "5": 40,
+     "6": 32,
+     "7": 40,
+     "8": 40,
+     "9": 40,
+     "10": 50,
+     "11": 50,
+     "12": 50
+    },
+    "capacidad": {
+     "A1": 28,
+     "A2": 26,
+     "B1": 31,
+     "B2": 31,
+     "D1": 38,
+     "D2": 39,
+     "E": 38,
+     "F": null
+    },
+    "fuente": "Cables y canalización!39",
+    "diametroCable": 5.9,
+    "areaCable": 27,
+    "equivalenteMm2": 3.31,
+    "bandejaExterior": "80x40",
+    "bandejaSubterranea": "80x40"
+   },
+   {
+    "seccion": 10,
+    "ductoExterior": {
+     "1": 16,
+     "2": 25,
+     "3": 32,
+     "4": 32,
+     "5": 40,
+     "6": 32,
+     "7": 32,
+     "8": 40,
+     "9": 40,
+     "10": 40,
+     "11": 40,
+     "12": 40
+    },
+    "ductoSubterraneo": {
+     "1": 25,
+     "2": 32,
+     "3": 40,
+     "4": 40,
+     "5": 40,
+     "6": 40,
+     "7": 40,
+     "8": 50,
+     "9": 50,
+     "10": 50,
+     "11": 50,
+     "12": 50
+    },
+    "capacidad": {
+     "A1": 37,
+     "A2": 35,
+     "B1": 39,
+     "B2": 38,
+     "D1": 48,
+     "D2": 69,
+     "E": 50,
+     "F": 50
+    },
+    "fuente": "Cables y canalización!40",
+    "diametroCable": 6.6,
+    "areaCable": 34,
+    "equivalenteMm2": 5.26,
+    "bandejaExterior": "80x40",
+    "bandejaSubterranea": "80x40"
+   },
+   {
+    "seccion": 8,
+    "ductoExterior": {
+     "1": 20,
+     "2": 25,
+     "3": 32,
+     "4": 40,
+     "5": 40,
+     "6": 32,
+     "7": 40,
+     "8": 40,
+     "9": 40,
+     "10": 50,
+     "11": 50,
+     "12": 50
+    },
+    "ductoSubterraneo": {
+     "1": 32,
+     "2": 32,
+     "3": 50,
+     "4": 50,
+     "5": 50,
+     "6": 40,
+     "7": 50,
+     "8": 50,
+     "9": 50,
+     "10": 63,
+     "11": 63,
+     "12": 63
+    },
+    "capacidad": {
+     "A1": 49,
+     "A2": 46,
+     "B1": 59,
+     "B2": 54,
+     "D1": 63,
+     "D2": 89,
+     "E": 67,
+     "F": 68
+    },
+    "fuente": "Cables y canalización!41",
+    "diametroCable": 7.4,
+    "areaCable": 43,
+    "equivalenteMm2": 8.37,
+    "bandejaExterior": "80x40",
+    "bandejaSubterranea": "80x40"
+   },
+   {
+    "seccion": 6,
+    "ductoExterior": {
+     "1": 20,
+     "2": 32,
+     "3": 40,
+     "4": 40,
+     "5": 50,
+     "6": 40,
+     "7": 40,
+     "8": 50,
+     "9": 50,
+     "10": 50,
+     "11": 50,
+     "12": 63
+    },
+    "ductoSubterraneo": {
+     "1": 40,
+     "2": 50,
+     "3": 63,
+     "4": 63,
+     "5": 63,
+     "6": 50,
+     "7": 50,
+     "8": 63,
+     "9": 63,
+     "10": 63,
+     "11": 63,
+     "12": 75
+    },
+    "capacidad": {
+     "A1": 65,
+     "A2": 61,
+     "B1": 79,
+     "B2": 72,
+     "D1": 80,
+     "D2": 114,
+     "E": 89,
+     "F": 93
+    },
+    "fuente": "Cables y canalización!42",
+    "diametroCable": 8.4,
+    "areaCable": 55,
+    "equivalenteMm2": 13.3,
+    "bandejaExterior": "80x40",
+    "bandejaSubterranea": "80x40"
+   },
+   {
+    "seccion": 4,
+    "ductoExterior": {
+     "1": 25,
+     "2": 32,
+     "3": 40,
+     "4": 50,
+     "5": 50,
+     "6": 50,
+     "7": 50,
+     "8": 50,
+     "9": 63,
+     "10": 63,
+     "11": 63,
+     "12": 63
+    },
+    "ductoSubterraneo": {
+     "1": 50,
+     "2": 50,
+     "3": 63,
+     "4": 63,
+     "5": 63,
+     "6": 63,
+     "7": 63,
+     "8": 63,
+     "9": 75,
+     "10": 75,
+     "11": 75,
+     "12": 75
+    },
+    "capacidad": {
+     "A1": 86,
+     "A2": 80,
+     "B1": 105,
+     "B2": 95,
+     "D1": 103,
+     "D2": 147,
+     "E": 114,
+     "F": 126
+    },
+    "fuente": "Cables y canalización!43",
+    "diametroCable": 10,
+    "areaCable": 79,
+    "equivalenteMm2": 21.1,
+    "bandejaExterior": "80x40",
+    "bandejaSubterranea": "100x50"
+   },
+   {
+    "seccion": 2,
+    "ductoExterior": {
+     "1": 32,
+     "2": 40,
+     "3": 50,
+     "4": 63,
+     "5": 63,
+     "6": 50,
+     "7": 63,
+     "8": 63,
+     "9": 63,
+     "10": 75,
+     "11": 75,
+     "12": 75
+    },
+    "ductoSubterraneo": {
+     "1": 63,
+     "2": 63,
+     "3": 75,
+     "4": 75,
+     "5": 75,
+     "6": 63,
+     "7": 75,
+     "8": 75,
+     "9": 75,
+     "10": 90,
+     "11": 90,
+     "12": 90
+    },
+    "capacidad": {
+     "A1": 114,
+     "A2": 106,
+     "B1": 141,
+     "B2": 125,
+     "D1": 132,
+     "D2": 189,
+     "E": 154,
+     "F": 172
+    },
+    "fuente": "Cables y canalización!44",
+    "diametroCable": 11.5,
+    "areaCable": 104,
+    "equivalenteMm2": 33.6,
+    "bandejaExterior": "100x50",
+    "bandejaSubterranea": "100x50"
+   },
+   {
+    "seccion": 1,
+    "ductoExterior": {
+     "1": 32,
+     "2": 40,
+     "3": 50,
+     "4": 63,
+     "5": 75,
+     "6": 63,
+     "7": 63,
+     "8": 63,
+     "9": 75,
+     "10": 75,
+     "11": 75,
+     "12": 100
+    },
+    "ductoSubterraneo": {
+     "1": 63,
+     "2": 75,
+     "3": 75,
+     "4": 90,
+     "5": 90,
+     "6": 75,
+     "7": 75,
+     "8": 75,
+     "9": 90,
+     "10": 90,
+     "11": 90,
+     "12": 110
+    },
+    "capacidad": {
+     "A1": 132,
+     "A2": 122,
+     "B1": 163,
+     "B2": 144,
+     "D1": 150,
+     "D2": 216,
+     "E": 178,
+     "F": 200
+    },
+    "fuente": "Cables y canalización!45",
+    "diametroCable": 12.6,
+    "areaCable": 125,
+    "equivalenteMm2": 42.4,
+    "bandejaExterior": "100x50",
+    "bandejaSubterranea": "125x50"
+   },
+   {
+    "seccion": "1/0",
+    "ductoExterior": {
+     "1": 32,
+     "2": 50,
+     "3": 63,
+     "4": 63,
+     "5": 75,
+     "6": 63,
+     "7": 63,
+     "8": 75,
+     "9": 75,
+     "10": 75,
+     "11": 100,
+     "12": 100
+    },
+    "ductoSubterraneo": {
+     "1": 75,
+     "2": 75,
+     "3": 90,
+     "4": 90,
+     "5": 110,
+     "6": 75,
+     "7": 75,
+     "8": 90,
+     "9": 90,
+     "10": 90,
+     "11": 110,
+     "12": 110
+    },
+    "capacidad": {
+     "A1": 152,
+     "A2": 140,
+     "B1": 188,
+     "B2": 165,
+     "D1": 170,
+     "D2": 245,
+     "E": 207,
+     "F": 234
+    },
+    "fuente": "Cables y canalización!46",
+    "diametroCable": 13.7,
+    "areaCable": 147,
+    "equivalenteMm2": 53.5,
+    "bandejaExterior": "125x50",
+    "bandejaSubterranea": "150x50"
+   },
+   {
+    "seccion": "2/0",
+    "ductoExterior": {
+     "1": 40,
+     "2": 50,
+     "3": 63,
+     "4": 75,
+     "5": 75,
+     "6": 75,
+     "7": 75,
+     "8": 75,
+     "9": 100,
+     "10": 100,
+     "11": 100,
+     "12": 100
+    },
+    "ductoSubterraneo": {
+     "1": 90,
+     "2": 90,
+     "3": 110,
+     "4": 110,
+     "5": 110,
+     "6": 90,
+     "7": 90,
+     "8": 90,
+     "9": 110,
+     "10": 110,
+     "11": 110,
+     "12": 140
+    },
+    "capacidad": {
+     "A1": 175,
+     "A2": 161,
+     "B1": 217,
+     "B2": 190,
+     "D1": 192,
+     "D2": 278,
+     "E": 240,
+     "F": 273
+    },
+    "fuente": "Cables y canalización!47",
+    "diametroCable": 15.1,
+    "areaCable": 179,
+    "equivalenteMm2": 67.4,
+    "bandejaExterior": "150x50",
+    "bandejaSubterranea": "200x50"
+   },
+   {
+    "seccion": "3/0",
+    "ductoExterior": {
+     "1": 40,
+     "2": 63,
+     "3": 75,
+     "4": 75,
+     "5": 100,
+     "6": 75,
+     "7": 75,
+     "8": 100,
+     "9": 100,
+     "10": 100,
+     "11": 100,
+     "12": 100
+    },
+    "ductoSubterraneo": {
+     "1": 110,
+     "2": 110,
+     "3": 110,
+     "4": 140,
+     "5": 140,
+     "6": 90,
+     "7": 90,
+     "8": 110,
+     "9": 110,
+     "10": 110,
+     "11": 140,
+     "12": 140
+    },
+    "capacidad": {
+     "A1": 201,
+     "A2": 185,
+     "B1": 251,
+     "B2": 218,
+     "D1": 218,
+     "D2": 315,
+     "E": 278,
+     "F": 318
+    },
+    "fuente": "Cables y canalización!48",
+    "diametroCable": 16.3,
+    "areaCable": 209,
+    "equivalenteMm2": 85,
+    "bandejaExterior": "200x50",
+    "bandejaSubterranea": "200x50"
+   },
+   {
+    "seccion": "4/0",
+    "ductoExterior": {
+     "1": 50,
+     "2": 63,
+     "3": 75,
+     "4": 100,
+     "5": 100,
+     "6": 100,
+     "7": 100,
+     "8": 100,
+     "9": 100,
+     "10": 100,
+     "11": 125,
+     "12": 125
+    },
+    "ductoSubterraneo": {
+     "1": 140,
+     "2": 140,
+     "3": 160,
+     "4": 160,
+     "5": 160,
+     "6": 110,
+     "7": 110,
+     "8": 110,
+     "9": 140,
+     "10": 140,
+     "11": 140,
+     "12": 140
+    },
+    "capacidad": {
+     "A1": 232,
+     "A2": 212,
+     "B1": 290,
+     "B2": 251,
+     "D1": 248,
+     "D2": 362,
+     "E": 322,
+     "F": 371
+    },
+    "fuente": "Cables y canalización!49",
+    "diametroCable": 18.2,
+    "areaCable": 260,
+    "equivalenteMm2": 107.2,
+    "bandejaExterior": "150x100",
+    "bandejaSubterranea": "150x100"
+   }
+  ],
+  "fuente": "Cables y canalización"
+ },
+ "factorCantidad": [
+  {
+   "desde": 4,
+   "hasta": 6,
+   "factor": 0.8,
+   "fuente": "Cables y canalización!54"
+  },
+  {
+   "desde": 7,
+   "hasta": 24,
+   "factor": 0.7,
+   "fuente": "Cables y canalización!55"
+  },
+  {
+   "desde": 25,
+   "hasta": 42,
+   "factor": 0.6,
+   "fuente": "Cables y canalización!56"
+  },
+  {
+   "desde": 42,
+   "hasta": 1000000,
+   "factor": 0.5,
+   "fuente": "Cables y canalización!57"
+  }
+ ],
+ "factorTemperatura": {
+  "columnas": {
+   "D": {
+    "servicio": "70°C (Evaflex)",
+    "metodos": "A1, B1, E"
+   },
+   "E": {
+    "servicio": "90°C (RV-K)",
+    "metodos": "A1, A2, B1, B2, E"
+   },
+   "F": {
+    "servicio": "90°C (RV-K)",
+    "metodos": "D1, D2"
+   }
+  },
+  "filas": [
+   {
+    "desde": null,
+    "hasta": 5,
+    "D": null,
+    "E": null,
+    "F": null,
+    "fuente": "Cables y canalización!62"
+   },
+   {
+    "desde": 5,
+    "hasta": 10,
+    "D": 1.22,
+    "E": 1.15,
+    "F": 1.07,
+    "fuente": "Cables y canalización!63"
+   },
+   {
+    "desde": 11,
+    "hasta": 15,
+    "D": 1.17,
+    "E": 1.12,
+    "F": 1.04,
+    "fuente": "Cables y canalización!64"
+   },
+   {
+    "desde": 17,
+    "hasta": 20,
+    "D": 1.12,
+    "E": 1.08,
+    "F": 1,
+    "fuente": "Cables y canalización!65"
+   },
+   {
+    "desde": 23,
+    "hasta": 25,
+    "D": 1.06,
+    "E": 1.04,
+    "F": 0.96,
+    "fuente": "Cables y canalización!66"
+   },
+   {
+    "desde": 29,
+    "hasta": 30,
+    "D": 1,
+    "E": 1,
+    "F": 0.93,
+    "fuente": "Cables y canalización!67"
+   },
+   {
+    "desde": 35,
+    "hasta": 35,
+    "D": 0.94,
+    "E": 0.96,
+    "F": 0.89,
+    "fuente": "Cables y canalización!68"
+   },
+   {
+    "desde": 41,
+    "hasta": 40,
+    "D": 0.87,
+    "E": 0.91,
+    "F": 0.85,
+    "fuente": "Cables y canalización!69"
+   },
+   {
+    "desde": 47,
+    "hasta": 45,
+    "D": 0.79,
+    "E": 0.87,
+    "F": 0.8,
+    "fuente": "Cables y canalización!70"
+   },
+   {
+    "desde": 53,
+    "hasta": 50,
+    "D": 0.71,
+    "E": 0.82,
+    "F": 0.76,
+    "fuente": "Cables y canalización!71"
+   },
+   {
+    "desde": 59,
+    "hasta": 55,
+    "D": 0.61,
+    "E": 0.76,
+    "F": 0.71,
+    "fuente": "Cables y canalización!72"
+   },
+   {
+    "desde": 65,
+    "hasta": 60,
+    "D": 0.5,
+    "E": 0.71,
+    "F": 0.65,
+    "fuente": "Cables y canalización!73"
+   }
+  ]
+ },
+ "ocupacionDucto": [
+  {
+   "conductores": 1,
+   "porcentaje": 50
+  },
+  {
+   "conductores": 2,
+   "porcentaje": 33
+  },
+  {
+   "conductores": 3,
+   "porcentaje": 33
+  }
+ ]
+}

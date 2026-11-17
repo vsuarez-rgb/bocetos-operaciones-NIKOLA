@@ -1,0 +1,225 @@
+{
+ "generado": "2026-11-17",
+ "plantilla": "Campos Autocad -.xlsm",
+ "script": "scripts/extraer-catalogos.mjs",
+ "meses": [
+  "Enero 2026",
+  "Febrero 2026",
+  "Marzo 2026",
+  "Abril 2026",
+  "Mayo 2026",
+  "Junio 2026",
+  "Julio 2026",
+  "Agosto 2026",
+  "Septiembre 2026",
+  "Octubre 2026",
+  "Noviembre 2026",
+  "Diciembre 2026"
+ ],
+ "anio": [
+  2026
+ ],
+ "orientaciones": [
+  "0° (N)",
+  "5° (N)",
+  "10° (N)",
+  "15° (N)",
+  "20° (N)",
+  "25° (N)",
+  "30° (N)",
+  "35° (N)",
+  "40° (N)",
+  "45° (N)",
+  "50° (N)",
+  "55° (N)",
+  "60° (N)",
+  "65° (N)",
+  "70° (N)",
+  "75° (N)",
+  "80° (N)",
+  "85° (N)",
+  "90° (N)",
+  "270° (N)",
+  "275° (N)",
+  "280° (N)",
+  "285° (N)",
+  "290° (N)",
+  "295° (N)",
+  "300° (N)",
+  "305° (N)",
+  "310° (N)",
+  "315° (N)",
+  "320° (N)",
+  "325° (N)",
+  "330° (N)",
+  "335° (N)",
+  "340° (N)",
+  "345° (N)",
+  "350° (N)",
+  "355° (N)"
+ ],
+ "inclinaciones": [
+  "0°",
+  "5°",
+  "10°",
+  "15°",
+  "20°",
+  "25°",
+  "30°",
+  "35°",
+  "40°",
+  "45°",
+  "50°",
+  "55°"
+ ],
+ "puestaTierra": {
+  "tipo": [
+   "Barra Cooper",
+   "Malla a tierra reticulada"
+  ],
+  "tipoConductor": [
+   "RVK Reviflex Monopolar",
+   "Cobre desnudo"
+  ],
+  "calibreConductor": [
+   6,
+   4
+  ],
+  "tipoCanalizacion": [
+   "Conduit PVC",
+   "Conduit PVC"
+  ],
+  "diametroCanalizacion": [
+   25,
+   32
+  ]
+ },
+ "zonaUtm": [
+  "18 H",
+  "19 H"
+ ],
+ "materialTablero": [
+  "Metálico",
+  "Plástico"
+ ],
+ "dimensionesTablero": [
+  "300mm x 200mm x 150mm",
+  "300mm x 400mm x 150mm",
+  "400mm x 300mm x 200mm",
+  "400mm x 500mm x 200mm",
+  "500mm x 400mm x 200mm",
+  "600mm x 400mm x 250mm",
+  "700mm x 500mm x 250mm",
+  "800mm x 600mm x 250mm",
+  "1000mm x 600mm x 300mm",
+  "1000mm x 800mm x 300mm",
+  "1200mm x 800mm x 300mm",
+  "1400mm x 600mm x 300mm",
+  "1400mm x 800mm x 300mm",
+  "1400mm x 900mm x 300mm",
+  "1600mm x 900mm x 300mm",
+  "2100mm x 600mm x 300mm",
+  "2100mm x 800mm x 300mm",
+  "2100mm x 1000mm x 300mm",
+  "2100mm x 1200mm x 300mm",
+  "2100mm x 1400mm x 300mm",
+  "8 circuitos",
+  "12 circuitos",
+  "15 circuitos",
+  "18 circuitos"
+ ],
+ "gradoIp": [
+  "IP41",
+  "IP44",
+  "IP54",
+  "IP65"
+ ],
+ "porcentajes": [
+  0,
+  0.05,
+  0.1,
+  0.15,
+  0.2,
+  0.25,
+  0.3,
+  0.35,
+  0.4,
+  0.45,
+  0.5,
+  0.55,
+  0.6,
+  0.65,
+  0.7,
+  0.75,
+  0.8,
+  0.85,
+  0.9,
+  0.95
+ ],
+ "tramoSubterraneo": [
+  "Posee tramo subterráneo",
+  "No posee tramo subterráneo"
+ ],
+ "tarifas": [
+  "BT1",
+  "BT2",
+  "BT3",
+  "BT4",
+  "BT4.1",
+  "BT4.2",
+  "BT4.3",
+  "AT1",
+  "AT2",
+  "AT3",
+  "AT4",
+  "AT4.1",
+  "AT4.2",
+  "AT4.3"
+ ],
+ "simuladores": [
+  "Solargis",
+  "Explorador solar",
+  "PVSol"
+ ],
+ "proteccionesA": [
+  40,
+  40
+ ],
+ "tramos": [
+  "Inversor - TFV",
+  "TFV - Poste 1",
+  "Poste 1 - Poste 2",
+  "Poste 2 - TG",
+  "TG - Empalme",
+  "TFV - TG",
+  "TFV - Empalme",
+  "Inversor - TGFV",
+  "TGFV - Empalme",
+  "TG - SAVE"
+ ],
+ "tiposEmpalme": [
+  "Monofásico",
+  "Trifásico"
+ ],
+ "marcasInversor": [
+  "Huawei",
+  "Fronius",
+  "Victron"
+ ],
+ "marcasModulo": [
+  "JASolar",
+  "TrinaSolar",
+  "CanadianSolar",
+  "JinkoSolar",
+  "ZNShine",
+  "TWSolar"
+ ],
+ "marcasCargador": [
+  "SAVE_Huawei",
+  "SAVE_Wallbox",
+  "SAVE_Tesla",
+  "SAVE_Beny",
+  "SAVE_BYD"
+ ],
+ "fuente": "Equipos!A292:X641"
+}

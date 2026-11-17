@@ -40,7 +40,21 @@ docs/EQUIPOS-EMAT.md  Las mismas medidas en tablas, con fuentes y pendientes
 js/store.js         Guardado en el navegador (IndexedDB) y proyecto de ejemplo
 js/util.js          Utilidades e íconos
 assets/             Logos y foto de dron de ejemplo
+data/catalogos/     Catálogos sacados de la plantilla "Campos Autocad" (se regeneran con scripts/)
+scripts/            Herramientas en Node (no se publican): leer la plantilla y generar data/
+docs/               Decisiones, datos del paso 0 y cruce de catálogos (no se publican)
 ```
+
+### Regenerar los catálogos (paso 0)
+
+Requiere Node (sin paquetes: el lector de Excel está en `scripts/leer-xlsx.mjs`). Con la plantilla vigente en la carpeta de arriba:
+
+```
+node scripts/extraer-catalogos.mjs            # usa ../Campos Autocad -.xlsm
+node scripts/extraer-catalogos.mjs ruta.xlsm  # otra plantilla
+```
+
+Escribe `data/catalogos/*.json` y `docs/CRUCE-CATALOGOS.md`. Los instaladores y proyectistas (datos personales) van a `../_privado/personas.json`, **fuera del repositorio**. Si algo con forma de RUT, correo o celular llega a `data/`, el script se detiene sin escribir.
 
 ### Cambios típicos
 

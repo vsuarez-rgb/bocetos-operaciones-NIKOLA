@@ -1,0 +1,277 @@
+{
+ "generado": "2026-11-17",
+ "plantilla": "Campos Autocad -.xlsm",
+ "script": "scripts/extraer-catalogos.mjs",
+ "distribuidoras": [
+  {
+   "nombre": "CEC",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!294"
+  },
+  {
+   "nombre": "CGE",
+   "telefono": "800 800 767",
+   "web": "www.cge.cl",
+   "fuente": "Equipos!295"
+  },
+  {
+   "nombre": "CGE DISTRIBUCIÓN S.A.",
+   "telefono": "800 800 767",
+   "web": "www.cge.cl",
+   "fuente": "Equipos!296"
+  },
+  {
+   "nombre": "CHILQUINTA",
+   "telefono": "800 800 500",
+   "web": "www.chilquinta.cl",
+   "fuente": "Equipos!297"
+  },
+  {
+   "nombre": "CODINER",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!298"
+  },
+  {
+   "nombre": "COELCHA",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!299"
+  },
+  {
+   "nombre": "COLINA",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!300"
+  },
+  {
+   "nombre": "CONAFE",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!301"
+  },
+  {
+   "nombre": "COOPELAN",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!302"
+  },
+  {
+   "nombre": "COOPERSOL",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!303"
+  },
+  {
+   "nombre": "COOPREL",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!304"
+  },
+  {
+   "nombre": "COPELEC",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!305"
+  },
+  {
+   "nombre": "CRELL",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!306"
+  },
+  {
+   "nombre": "EDECSA",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!307"
+  },
+  {
+   "nombre": "EDELAYSEN",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!308"
+  },
+  {
+   "nombre": "EDELMAG",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!309"
+  },
+  {
+   "nombre": "EL ROMERO SPA",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!310"
+  },
+  {
+   "nombre": "ELECDA",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!311"
+  },
+  {
+   "nombre": "ELIQSA",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!312"
+  },
+  {
+   "nombre": "EMEL",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!314"
+  },
+  {
+   "nombre": "EMELARI",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!315"
+  },
+  {
+   "nombre": "EMELAT",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!316"
+  },
+  {
+   "nombre": "EMELCA",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!317"
+  },
+  {
+   "nombre": "EMPR FICTICIA QA 282823 PMGD DX NF",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!318"
+  },
+  {
+   "nombre": "EMPRESA PRUEBA FICTICIA NETBILLING DX NF",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!319"
+  },
+  {
+   "nombre": "EMPRESA PRUEBA FICTICIA NF",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!320"
+  },
+  {
+   "nombre": "EMPRESA QAT-DX FICTICIA NF",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!321"
+  },
+  {
+   "nombre": "ENEL DISTRIBUCIÓN CHILE S.A.",
+   "telefono": "800 800 696",
+   "web": "www.enel.cl",
+   "fuente": "Equipos!322"
+  },
+  {
+   "nombre": "FIA",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!323"
+  },
+  {
+   "nombre": "FRONTEL",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!324"
+  },
+  {
+   "nombre": "LITORAL",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!325"
+  },
+  {
+   "nombre": "LUZ OSORNO",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!326"
+  },
+  {
+   "nombre": "LUZ PARRAL",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!327"
+  },
+  {
+   "nombre": "LUZANDES",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!328"
+  },
+  {
+   "nombre": "LUZLINARES",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!329"
+  },
+  {
+   "nombre": "LUZPARRAL",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!330"
+  },
+  {
+   "nombre": "PUENTE ALTO",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!331"
+  },
+  {
+   "nombre": "PUNTO SOLAR",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!332"
+  },
+  {
+   "nombre": "SAESA",
+   "telefono": "800 600 801",
+   "web": "web.gruposaesa.cl",
+   "fuente": "Equipos!333"
+  },
+  {
+   "nombre": "SOCIEDAD DE INGENIERIA ELECTRICA MATAQUITO LTDA",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!334"
+  },
+  {
+   "nombre": "SOCOEPA",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!335"
+  },
+  {
+   "nombre": "STS",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!336"
+  },
+  {
+   "nombre": "TEST EMPRESA FICTICIA DX NF",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!337"
+  },
+  {
+   "nombre": "TIL TIL",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!338"
+  },
+  {
+   "nombre": "TRANSELEC CONCESIONES S.A.",
+   "telefono": null,
+   "web": null,
+   "fuente": "Equipos!339"
+  }
+ ]
+}

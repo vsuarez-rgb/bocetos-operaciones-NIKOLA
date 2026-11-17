@@ -2,6 +2,7 @@
   "name": "nikola-diseno-ops",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Herramienta de diseño fotovoltaico para Operaciones de Nikola (sitio estático, sin compilación).",
   "scripts": {
     "dev": "npx --yes serve . -l 5173",

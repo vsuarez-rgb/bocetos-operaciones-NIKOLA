@@ -1,0 +1,141 @@
+{
+ "generado": "2026-11-17",
+ "plantilla": "Campos Autocad -.xlsm",
+ "script": "scripts/extraer-catalogos.mjs",
+ "canalizaciones": [
+  {
+   "nombre": "Conduit Rígido RMC IEC 61386-21",
+   "grupo": "Exterior",
+   "accesorios": [
+    "Copla galvanizada RMC IEC",
+    "Contra tuerca galvanizada RMC IEC",
+    "Bushing galvanizado RMC IEC",
+    "Curva galvanizada RMC IEC",
+    "Conector RMC a Tub. Met. Flex."
+   ],
+   "fuente": "Equipos!195"
+  },
+  {
+   "nombre": "Tub. Metálica Flex. Reforzada Heavy Duty",
+   "grupo": "Exterior",
+   "accesorios": [
+    "Conector recto",
+    "Conector EMT a Tub. Met. Flex.",
+    "Conector curvo 90G IEC"
+   ],
+   "fuente": "Equipos!196"
+  },
+  {
+   "nombre": "Tub. EMT",
+   "grupo": "Aérea",
+   "accesorios": [
+    "Terminal electrogalvanizado EMT",
+    "Copla galvanizada EMT",
+    "Curva electrogalvanizada EMT"
+   ],
+   "fuente": "Equipos!198"
+  },
+  {
+   "nombre": "Tub. Conduit PVC",
+   "grupo": "Aérea",
+   "accesorios": [
+    "Copla PVC",
+    "Salida de caja PVC",
+    "Curva PVC"
+   ],
+   "fuente": "Equipos!199"
+  },
+  {
+   "nombre": "BPC Lisa",
+   "grupo": "Aérea",
+   "accesorios": [
+    "Pletina BPC"
+   ],
+   "fuente": "Equipos!200"
+  },
+  {
+   "nombre": "BPC Ranurada",
+   "grupo": "Aérea",
+   "accesorios": [
+    "Pletina BPC"
+   ],
+   "fuente": "Equipos!201"
+  },
+  {
+   "nombre": "BPC Canastillo",
+   "grupo": "Aérea",
+   "accesorios": [
+    "Pletina BPC"
+   ],
+   "fuente": "Equipos!202"
+  }
+ ],
+ "seccionesDucto": [
+  16,
+  20,
+  25,
+  32,
+  40,
+  50,
+  63,
+  75,
+  90,
+  100,
+  110,
+  125,
+  140,
+  160,
+  "80x40",
+  "100x50",
+  "125x50",
+  "150x50",
+  "200x50",
+  "150x100",
+  "200x100",
+  "250x100",
+  "300x100",
+  "400x100"
+ ],
+ "prensaestopas": [
+  {
+   "tipo": "PG-7",
+   "diametro": 6.9
+  },
+  {
+   "tipo": "PG-9",
+   "diametro": 7.8
+  },
+  {
+   "tipo": "PG-11",
+   "diametro": 10.8
+  },
+  {
+   "tipo": "PG-13.5",
+   "diametro": 12.5
+  },
+  {
+   "tipo": "PG-16",
+   "diametro": 15
+  },
+  {
+   "tipo": "PG-21",
+   "diametro": 18.5
+  },
+  {
+   "tipo": "PG-29",
+   "diametro": 25.3
+  },
+  {
+   "tipo": "PG-36",
+   "diametro": 36.3
+  },
+  {
+   "tipo": "PG-42",
+   "diametro": 40.4
+  },
+  {
+   "tipo": "PG-48",
+   "diametro": 46.3
+  }
+ ]
+}
