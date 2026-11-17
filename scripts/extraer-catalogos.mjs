@@ -128,9 +128,17 @@ const baterias = [];
       tension1FMin: num(f.Q), tension1FMax: num(f.R), tension3FMin: num(f.S), tension3FMax: num(f.T), icargaMax1F: num(f.U), icargaMax3F: num(f.V), ficha: txt(f.AH), fuente: fuente(EQ, r)
     });
   }
-  // La serie S1 se arma con módulos LUNA2000-7-E1 y potencia LUNA2000-10KW-C1. Si aparecen "S2/E2/C2", es un arrastre de Excel.
-  const raras = baterias.filter(b => /-S[2-9]$|-E[2-9]$|-C[2-9]$/.test(`${b.modelo}`) || /-E[2-9]$/.test(b.moduloBateria || '') || /-C[2-9]$/.test(b.moduloPotencia || ''));
-  if (raras.length) avisos.push(`Baterías con nombres que parecen un arrastre de Excel (la serie S1 usa LUNA2000-7-E1 y LUNA2000-10KW-C1): ${raras.map(b => `${b.modelo} (${b.moduloBateria}, ${b.moduloPotencia}) en ${b.fuente}`).join('; ')}. Se dejan tal cual; confirmar con Ops.`);
+  /* La serie S1 se arma con módulos LUNA2000-7-E1 y potencia LUNA2000-10KW-C1. En la plantilla, las filas de
+     2 y 3 módulos dicen S2/E2/C2 y S3/E3/C3: es un arrastre de Excel (confirmado por Ops el 17-11-2026).
+     Se corrigen aquí y se guarda lo que decía el Excel en `excelDecia`. */
+  const corregidas = [];
+  for (const b of baterias) {
+    const antes = { modelo: b.modelo, moduloBateria: b.moduloBateria, moduloPotencia: b.moduloPotencia };
+    if (!/LUNA2000-7-E\d$/.test(b.moduloBateria || '')) continue;
+    b.modelo = b.modelo.replace(/-S[2-9]$/, '-S1'); b.moduloBateria = b.moduloBateria.replace(/-E[2-9]$/, '-E1'); b.moduloPotencia = (b.moduloPotencia || '').replace(/-C[2-9]$/, '-C1');
+    if (b.modelo !== antes.modelo || b.moduloBateria !== antes.moduloBateria || b.moduloPotencia !== antes.moduloPotencia) { b.excelDecia = antes; corregidas.push(`${antes.modelo} → ${b.modelo} (${b.fuente})`); }
+  }
+  if (corregidas.length) avisos.push(`Baterías corregidas (arrastre de Excel en la serie S1, confirmado por Ops): ${corregidas.join('; ')}. **Hay que corregirlo también en la plantilla**, porque el Excel de un proyecto con 2 o 3 módulos escribiría "S2/S3" en el plano.`);
 }
 
 /* ==========================================================================
@@ -306,6 +314,23 @@ const prensaestopas = []; { const r0 = buscar(CB, 'I', v => /^PG\/ST/.test(v))[0
 const utm = { datum: txt(CB.valor('B' + buscar(CB, 'A', v => /^DATUM/.test(v))[0])), a: num(CB.valor('B' + buscar(CB, 'A', v => /^a \(semi/.test(v))[0])), b: num(CB.valor('B' + buscar(CB, 'A', v => /^b \(semi/.test(v))[0])), hemisferio: txt(CB.valor('B' + buscar(CB, 'A', v => /^Hemisphere/.test(v))[0])), fuente: `${CB.nombre}!A107:W123` };
 
 /* ==========================================================================
+   Datos a verificar (decisión de Ops, 17-11-2026): cuando el Excel y EMAT no
+   coinciden en la corriente de salida de un inversor, manda el Excel, pero el
+   valor queda marcado con `verificar` para que la Ficha lo muestre con asterisco (*).
+   Ojo: EMAT `iac` es la corriente MÁXIMA de ficha → se compara con Equipos!F
+   ("Imáx"), no con Equipos!Q ("Iac-nom", la nominal).
+   ========================================================================== */
+const { PANELES_EMAT, INVERSORES_EMAT, OTROS_EMAT } = await import(pathToFileURL(resolve(RAIZ, 'js', 'equipos-emat.js')).href);
+const norm = s => String(s || '').toUpperCase().replace(/[\s_]+/g, '').replace(/KTL/g, 'K');
+const igual = (a, b, tol = 0.011) => a == null || b == null ? null : Math.abs(a - b) <= tol * Math.max(1, Math.abs(b));
+for (const x of inversores) {
+  const e = INVERSORES_EMAT.find(e => norm(e.modelo) === norm(x.modelo));
+  if (e && igual(x.imax, e.iac) === false) {
+    x.verificar = { imax: `Valor del Excel. EMAT (ficha) indica ${e.iac} A. Confirmar cuál corresponde.` };
+  }
+}
+
+/* ==========================================================================
    Escribir
    ========================================================================== */
 const meta = { generado: new Date().toISOString().slice(0, 10), plantilla: 'Campos Autocad -.xlsm', script: 'scripts/extraer-catalogos.mjs' };
@@ -341,9 +366,6 @@ writeFileSync(resolve(PRIVADO, 'personas.json'), JSON.stringify({ ...meta, aviso
 /* ==========================================================================
    Cruce con js/equipos-emat.js → docs/CRUCE-CATALOGOS.md
    ========================================================================== */
-const { PANELES_EMAT, INVERSORES_EMAT, OTROS_EMAT } = await import(pathToFileURL(resolve(RAIZ, 'js', 'equipos-emat.js')).href);
-const norm = s => String(s || '').toUpperCase().replace(/[\s_]+/g, '').replace(/KTL/g, 'K');
-const igual = (a, b, tol = 0.011) => a == null || b == null ? null : Math.abs(a - b) <= tol * Math.max(1, Math.abs(b));
 const md = [];
 const tablaMd = (cab, filas) => filas.length ? [`| ${cab.join(' | ')} |`, `|${cab.map(() => '---').join('|')}|`, ...filas.map(f => `| ${f.map(x => x ?? '—').join(' | ')} |`)].join('\n') : '_(ninguno)_';
 
@@ -353,8 +375,8 @@ for (const x of inversores) {
   const e = INVERSORES_EMAT.find(e => norm(e.modelo) === norm(x.modelo));
   if (!e) { invSoloExcel.push(x); continue; }
   usadosEmat.add(e.sku);
-  const comp = [['kW', x.pacNomKw, e.kw], ['MPPT', x.mppt, e.mppt], ['Entradas/MPPT', x.entradasPorMppt, e.cadenasPorMppt], ['Vmpp mín', x.vmppMin, e.vmin], ['Vmpp máx', x.vmppMax, e.vmax], ['Isc/MPPT', x.iscMax, e.iscMppt], ['Iac', x.iacNom, e.iac], ['Fase', x.fase, e.fase]];
-  const dif = comp.filter(([, a, b]) => typeof a === 'string' ? a !== b : igual(a, b) === false).map(([k, a, b]) => `${k}: Excel ${a} / EMAT ${b}`);
+  const comp = [['kW', x.pacNomKw, e.kw], ['MPPT', x.mppt, e.mppt], ['Entradas/MPPT', x.entradasPorMppt, e.cadenasPorMppt], ['Vmpp mín', x.vmppMin, e.vmin], ['Vmpp máx', x.vmppMax, e.vmax], ['Isc/MPPT', x.iscMax, e.iscMppt], ['Imáx CA', x.imax, e.iac], ['Fase', x.fase, e.fase]];
+  const dif = comp.filter(([, a, b]) => typeof a === 'string' ? a !== b : igual(a, b) === false).map(([k, a, b]) => `${k}: Excel ${a}${k === 'Imáx CA' && x.verificar ? ' **\\***' : ''} / EMAT ${b}`);
   invPares.push([x.modelo, e.sku, x.fuente, dif.length ? dif.join('; ') : 'coincide']);
 }
 const invSoloEmat = INVERSORES_EMAT.filter(e => !usadosEmat.has(e.sku));
@@ -391,7 +413,8 @@ md.push(`# Cruce de catálogos · plantilla "Campos Autocad" vs. base EMAT`,
     ['Distribuidoras', distribuidoras.length, '—', '', '', ''], ['Regiones / comunas', `${regiones.length} / ${regiones.reduce((t, r) => t + r.comunas.length, 0)}`, '—', '', '', '']
   ]),
   ``, `## Inversores en ambos`, ``, `Diferencias con tolerancia de 1 %. "Fase" en el Excel se deduce de P / Iac (el Excel no la guarda).`,
-  `Las diferencias de Iac en M3, M2, MG0 y MB0 son de tensión de referencia: el Excel usa la corriente a **400 V** (30 kW / (√3·400) = 43,3 A) y EMAT la de **380 V** (47,9 A). Para el cuadro de carga manda el Excel (es lo que se presenta hoy a la SEC); conviene confirmar cuál corresponde a la red chilena de 380 V.`, ``,
+  'La corriente de salida se compara con **Imáx** (Equipos!F), que es lo que EMAT guarda como `iac` (máxima de ficha). La columna "Iac-nom" (Equipos!Q) es la nominal y en los trifásicos grandes es menor; no es una diferencia.',
+  '**Decisión (17-11-2026):** si un dato del Excel no coincide con EMAT, se usa el del Excel marcado con **\\*** para verificarlo (`verificar` en el JSON; la Ficha muestra el asterisco).', ``,
   tablaMd(['Modelo (Excel)', 'SKU EMAT', 'Fila Excel', 'Diferencias'], invPares),
   ``, `## Inversores solo en el Excel`, ``, `Se usan desde el catálogo del Excel. Si se van a dibujar, hay que agregarlos a EMAT con medidas de ficha.`, ``,
   tablaMd(['Marca', 'Modelo', 'kW', 'Fase', 'Fila'], invSoloExcel.map(x => [x.marca, x.modelo, x.pacNomKw, x.fase, x.fuente])),

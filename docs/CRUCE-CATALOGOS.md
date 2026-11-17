@@ -22,7 +22,8 @@ Generado por `scripts/extraer-catalogos.mjs` el 2026-11-17. No editar a mano: se
 ## Inversores en ambos
 
 Diferencias con tolerancia de 1 %. "Fase" en el Excel se deduce de P / Iac (el Excel no la guarda).
-Las diferencias de Iac en M3, M2, MG0 y MB0 son de tensión de referencia: el Excel usa la corriente a **400 V** (30 kW / (√3·400) = 43,3 A) y EMAT la de **380 V** (47,9 A). Para el cuadro de carga manda el Excel (es lo que se presenta hoy a la SEC); conviene confirmar cuál corresponde a la red chilena de 380 V.
+La corriente de salida se compara con **Imáx** (Equipos!F), que es lo que EMAT guarda como `iac` (máxima de ficha). La columna "Iac-nom" (Equipos!Q) es la nominal y en los trifásicos grandes es menor; no es una diferencia.
+**Decisión (17-11-2026):** si un dato del Excel no coincide con EMAT, se usa el del Excel marcado con **\*** para verificarlo (`verificar` en el JSON; la Ficha muestra el asterisco).
 
 | Modelo (Excel) | SKU EMAT | Fila Excel | Diferencias |
 |---|---|---|---|
@@ -37,19 +38,19 @@ Las diferencias de Iac en M3, M2, MG0 y MB0 son de tensión de referencia: el Ex
 | SUN2000-6KTL-M1 | A02008004L003 | Equipos!14 | coincide |
 | SUN2000-8KTL-M1 | A02008004L004 | Equipos!15 | coincide |
 | SUN2000-10KTL-M1 | A02008004L001 | Equipos!16 | coincide |
-| SUN2000-30KTL-M3 | A02008010L013 | Equipos!26 | Iac: Excel 43.3 / EMAT 47.9 |
-| SUN2000-36KTL-M3 | A02008010L014 | Equipos!27 | Iac: Excel 52 / EMAT 58 |
-| SUN2000-40KTL-M3 | A02008010L004 | Equipos!28 | Iac: Excel 57.7 / EMAT 63.8 |
+| SUN2000-30KTL-M3 | A02008010L013 | Equipos!26 | coincide |
+| SUN2000-36KTL-M3 | A02008010L014 | Equipos!27 | Imáx CA: Excel 57.2 **\*** / EMAT 58 |
+| SUN2000-40KTL-M3 | A02008010L004 | Equipos!28 | coincide |
 | SUN2000-50KTL-M3 | A02008010L005 | Equipos!29 | coincide |
-| SUN2000-100KTL-M2 | A02008010L002 | Equipos!30 | Iac: Excel 144.4 / EMAT 160.4 |
-| SUN2000-150KTL-MG0 | A02008010L016 | Equipos!31 | Iac: Excel 227.9 / EMAT 253.2 |
+| SUN2000-100KTL-M2 | A02008010L002 | Equipos!30 | coincide |
+| SUN2000-150KTL-MG0 | A02008010L016 | Equipos!31 | coincide |
 | SUN2000-6KTL-MAP0 | A02008010L017 | Equipos!33 | coincide |
 | SUN2000-8KTL-MAP0 | A02008004L016 | Equipos!34 | coincide |
 | SUN2000-10KTL-MAP0 | A02008004L017 | Equipos!35 | coincide |
 | SUN2000-12KTL-MAP0 | A02008010L018 | Equipos!36 | coincide |
-| SUN2000-15KTL-MB0 | A02008010L019 | Equipos!38 | Iac: Excel 22.8 / EMAT 25.2 |
-| SUN2000-20KTL-MB0 | A02008010L020 | Equipos!40 | Iac: Excel 30.4 / EMAT 33.6 |
-| SUN2000-25KTL-MB0 | A02008010L021 | Equipos!41 | Iac: Excel 38 / EMAT 42 |
+| SUN2000-15KTL-MB0 | A02008010L019 | Equipos!38 | coincide |
+| SUN2000-20KTL-MB0 | A02008010L020 | Equipos!40 | coincide |
+| SUN2000-25KTL-MB0 | A02008010L021 | Equipos!41 | coincide |
 | SUN2000-4K-LB0 | A02008010L024 | Equipos!44 | coincide |
 | SUN2000-5K-LB0 | A02008010L025 | Equipos!46 | coincide |
 | SUN2000-6K-LB0 | A02008010L026 | Equipos!47 | coincide |
@@ -152,8 +153,8 @@ El Excel describe configuraciones (n módulos + módulo de potencia). EMAT tiene
 | LUNA2000-10-S0 | LUNA2000-5-E0 | A02001001L006 | LUNA2000-5kW-C0 | A02001001L007 |
 | LUNA2000-15-S0 | LUNA2000-5-E0 | A02001001L006 | LUNA2000-5kW-C0 | A02001001L007 |
 | LUNA2000-7-S1 | LUNA2000-7-E1 | A02001001L011 | LUNA2000-10KW-C1 | A02001001L010 |
-| LUNA2000-14-S2 | LUNA2000-7-E2 | no está | LUNA2000-10KW-C2 | no está |
-| LUNA2000-21-S3 | LUNA2000-7-E3 | no está | LUNA2000-10KW-C3 | no está |
+| LUNA2000-14-S1 | LUNA2000-7-E1 | A02001001L011 | LUNA2000-10KW-C1 | A02001001L010 |
+| LUNA2000-21-S1 | LUNA2000-7-E1 | A02001001L011 | LUNA2000-10KW-C1 | A02001001L010 |
 
 ## Cargadores
 
@@ -180,7 +181,7 @@ El Excel describe configuraciones (n módulos + módulo de potencia). EMAT tiene
 - Equipos!K (Sección mín. cable de inversores) se calcula desde un libro externo (`Libro1.xlsx` en un OneDrive personal) que no está en la plantilla: la columna viene vacía. No la usa ninguna fórmula de "Información proyecto".
 - Equipos!W16:AI41 (nombres de string de la UG B y C) dependen de un libro externo (una copia de la plantilla en el escritorio de otra persona): en la plantilla esas letras quedan vacías. La app los genera igual que la UG A cambiando la letra.
 - El rango con nombre "Paneles" está roto (Equipos!#REF!). La lista de marcas de paneles se toma de Equipos!B96:B101.
-- Baterías con nombres que parecen un arrastre de Excel (la serie S1 usa LUNA2000-7-E1 y LUNA2000-10KW-C1): LUNA2000-14-S2 (LUNA2000-7-E2, LUNA2000-10KW-C2) en Equipos!138; LUNA2000-21-S3 (LUNA2000-7-E3, LUNA2000-10KW-C3) en Equipos!139. Se dejan tal cual; confirmar con Ops.
+- Baterías corregidas (arrastre de Excel en la serie S1, confirmado por Ops): LUNA2000-14-S2 → LUNA2000-14-S1 (Equipos!138); LUNA2000-21-S3 → LUNA2000-21-S1 (Equipos!139). **Hay que corregirlo también en la plantilla**, porque el Excel de un proyecto con 2 o 3 módulos escribiría "S2/S3" en el plano.
 - Diferenciales sin marca ni ficha (posibles filas de prueba): Equipos!219.
 - La región "Ñuble" (lista Equipos!A) no tiene rango de comunas con nombre: la lista desplegable de comunas no funciona para ella en el Excel.
 - Comunas fuera de los rangos con nombre de su región: Chillán (Ñuble), Bulnes (Ñuble), Cobquecura (Ñuble), Coelemu (Ñuble), Coihueco (Ñuble), Chillán Viejo (Ñuble), El Carmen (Ñuble), Ninhue (Ñuble), Ñiquén (Ñuble), Pemuco (Ñuble), Pinto (Ñuble), Portezuelo (Ñuble) y 9 más.

@@ -97,10 +97,10 @@
   },
   {
    "marca": "Huawei",
-   "modelo": "LUNA2000-14-S2",
+   "modelo": "LUNA2000-14-S1",
    "modulos": 2,
-   "moduloPotencia": "LUNA2000-10KW-C2",
-   "moduloBateria": "LUNA2000-7-E2",
+   "moduloPotencia": "LUNA2000-10KW-C1",
+   "moduloBateria": "LUNA2000-7-E1",
    "quimica": "Litio-ferrofosfáto LiFePO6",
    "energiaKwh": 13.8,
    "pmaxKw": 7,
@@ -116,14 +116,19 @@
    "icargaMax1F": 20,
    "icargaMax3F": 11.666666667,
    "ficha": null,
-   "fuente": "Equipos!138"
+   "fuente": "Equipos!138",
+   "excelDecia": {
+    "modelo": "LUNA2000-14-S2",
+    "moduloBateria": "LUNA2000-7-E2",
+    "moduloPotencia": "LUNA2000-10KW-C2"
+   }
   },
   {
    "marca": "Huawei",
-   "modelo": "LUNA2000-21-S3",
+   "modelo": "LUNA2000-21-S1",
    "modulos": 3,
-   "moduloPotencia": "LUNA2000-10KW-C3",
-   "moduloBateria": "LUNA2000-7-E3",
+   "moduloPotencia": "LUNA2000-10KW-C1",
+   "moduloBateria": "LUNA2000-7-E1",
    "quimica": "Litio-ferrofosfáto LiFePO7",
    "energiaKwh": 20.7,
    "pmaxKw": 10.5,
@@ -139,7 +144,12 @@
    "icargaMax1F": 30,
    "icargaMax3F": 17.5,
    "ficha": null,
-   "fuente": "Equipos!139"
+   "fuente": "Equipos!139",
+   "excelDecia": {
+    "modelo": "LUNA2000-21-S3",
+    "moduloBateria": "LUNA2000-7-E3",
+    "moduloPotencia": "LUNA2000-10KW-C3"
+   }
   }
  ]
 }

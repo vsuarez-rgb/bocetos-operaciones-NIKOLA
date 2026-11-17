@@ -671,7 +671,10 @@
    "mppt": 4,
    "entradasPorMppt": 2,
    "fase": "Trifásico",
-   "fuente": "Equipos!27"
+   "fuente": "Equipos!27",
+   "verificar": {
+    "imax": "Valor del Excel. EMAT (ficha) indica 58 A. Confirmar cuál corresponde."
+   }
   },
   {
    "marca": "Huawei",
