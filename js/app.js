@@ -7,6 +7,10 @@ import { listar, guardar, borrar, nuevoProyecto, proyectoEjemplo } from './store
 import { calcular, calcStrings } from './geom.js';
 import { cargarImg, dibujar } from './render.js';
 import { abrirEditor } from './editor.js';
+import { PANELES, INVERSORES } from './catalogo.js';
+import { abrirLibroBytes } from './xlsx/libro.js';
+import { importarCamposAutocad, datosProyectoDesdeFicha } from './ficha/importar.js';
+import { cargarDatosFicha } from './ficha/datos.js';
 
 const L = { proyectos: [], q: '', filtro: 'todos' };
 
@@ -49,7 +53,7 @@ function lista() {
   <div class="proto"><b>PROTOTIPO</b> Los proyectos se guardan en este navegador. Exporta el .json para compartirlos.</div>
   <main class="l-main">
     <div class="l-head"><div><div class="eyebrow">Operaciones · Diseño fotovoltaico</div><h1>Proyectos</h1></div>
-      <div class="row"><label class="btn">${ic('upload')} Importar .json<input type="file" accept=".json,application/json" data-l="importar" hidden></label><button class="btn pri" data-l="nuevo">${ic('plus')} Nuevo proyecto</button></div></div>
+      <div class="row"><label class="btn" title="Crea un proyecto desde el Excel Campos Autocad de un proyecto en curso">${ic('upload')} Importar Campos Autocad<input type="file" accept=".xlsm,.xlsx" data-l="importar-xls" hidden></label><label class="btn">${ic('upload')} Importar .json<input type="file" accept=".json,application/json" data-l="importar" hidden></label><button class="btn pri" data-l="nuevo">${ic('plus')} Nuevo proyecto</button></div></div>
     <div class="l-filtros"><label class="search">${ic('search', 16)}<input id="lq" type="search" placeholder="Buscar código, cliente o dirección" value="${esc(L.q)}"></label>
       <div class="chips">${[['todos', 'Todos'], ...Object.entries(ESTADOS)].map(([k, n]) => `<button class="chip" data-l="filtro" data-k="${k}" aria-pressed="${f === k}">${n}<em>${k === 'todos' ? L.proyectos.length : L.proyectos.filter(p => p.estado === k).length}</em></button>`).join('')}</div></div>
     <div class="cards">${ps.map(card).join('') || '<p class="mut">No hay proyectos con este filtro.</p>'}</div>
@@ -103,8 +107,53 @@ document.addEventListener('click', async ev => {
   if (a === 'duplicar' && p) { const c = clone(p); c.id = uid('p'); c.codigo = (p.codigo || '') + ' (copia)'; c.creado = new Date().toISOString(); await guardar(c); L.proyectos.push(c); lista(); toast('Proyecto duplicado'); }
   if (a === 'borrar' && p) { if (!confirm(`¿Borrar ${p.codigo || 'el proyecto'}? No se puede deshacer.`)) return; await borrar(p.id); L.proyectos = L.proyectos.filter(x => x.id !== id); lista(); }
 });
+/* ---------- Importar un "Campos Autocad" (.xlsm) de un proyecto en curso ---------- */
+async function importarExcel(archivo) {
+  toast('Leyendo el Excel…');
+  let r;
+  try {
+    const [{ dic, catalogos }, bytes] = await Promise.all([cargarDatosFicha(), archivo.arrayBuffer()]);
+    const libro = await abrirLibroBytes(bytes);
+    const { ficha, resumen } = importarCamposAutocad(libro, dic, { archivo: archivo.name, catalogos });
+    r = { ficha, resumen, dic, ...datosProyectoDesdeFicha(ficha, dic, { paneles: PANELES, inversores: INVERSORES }) };
+  } catch (e) { console.error(e); toast(e.message || 'No se pudo leer el archivo'); return; }
+  const { ficha, resumen, datos, faltan, dic } = r;
+  const nombreCampo = new Map(dic.campos.filter(c => c.tipo === 'campo').map(c => [c.celdaInfo, c.id]));
+  const repetido = L.proyectos.find(p => datos.codigo && p.codigo === datos.codigo);
+  const nuevosEq = Object.values(ficha.equiposProyecto).flat();
+  const d = document.createElement('dialog'); d.className = 'dlg dlg-imp';
+  d.innerHTML = `<form method="dialog"><h2>Importar Campos Autocad</h2>
+    <p class="mut">${esc(archivo.name)}</p>
+    <div class="imp-p"><b>${esc(datos.codigo || 'Sin código')}</b> · ${esc(datos.cliente || 'Sin cliente')}<br><span class="mut">${esc([datos.direccion, datos.comuna, datos.region].filter(Boolean).join(', '))}</span></div>
+    <ul class="imp-k">
+      <li><b>${resumen.zonos}</b><span>datos de ZonOS</span></li>
+      <li><b>${resumen.entradas}</b><span>escritos o elegidos a mano</span></li>
+      <li><b>${resumen.sobrescritos}</b><span>fórmulas reemplazadas a mano</span></li>
+      <li><b>${resumen.camposExcel}</b><span>campos con valor</span></li>
+    </ul>
+    ${resumen.sobrescritos ? `<details><summary>Fórmulas reemplazadas a mano (${resumen.sobrescritos})</summary><p class="mut">En la plantilla se calculan; en este Excel alguien escribió el valor. En la ficha quedan marcadas como valor manual (✎).</p>
+      <table class="imp-t">${Object.entries(ficha.sobrescritos).map(([c, s]) => `<tr><td>${esc(s.etiqueta || nombreCampo.get(c) || 'Paso intermedio · ' + c)}</td><td>${esc(s.valor)}</td></tr>`).join('')}</table></details>` : ''}
+    ${nuevosEq.length ? `<div class="aviso-l info">Este Excel agregó a su catálogo: ${nuevosEq.map(x => `<b>${esc([x.marca, x.modelo].filter(Boolean).join(' '))}</b>`).join(', ')}. Se guarda dentro del proyecto.</div>` : ''}
+    ${faltan.length ? `<div class="aviso-l warn">${faltan.map(esc).join('<br>')}</div>` : ''}
+    ${resumen.avisos.length ? `<div class="aviso-l warn">${resumen.avisos.map(esc).join('<br>')}</div>` : ''}
+    ${repetido ? `<div class="aviso-l warn">Ya tienes un proyecto ${esc(datos.codigo)}. Se creará uno nuevo; el existente no se toca.</div>` : ''}
+    <p class="mut">Se crea un proyecto nuevo con estos datos. La foto de dron y el diseño se agregan después en el editor.</p>
+    <div class="row end"><button class="btn" value="cancel" formnovalidate>Cancelar</button><button class="btn pri" value="ok">Crear proyecto</button></div></form>`;
+  document.body.appendChild(d); d.showModal();
+  d.addEventListener('close', async () => {
+    if (d.returnValue === 'ok') {
+      const base = nuevoProyecto();
+      const p = nuevoProyecto({ ...datos, lamina: { ...base.lamina, ...Object.fromEntries(Object.entries(datos.lamina).filter(([, v]) => v)) }, ficha, estado: 'diseno' });
+      await guardar(p); L.proyectos.push(p); toast('Proyecto creado desde el Excel'); abrir(p);
+    }
+    d.remove();
+  });
+}
+
 document.addEventListener('change', async ev => {
-  const t = ev.target; if (t.dataset.l !== 'importar' || !t.files[0]) return;
+  const t = ev.target;
+  if (t.dataset.l === 'importar-xls' && t.files[0]) { const f = t.files[0]; t.value = ''; importarExcel(f); return; }
+  if (t.dataset.l !== 'importar' || !t.files[0]) return;
   try { const p = JSON.parse(await t.files[0].text()); if (!p.roofs || !p.id) throw new Error('formato'); const base = nuevoProyecto(); const q = { ...base, ...p, lamina: { ...base.lamina, ...(p.lamina || {}) } };
     if (L.proyectos.some(x => x.id === q.id) && !confirm('Ya existe este proyecto. ¿Reemplazarlo?')) q.id = uid('p');
     await guardar(q); L.proyectos = await listar(); lista(); toast('Proyecto importado'); }

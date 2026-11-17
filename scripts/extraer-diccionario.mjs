@@ -21,7 +21,7 @@ const PLANTILLA = resolve(process.argv[2] || resolve(RAIZ, '..', 'Campos Autocad
 const BAS = resolve(process.argv[3] || resolve(RAIZ, '..', 'macro-GetCampo', 'Module1.bas'));
 const HOJA_INFO = 'Información proyecto';
 
-const libro = abrirLibro(PLANTILLA);
+const libro = await abrirLibro(PLANTILLA);
 const AC = libro.hoja('Autocad'), IP = libro.hoja(HOJA_INFO), CC = libro.hoja('Cuadro de carga');
 const falla = m => { console.error('✗ ' + m); process.exit(1); };
 const txt = v => v == null ? '' : String(v).replace(/\s+/g, ' ').trim();
@@ -168,7 +168,7 @@ const nombresProyectos = new Map();   // fila -> Map(nombre -> veces)
   const { readdirSync, existsSync } = await import('node:fs');
   const dir = resolve(RAIZ, '..', '_validacion-paso0', 'excel');
   if (existsSync(dir)) for (const f of readdirSync(dir).filter(f => /\.xls[xm]$/i.test(f))) {
-    const H = abrirLibro(resolve(dir, f)).hoja('Autocad');
+    const H = (await abrirLibro(resolve(dir, f))).hoja('Autocad');
     for (let fila = 2; fila <= maxFila; fila++) { const v = txt(H.valor('A' + fila)); if (!v || esError(v) || RELLENO.test(v)) continue; if (!nombresProyectos.has(fila)) nombresProyectos.set(fila, new Map()); const m = nombresProyectos.get(fila); m.set(v, (m.get(v) || 0) + 1); }
   }
 }
@@ -242,7 +242,10 @@ const salida = {
   resumen: { filas: campos.length, porTipo: cuenta(campos, 'tipo'), campos: soloCampos.length, porOrigen: cuenta(soloCampos, 'origen'), leidosPorMacro: soloCampos.filter(c => c.propiedadDWG).length, celdasCuadroDeCarga: cuadroDeCarga.length },
   zonos,
   campos: campos.map(({ formula, formulaNombre, ...c }) => c),
-  cuadroDeCarga: cuadroDeCarga.map(({ formula, ...c }) => c)
+  cuadroDeCarga: cuadroDeCarga.map(({ formula, ...c }) => c),
+  /* Celdas de valor (columnas B a H) de "Información proyecto" que en la plantilla tienen fórmula.
+     Si en un Excel de proyecto una de ellas trae un valor sin fórmula, Ops la sobrescribió a mano. */
+  celdasConFormulaInfo: [...IP.celdas].filter(([r, c]) => c.f && /^[B-H]\d+$/.test(r) && partirRef(r).fila >= 2).map(([r]) => r)
 };
 const referencia = {
   generado: salida.generado, plantilla: salida.plantilla,
@@ -285,7 +288,7 @@ const md = [
   '## Macro de AutoCAD', '',
   `- Lee \`Autocad!B\` por fila fija (${macroAutocad.size} filas) y ${cuadroDeCarga.length} celdas de \`Cuadro de carga\` (${bloquesCuadro.join(', ')}). En el Cuadro de carga, la propiedad del DWG se llama igual que la celda ("C9", "D12"…).`,
   `- En 4 tramos, si el sistema de medida es AWG, la macro lee la columna **D** (sección en mm²) en vez de la B. El diccionario lo guarda en \`macro[].condicion\`.`,
-  `- Los nombres de string de la macro son **fijos por posición** ("POTENCIA string A.1.2" es siempre la 2ª posición), aunque en la hoja esa fila diga otro string según el inversor (con un 2/1, la 2ª posición es A.2.1). En el DWG manda la posición.`, '',
+  `- Las posiciones de string son **fijas**, en la hoja y en la macro: la 1ª es A.1.1, la 2ª A.1.2, la 3ª A.2.1, la 4ª A.2.2… Si el inversor tiene una sola entrada por MPPT, las posiciones \".2\" quedan vacías (un 3/1 usa las posiciones 1, 3 y 5: A.1.1, A.2.1 y A.3.1).`, '',
   problemasMacro.length ? '### Filas que lee la macro pero no son un campo en la plantilla\n\n' + problemasMacro.map(p => `- ${p}`).join('\n') + '\n' : '✓ Cada `Range("Bnn")` de la macro corresponde a un campo del diccionario.\n',
   nombreDistinto.length ? `### Campos cuyo nombre en el DWG es distinto al de la hoja (${nombreDistinto.length})\n\n` + tabla(['Fila', 'En la hoja Autocad', 'En el DWG (macro)'], nombreDistinto.map(c => [c.fila, c.nombre, c.propiedadDWG.join(' / ')])) + '\n' : '',
   `### Campos que la macro no lee (${noLeidos.length})`, '', 'Existen en la hoja pero no llegan al DWG. Se mantienen en la ficha (los usan otras hojas o son pasos intermedios del cálculo).', '',

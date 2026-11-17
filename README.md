@@ -38,6 +38,8 @@ js/equipos-emat.js  ← Base de equipos EMAT (SKU, datos eléctricos y medidas d
 js/catalogo.js      ← Colores, capas, símbolos y notas; arma paneles e inversores desde equipos-emat.js
 docs/EQUIPOS-EMAT.md  Las mismas medidas en tablas, con fuentes y pendientes
 js/store.js         Guardado en el navegador (IndexedDB) y proyecto de ejemplo
+js/xlsx/libro.js    Lector de Excel (.xlsx/.xlsm) sin dependencias: lo usan la app y los scripts
+js/ficha/           Ficha del proyecto (paso 0): importar Campos Autocad, datos y catálogos
 js/util.js          Utilidades e íconos
 assets/             Logos y foto de dron de ejemplo
 data/catalogos/     Catálogos sacados de la plantilla "Campos Autocad" (se regeneran con scripts/)
@@ -61,7 +63,17 @@ El diccionario de campos (las 382 filas de la hoja Autocad, cruzadas con la macr
 ```
 npm run diccionario   # → data/campos.json, docs/DICCIONARIO-CAMPOS.md, docs/referencia/formulas-plantilla.json
 npm test              # comprueba el diccionario contra la macro
-``` Los instaladores y proyectistas (datos personales) van a `../_privado/personas.json`, **fuera del repositorio**. Si algo con forma de RUT, correo o celular llega a `data/`, el script se detiene sin escribir.
+```
+
+### Importar un "Campos Autocad" de un proyecto en curso
+
+En la lista de proyectos, **Importar Campos Autocad** lee el `.xlsm` en el navegador (no se sube a ningún servidor) y crea un proyecto con su ficha: la fila de ZonOS, lo que Ops escribió o eligió a mano, las fórmulas que se reemplazaron a mano y los equipos que ese Excel agregó a su hoja *Equipos*. Lo mismo desde la terminal, con el mismo código (`js/ficha/importar.js`):
+
+```
+node scripts/importar-campos.mjs "../_validacion-paso0/excel/ON 921 - monofasico simple.xlsm"
+```
+
+El informe queda en `../_validacion-paso0/resultados/`, fuera del repositorio, porque trae datos del cliente. Los instaladores y proyectistas (datos personales) van a `../_privado/personas.json`, **fuera del repositorio**. Si algo con forma de RUT, correo o celular llega a `data/`, el script se detiene sin escribir.
 
 ### Cambios típicos
 
@@ -75,7 +87,7 @@ npm test              # comprueba el diccionario contra la macro
 Los módulos de JavaScript necesitan un servidor local (no funciona con doble clic en `index.html`):
 
 - En VS Code con la extensión **Live Server**: clic derecho en `index.html` → *Open with Live Server*, o
-- En la terminal: `npm run dev` y abre http://localhost:5173
+- En la terminal: `npm run dev` y abre http://localhost:5173 (servidor local sin instalar nada: `scripts/servidor.mjs`)
 
 ## Publicar en Vercel
 

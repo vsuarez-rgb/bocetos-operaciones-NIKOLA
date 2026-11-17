@@ -74,7 +74,7 @@ Generado por `scripts/extraer-diccionario.mjs` el 2026-11-17 desde la plantilla 
 
 - Lee `Autocad!B` por fila fija (188 filas) y 489 celdas de `Cuadro de carga` (cuadro 1, cuadro 2, cuadro 3, cuadro 4 (caída de tensión del SAVE en CA)). En el Cuadro de carga, la propiedad del DWG se llama igual que la celda ("C9", "D12"…).
 - En 4 tramos, si el sistema de medida es AWG, la macro lee la columna **D** (sección en mm²) en vez de la B. El diccionario lo guarda en `macro[].condicion`.
-- Los nombres de string de la macro son **fijos por posición** ("POTENCIA string A.1.2" es siempre la 2ª posición), aunque en la hoja esa fila diga otro string según el inversor (con un 2/1, la 2ª posición es A.2.1). En el DWG manda la posición.
+- Las posiciones de string son **fijas**, en la hoja y en la macro: la 1ª es A.1.1, la 2ª A.1.2, la 3ª A.2.1, la 4ª A.2.2… Si el inversor tiene una sola entrada por MPPT, las posiciones ".2" quedan vacías (un 3/1 usa las posiciones 1, 3 y 5: A.1.1, A.2.1 y A.3.1).
 
 ✓ Cada `Range("Bnn")` de la macro corresponde a un campo del diccionario.
 

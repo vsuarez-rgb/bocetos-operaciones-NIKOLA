@@ -24,7 +24,7 @@ const PLANTILLA = resolve(process.argv[2] || resolve(RAIZ, '..', 'Campos Autocad
 const SALIDA = resolve(RAIZ, 'data', 'catalogos');
 const PRIVADO = resolve(RAIZ, '..', '_privado');
 
-const libro = abrirLibro(PLANTILLA);
+const libro = await abrirLibro(PLANTILLA);
 const EQ = libro.hoja('Equipos'), CB = libro.hoja('Cables y canalización');
 
 /* ---------- utilidades ---------- */

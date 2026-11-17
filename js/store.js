@@ -28,6 +28,7 @@ export function nuevoProyecto(datos = {}) {
     img: null, w: 0, h: 0, ref: null, drone: null,
     panel: 'jk730', inversor: 'hw8k', cantInv: 1, solMin: 30,
     roofs: [], zonas: [], strings: [], equipos: [], rutas: [], cotas: [], textos: [], norte: null,
+    ficha: null,   // ficha del proyecto (paso 0): ver js/ficha/importar.js
     lamina: { revs: [{ v: 'A', fecha: hoy(), desc: 'EMITIDO PARA REVISIÓN' }], jefe: '', ingeniero: '', proyectista: '', instalador: '', rutInst: '', propietario: '', rutProp: '', escala: '1:100', notas: [...NOTAS_BASE], latlon: '', tierraR: '' },
     ...datos
   };

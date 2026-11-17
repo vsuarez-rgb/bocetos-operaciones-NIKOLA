@@ -225,3 +225,21 @@ body.modo-editor #app { height: 100vh; display: grid; grid-template-columns: min
   .props { position: fixed; left: 0; right: 0; bottom: 0; height: 40vh; z-index: 4; }
   .cmd, .status { display: none; }
 }
+
+/* ---------- Importar Campos Autocad ---------- */
+.dlg-imp { width: min(560px, 94vw); }
+.dlg-imp h2 { margin: 0; }
+.imp-p { background: var(--surf2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; line-height: 1.5; }
+.imp-k { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.imp-k li { background: var(--surf2); border: 1px solid var(--line); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+.imp-k b { font: 700 20px var(--f-disp); font-variant-numeric: tabular-nums; }
+.imp-k span { font-size: 11.5px; color: var(--mut); line-height: 1.25; }
+.dlg-imp details { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.dlg-imp summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
+.imp-t { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+.imp-t td { padding: 4px 6px; border-top: 1px solid var(--line); }
+.imp-t td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.aviso-l { font-size: 12.5px; line-height: 1.45; padding: 8px 12px; border-radius: 10px; }
+.aviso-l.warn { background: var(--warn-t); color: var(--warn); }
+.aviso-l.info { background: var(--surf2); border: 1px solid var(--line); }
+@media (max-width: 520px) { .imp-k { grid-template-columns: repeat(2, 1fr); } }
