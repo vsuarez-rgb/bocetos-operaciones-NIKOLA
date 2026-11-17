@@ -88,8 +88,15 @@ export function abrirLibro(ruta) {
       if (v == null && f == null) continue;
       celdas.set(ref, { v, f, t: a.t === 'e' ? 'error' : (typeof v) });
     }
+    /* Listas desplegables (validación de datos). Excel las guarda en dos formatos:
+       <dataValidation sqref="B8"><formula1>Regiones</formula1> y, si apuntan a otra hoja,
+       <x14:dataValidation><xm:f>Equipos!$E$294:$E$306</xm:f><xm:sqref>B24</xm:sqref>. */
+    const validaciones = new Map();
+    const agregarVal = (sqref, v) => { for (const parte of sqref.trim().split(/\s+/)) { const [a, b] = parte.split(':'); const pa = partirRef(a), pb = b ? partirRef(b) : pa; if (!pa || !pb) continue; for (let r = pa.fila; r <= pb.fila; r++) for (let c = pa.col; c <= pb.col; c++) validaciones.set(numACol(c) + r, v); } };
+    for (const m of xml.matchAll(/<dataValidation\b([^>]*)>([\s\S]*?)<\/dataValidation>/g)) { const a = attrs(m[1]); const f1 = /<formula1>([\s\S]*?)<\/formula1>/.exec(m[2]); if (a.sqref) agregarVal(a.sqref, { tipo: a.type || null, lista: f1 ? desescapar(f1[1]) : null, ayuda: a.prompt || null }); }
+    for (const m of xml.matchAll(/<x14:dataValidation\b([^>]*)>([\s\S]*?)<\/x14:dataValidation>/g)) { const a = attrs(m[1]); const f = /<xm:f>([\s\S]*?)<\/xm:f>/.exec(m[2]), sq = /<xm:sqref>([\s\S]*?)<\/xm:sqref>/.exec(m[2]); if (sq) agregarVal(sq[1], { tipo: a.type || null, lista: f ? desescapar(f[1]) : null, ayuda: a.prompt || null }); }
     const out = {
-      nombre, oculta: h.oculta, celdas,
+      nombre, oculta: h.oculta, celdas, validaciones,
       valor: ref => celdas.get(ref)?.v ?? null,
       formula: ref => celdas.get(ref)?.f ?? null,
       /* Filas como arreglos desde la columna c0 hasta c1 (letras), fila f0..f1 */

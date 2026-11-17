@@ -54,7 +54,14 @@ node scripts/extraer-catalogos.mjs            # usa ../Campos Autocad -.xlsm
 node scripts/extraer-catalogos.mjs ruta.xlsm  # otra plantilla
 ```
 
-Escribe `data/catalogos/*.json` y `docs/CRUCE-CATALOGOS.md`. Los instaladores y proyectistas (datos personales) van a `../_privado/personas.json`, **fuera del repositorio**. Si algo con forma de RUT, correo o celular llega a `data/`, el script se detiene sin escribir.
+Escribe `data/catalogos/*.json` y `docs/CRUCE-CATALOGOS.md`.
+
+El diccionario de campos (las 382 filas de la hoja Autocad, cruzadas con la macro `../macro-GetCampo/Module1.bas`):
+
+```
+npm run diccionario   # → data/campos.json, docs/DICCIONARIO-CAMPOS.md, docs/referencia/formulas-plantilla.json
+npm test              # comprueba el diccionario contra la macro
+``` Los instaladores y proyectistas (datos personales) van a `../_privado/personas.json`, **fuera del repositorio**. Si algo con forma de RUT, correo o celular llega a `data/`, el script se detiene sin escribir.
 
 ### Cambios típicos
 
