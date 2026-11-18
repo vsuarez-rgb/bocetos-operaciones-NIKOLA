@@ -243,3 +243,27 @@ body.modo-editor #app { height: 100vh; display: grid; grid-template-columns: min
 .aviso-l.warn { background: var(--warn-t); color: var(--warn); }
 .aviso-l.info { background: var(--surf2); border: 1px solid var(--line); }
 @media (max-width: 520px) { .imp-k { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- Página "Plantilla Campos Autocad" ---------- */
+.tb-btn.tb-txt { width: auto; padding: 0 12px; gap: 6px; display: inline-flex; align-items: center; font: 600 13px var(--f-body); }
+.pl-main { max-width: 1100px; }
+.pl-intro { max-width: 760px; line-height: 1.55; color: var(--ink2); margin: 0 0 18px; }
+.pl-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 16px; margin-bottom: 16px; }
+.pl-card { background: var(--surf); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pl-card h2 { font: 700 17px var(--f-disp); margin: 0; }
+.pl-card h3 { font: 600 14px var(--f-body); margin: 8px 0 0; }
+.pl-card p { margin: 0; line-height: 1.5; }
+.pl-dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: 13.5px; }
+.pl-dl dt { color: var(--mut); } .pl-dl dd { margin: 0; overflow-wrap: anywhere; }
+.pl-ok { display: flex; align-items: center; gap: 8px; background: var(--ok-t); color: var(--ok); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; }
+.pl-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; max-height: 260px; overflow: auto; }
+.pl-list li { display: flex; flex-direction: column; } .pl-list span { opacity: .85; }
+.pl-t { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pl-t th { text-align: left; font-weight: 600; color: var(--mut); font-size: 12px; padding: 4px 6px; }
+.pl-t td { padding: 6px; border-top: 1px solid var(--line); vertical-align: top; }
+.pl-nueva .btn.pri { align-self: flex-start; }
+.pl-res { display: flex; flex-direction: column; gap: 10px; }
+.pl-local { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; } .pl-local span { flex: 1; }
+.pl-k { grid-template-columns: repeat(4, 1fr); }
+.pl-card details { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; } .pl-card summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
+@media (max-width: 860px) { .pl-grid { grid-template-columns: 1fr; } .pl-k { grid-template-columns: repeat(2, 1fr); } .tb-btn.tb-txt span { display: none; } }

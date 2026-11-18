@@ -88,8 +88,9 @@ export async function abrirLibroBytes(bytes, { inflar = inflarNavegador } = {}) 
     const xml = leer(h.archivo) || '', celdas = new Map(), maestras = new Map();
     for (const m of xml.matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
       const a = attrs(m[1]), cuerpo = m[2] || ''; const ref = a.r;
-      const fm = /<f\b([^>]*?)(?:\/>|>([\s\S]*?)<\/f>)/.exec(cuerpo), vm = /<v>([\s\S]*?)<\/v>/.exec(cuerpo);
-      let v = vm ? desescapar(vm[1]) : null, f = null;
+      // <v>…</v>, <v xml:space="preserve">…</v> (textos con saltos de línea) y <v/> (texto vacío)
+      const fm = /<f\b([^>]*?)(?:\/>|>([\s\S]*?)<\/f>)/.exec(cuerpo), vm = /<v(?:\s[^>]*)?>([\s\S]*?)<\/v>|<v(?:\s[^>]*)?\/>/.exec(cuerpo);
+      let v = vm ? desescapar(vm[1] ?? '') : null, f = null;
       if (a.t === 's' && v != null) v = textos[+v];
       else if (a.t === 'inlineStr') v = textoRico(cuerpo);
       else if (a.t === 'b' && v != null) v = v === '1';

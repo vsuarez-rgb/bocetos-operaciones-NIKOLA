@@ -65,6 +65,23 @@ npm run diccionario   # → data/campos.json, docs/DICCIONARIO-CAMPOS.md, docs/r
 npm test              # comprueba el diccionario contra la macro
 ```
 
+### Motor de cálculo y plantilla
+
+La app **no tiene las fórmulas escritas a mano**: `js/ficha/motor.js` evalúa las fórmulas de la plantilla Campos Autocad (`data/plantilla/plantilla.json`) con una calculadora de Excel propia (`js/ficha/formulas.js`, 27 funciones). Así, si la plantilla cambia:
+
+1. En la app, **Plantilla** (arriba en la lista de proyectos) → *Cargar plantilla nueva*: compara con la que está en uso, muestra qué campos cambian, qué fórmulas no puede calcular y cómo cambian los proyectos guardados. Se puede usar en ese navegador o descartar.
+2. Para que todo Ops la use, se publica: `npm run plantilla` (y `npm run diccionario` si cambió la hoja Autocad), y después `npm run validar`.
+
+Lo que el motor no pueda calcular queda marcado y ese campo se llena a mano en la ficha.
+
+```
+npm run plantilla   # ../Campos Autocad -.xlsm → data/plantilla/plantilla.json (sin datos de personas)
+npm run validar     # motor vs. los Excel reales de ../_validacion-paso0 (detalle solo en esa carpeta)
+npm test            # pruebas de la calculadora y del diccionario
+```
+
+Validación al 18-11-2026: 3 proyectos con el 100 % de las celdas iguales al Excel y 1 con el 99,6 % (las 4 restantes son una fórmula antigua de ese Excel).
+
 ### Importar un "Campos Autocad" de un proyecto en curso
 
 En la lista de proyectos, **Importar Campos Autocad** lee el `.xlsm` en el navegador (no se sube a ningún servidor) y crea un proyecto con su ficha: la fila de ZonOS, lo que Ops escribió o eligió a mano, las fórmulas que se reemplazaron a mano y los equipos que ese Excel agregó a su hoja *Equipos*. Lo mismo desde la terminal, con el mismo código (`js/ficha/importar.js`):

@@ -1,6 +1,6 @@
 # Cruce de catálogos · plantilla "Campos Autocad" vs. base EMAT
 
-Generado por `scripts/extraer-catalogos.mjs` el 2026-11-17. No editar a mano: se vuelve a generar con el script.
+Generado por `scripts/extraer-catalogos.mjs` el 2026-11-18. No editar a mano: se vuelve a generar con el script.
 
 - **Excel**: hojas *Equipos* y *Cables y canalización* de `Campos Autocad -.xlsm` → `data/catalogos/*.json`.
 - **EMAT**: `js/equipos-emat.js` (SKU, medidas y datos de ficha que usa el dibujo).

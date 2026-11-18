@@ -23,7 +23,7 @@ const limpio = v => (v == null || v === '' || esErrorExcel(v)) ? null : (typeof 
 const norm = s => String(s || '').toUpperCase().replace(/[\s_\-]+/g, '').replace(/KTL/g, 'K');
 
 /** @returns {{ ficha, resumen }} */
-export function importarCamposAutocad(libro, dic, { archivo = null, catalogos = {} } = {}) {
+export function importarCamposAutocad(libro, dic, { archivo = null, catalogos = {}, plantilla = null } = {}) {
   const avisos = [];
   for (const h of [HOJA_INFO, 'Autocad']) if (!libro.tieneHoja(h)) throw new Error(`El archivo no es un "Campos Autocad": falta la hoja "${h}".`);
   const IP = libro.hoja(HOJA_INFO), AC = libro.hoja('Autocad');
@@ -57,6 +57,8 @@ export function importarCamposAutocad(libro, dic, { archivo = null, catalogos = 
       if (!c.f && v != null) sobrescritos[ref] = { valor: v, campo: campoDe.get(ref)?.id || null, etiqueta: txt(IP.valor((numACol(p.col) === 'G' ? 'F' : 'A') + p.fila)) || null };
     } else if (!c.f && v != null) {
       entradas[ref] = v;
+    } else if (!c.f && c.v === '') {
+      entradas[ref] = '';   // celda con solo un apóstrofo: en la plantilla significa "tramo no utilizado" (no es lo mismo que vacía)
     }
   }
 
@@ -69,20 +71,75 @@ export function importarCamposAutocad(libro, dic, { archivo = null, catalogos = 
   /* --- Equipos que el proyecto agregó a su hoja Equipos --- */
   const equiposProyecto = libro.tieneHoja('Equipos') ? equiposNuevos(libro.hoja('Equipos'), IP, catalogos, avisos) : {};
 
+  /* --- Comparación con la plantilla vigente (si se tiene): lo que este Excel cambió --- */
+  const sobrescritosOtras = {}, tablasProyecto = {}, formulasDistintas = {}, tablasDistintas = {};
+  if (plantilla) {
+    // Fórmulas de la plantilla que en este Excel son distintas (versión antigua o cambio a mano)
+    for (const [hoja, H] of Object.entries(plantilla.hojas)) {
+      if (!libro.tieneHoja(hoja)) continue; const X = libro.hoja(hoja);
+      for (const [ref, f] of Object.entries(H.formulas)) {
+        const c = X.celdas.get(ref);
+        if (c?.f && normF(c.f) !== normF(f)) (formulasDistintas[hoja] ||= []).push(ref);
+        // En Cuadro de carga también puede haber valores escritos sobre una fórmula
+        if (hoja !== HOJA_INFO && c && !c.f) { const v = limpio(c.v); if (v != null) (sobrescritosOtras[hoja] ||= {})[ref] = { valor: v }; }
+        // Celda borrada en el Excel del proyecto (sin fórmula ni valor) en una fila que sí existe: Ops la dejó en blanco a propósito
+        if (!c && filasUsadas(X).has(+ref.replace(/^[A-Z]+/, '')) && (hoja !== HOJA_INFO || /^[BDG]d+$/.test(ref))) {
+          if (hoja === HOJA_INFO) sobrescritos[ref] = { valor: null, borrada: true, campo: campoDe.get(ref)?.id || null, etiqueta: txt(IP.valor((ref[0] === 'G' ? 'F' : 'A') + ref.slice(1))) || null };
+          else (sobrescritosOtras[hoja] ||= {})[ref] = { valor: null, borrada: true };
+        }
+      }
+    }
+    // Tablas (Equipos, Cables): celdas cuyo valor cambió respecto de la plantilla (p. ej. un panel agregado).
+    // Se omiten las filas privadas (instaladores, proyectistas): esos datos vienen de la configuración de la app.
+    const priv = new Set(Object.values(plantilla.privado || {}).flatMap(p => p.filas.flatMap(r => p.columnas.map(c => `${p.hoja}!${c}${r}`))));
+    for (const [hoja, T] of Object.entries(plantilla.tablas)) {
+      if (!libro.tieneHoja(hoja)) continue; const X = libro.hoja(hoja), cambios = {};
+      // ¿La tabla tiene la misma distribución que la plantilla? (textos de las columnas A–E en la misma celda)
+      // Un Excel de una versión antigua tiene las filas corridas: copiar celda a celda pondría datos en filas equivocadas.
+      let n = 0, igual = 0;
+      for (const [ref, v] of Object.entries(T.valores)) { if (typeof v !== 'string' || !/^[A-E]\d+$/.test(ref)) continue; n++; if (txt(X.valor(ref)) === txt(v)) igual++; }
+      const parecido = n ? igual / n : 1;
+      if (parecido < 0.98) { tablasDistintas[hoja] = Math.round(parecido * 1000) / 10; avisos.push(`La hoja "${hoja}" de este Excel tiene otra distribución que la plantilla vigente (coincide ${tablasDistintas[hoja]} %): es una versión antigua. Se usan las tablas de la plantilla vigente; si este proyecto agregó equipos propios, revísalos en la ficha.`); continue; }
+      const refs = new Set([...X.celdas.keys(), ...Object.keys(T.valores)]);
+      for (const ref of refs) {
+        if (priv.has(`${hoja}!${ref}`) || ref in T.formulas) continue;
+        const c = X.celdas.get(ref); if (c?.f && /\[\d+\]/.test(c.f)) continue;      // fórmulas a libros externos: su valor no es confiable
+        const a = limpio(c?.v ?? null), b = limpio(T.valores[ref] ?? null);
+        if (!mismoValor(a, b)) cambios[ref] = a;
+      }
+      if (Object.keys(cambios).length) tablasProyecto[hoja] = cambios;
+    }
+    const nDist = Object.values(formulasDistintas).reduce((t, a) => t + a.length, 0);
+    if (nDist) avisos.push(`Este Excel tiene ${nDist} fórmulas distintas a la plantilla vigente (${Object.entries(formulasDistintas).map(([h, a]) => `${h}: ${a.length}`).join(', ')}). La app usa las de la plantilla vigente; si el resultado cambia, se ve en la comparación con el Excel.`);
+  }
+
+  /* Separador decimal que usaba el Excel de este proyecto al convertir números en texto ("1x8,37" o "1x8.37").
+     Depende de la configuración regional del computador donde se calculó; se respeta para que el proyecto se vea igual. */
+  let separadorDecimal = null;
+  if (CC) for (const [, c] of CC.celdas) { if (!c.f || typeof c.v !== 'string') continue; const m = /\dx\d+([.,])\d/.exec(c.v); if (m) { separadorDecimal = m[1]; break; } }
+
   const ficha = {
     version: VERSION_FICHA,
-    origen: { tipo: 'campos-autocad', archivo, importado: new Date().toISOString(), versionPlantillaDistinta: distintas.length || 0, avisos },
-    zonos, entradas, sobrescritos,
+    ajustes: separadorDecimal ? { separadorDecimal } : {},
+    origen: { tipo: 'campos-autocad', archivo, importado: new Date().toISOString(), plantilla: plantilla?.huella || null, versionPlantillaDistinta: distintas.length || 0, avisos },
+    zonos, entradas, sobrescritos, sobrescritosOtras, tablasProyecto, formulasDistintas, tablasDistintas,
     excel: { autocad, cuadroDeCarga: cuadro },
     equiposProyecto
   };
   const resumen = {
-    zonos: Object.keys(zonos).length, entradas: Object.keys(entradas).length, sobrescritos: Object.keys(sobrescritos).length,
+    zonos: Object.keys(zonos).length, entradas: Object.keys(entradas).length,
+    sobrescritos: Object.keys(sobrescritos).length + Object.values(sobrescritosOtras).reduce((t, o) => t + Object.keys(o).length, 0),
     camposExcel: Object.keys(autocad).length, celdasCuadro: Object.keys(cuadro).length,
+    celdasTablaCambiadas: Object.values(tablasProyecto).reduce((t, o) => t + Object.keys(o).length, 0),
+    formulasDistintas: Object.values(formulasDistintas).reduce((t, a) => t + a.length, 0),
     equiposNuevos: Object.values(equiposProyecto).reduce((t, a) => t + a.length, 0), avisos
   };
   return { ficha, resumen };
 }
+const _filas = new WeakMap();
+const filasUsadas = H => { let s = _filas.get(H); if (!s) { s = new Set([...H.celdas.keys()].map(r => +r.replace(/^[A-Z]+/, ''))); _filas.set(H, s); } return s; };
+const normF = f => String(f).replace(/\s+/g, '').replace(/\$/g, '').toUpperCase();
+const mismoValor = (a, b) => (a == null && b == null) || (typeof a === 'number' && typeof b === 'number' ? Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(b)) : String(a ?? '') === String(b ?? ''));
 
 
 /* --- Equipos del proyecto que no están en el catálogo de la plantilla ---

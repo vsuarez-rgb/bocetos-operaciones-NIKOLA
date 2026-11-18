@@ -1,6 +1,6 @@
 # Diccionario de campos · hoja "Autocad"
 
-Generado por `scripts/extraer-diccionario.mjs` el 2026-11-17 desde la plantilla vigente y `Module1.bas`. El detalle completo (fórmula original, precedentes, listas) está en `data/campos.json`.
+Generado por `scripts/extraer-diccionario.mjs` el 2026-11-18 desde la plantilla vigente y `Module1.bas`. El detalle completo (fórmula original, precedentes, listas) está en `data/campos.json`.
 
 ## Resumen
 

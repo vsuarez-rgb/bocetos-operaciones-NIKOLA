@@ -1,0 +1,39 @@
+{
+ "fecha": "2026-11-18",
+ "plantilla": "16a67de5",
+ "nota": "Cada celda con fórmula de Información proyecto y Cuadro de carga, calculada por el motor y comparada con el valor que guardó Excel. Las sobrescritas a mano y las que dependen de la fecha de hoy no se comparan.",
+ "proyectos": [
+  {
+   "caso": "cargador Wallbox",
+   "comparadas": 1082,
+   "iguales": 1082,
+   "porcentaje": 100,
+   "formulaAntiguaEnExcel": 0,
+   "distintas": 0
+  },
+  {
+   "caso": "monofasico + bateria + cargador",
+   "comparadas": 1082,
+   "iguales": 1082,
+   "porcentaje": 100,
+   "formulaAntiguaEnExcel": 0,
+   "distintas": 0
+  },
+  {
+   "caso": "monofasico simple",
+   "comparadas": 1085,
+   "iguales": 1085,
+   "porcentaje": 100,
+   "formulaAntiguaEnExcel": 0,
+   "distintas": 0
+  },
+  {
+   "caso": "trifasico + cargador",
+   "comparadas": 1093,
+   "iguales": 1089,
+   "porcentaje": 99.6,
+   "formulaAntiguaEnExcel": 4,
+   "distintas": 0
+  }
+ ]
+}

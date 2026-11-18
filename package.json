@@ -9,6 +9,8 @@
     "check": "node --check js/*.js",
     "catalogos": "node scripts/extraer-catalogos.mjs",
     "diccionario": "node scripts/extraer-diccionario.mjs",
-    "test": "node scripts/probar-diccionario.mjs"
+    "plantilla": "node scripts/extraer-plantilla.mjs",
+    "validar": "node scripts/validar-motor.mjs",
+    "test": "node scripts/probar-formulas.mjs && node scripts/probar-diccionario.mjs"
   }
 }

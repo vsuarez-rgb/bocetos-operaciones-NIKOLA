@@ -1,5 +1,5 @@
 {
- "generado": "2026-11-17",
+ "generado": "2026-11-18",
  "plantilla": "Campos Autocad -.xlsm",
  "macro": "macro-GetCampo/Module1.bas",
  "script": "scripts/extraer-diccionario.mjs",
@@ -692,7 +692,7 @@
    "celdaInfo": "B17",
    "celdaNombre": "A17",
    "celdaUnidad": "C17",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "zonos",
    "zonos": [
     "T4",
@@ -722,7 +722,7 @@
    "celdaInfo": "B18",
    "celdaNombre": "A18",
    "celdaUnidad": "C18",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "zonos",
    "zonos": [
     "U4",
@@ -762,7 +762,7 @@
    "celdaInfo": "B19",
    "celdaNombre": "A19",
    "celdaUnidad": "C19",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "zonos",
    "zonos": [
     "T4",
@@ -781,7 +781,7 @@
    "celdaInfo": "B20",
    "celdaNombre": "A20",
    "celdaUnidad": "C20",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "zonos",
    "zonos": [
     "U4",
@@ -1129,7 +1129,7 @@
    "celdaInfo": "B35",
    "celdaNombre": "A35",
    "celdaUnidad": "C35",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B77"
@@ -1163,7 +1163,7 @@
    "celdaInfo": "B36",
    "celdaNombre": "A36",
    "celdaUnidad": "C36",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B98",
@@ -2240,7 +2240,7 @@
    "celdaInfo": "B78",
    "celdaNombre": "A78",
    "celdaUnidad": "C78",
-   "valorPlantilla": null,
+   "valorPlantilla": " - ",
    "origen": "catalogo",
    "precedentes": [
     "B77"
@@ -2274,7 +2274,7 @@
    "celdaInfo": "B79",
    "celdaNombre": "A79",
    "celdaUnidad": "C79",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B77"
@@ -2307,7 +2307,7 @@
    "celdaInfo": "B80",
    "celdaNombre": "A80",
    "celdaUnidad": "C80",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B77"
@@ -2331,7 +2331,7 @@
    "celdaInfo": "B81",
    "celdaNombre": "A81",
    "celdaUnidad": "C81",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B77"
@@ -2360,7 +2360,7 @@
    "celdaInfo": "B82",
    "celdaNombre": "A82",
    "celdaUnidad": "C82",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B77"
@@ -2385,7 +2385,7 @@
    "celdaInfo": "B83",
    "celdaNombre": "A83",
    "celdaUnidad": "C83",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B77"
@@ -2406,7 +2406,7 @@
    "celdaInfo": "B84",
    "celdaNombre": "A84",
    "celdaUnidad": "C84",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B77"
@@ -2528,7 +2528,7 @@
    "celdaInfo": "B89",
    "celdaNombre": "A89",
    "celdaUnidad": "C89",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B87",
@@ -2562,7 +2562,7 @@
    "celdaInfo": "B90",
    "celdaNombre": "A90",
    "celdaUnidad": "C90",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B87",
@@ -2593,7 +2593,7 @@
    "celdaInfo": "B91",
    "celdaNombre": "A91",
    "celdaUnidad": "C91",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B87",
@@ -2624,7 +2624,7 @@
    "celdaInfo": "B92",
    "celdaNombre": "A92",
    "celdaUnidad": "C92",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B87",
@@ -2655,7 +2655,7 @@
    "celdaInfo": "B93",
    "celdaNombre": "A93",
    "celdaUnidad": "C93",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B87",
@@ -2689,7 +2689,7 @@
    "celdaInfo": "B94",
    "celdaNombre": "A94",
    "celdaUnidad": "C94",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B87",
@@ -2723,7 +2723,7 @@
    "celdaInfo": "B95",
    "celdaNombre": "A95",
    "celdaUnidad": "C95",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B87",
@@ -2754,7 +2754,7 @@
    "celdaInfo": "B96",
    "celdaNombre": "A96",
    "celdaUnidad": "C96",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B87",
@@ -3625,7 +3625,7 @@
    "celdaInfo": "B131",
    "celdaNombre": "A131",
    "celdaUnidad": "C131",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B77"
@@ -3807,7 +3807,7 @@
    "celdaInfo": "B138",
    "celdaNombre": "A138",
    "celdaUnidad": "C138",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B77"
@@ -5212,7 +5212,7 @@
    "celdaNombre": "A193",
    "celdaUnidad": "C193",
    "lista": "'Cables y canalización'!$C$81:$C$104",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B164",
@@ -5242,7 +5242,7 @@
    "celdaInfo": "B194",
    "celdaNombre": "A194",
    "celdaUnidad": "C194",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B164",
@@ -5264,7 +5264,7 @@
    "celdaInfo": "B195",
    "celdaNombre": "A195",
    "celdaUnidad": "C195",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B164",
@@ -6092,7 +6092,7 @@
    "celdaNombre": "A227",
    "celdaUnidad": "C227",
    "lista": "'Cables y canalización'!$C$81:$C$104",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B226",
@@ -6121,7 +6121,7 @@
    "celdaInfo": "B228",
    "celdaNombre": "A228",
    "celdaUnidad": "C228",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B226",
@@ -6142,7 +6142,7 @@
    "celdaInfo": "B229",
    "celdaNombre": "A229",
    "celdaUnidad": "C229",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B226",
@@ -6969,7 +6969,7 @@
    "celdaNombre": "A261",
    "celdaUnidad": "C261",
    "lista": "'Cables y canalización'!$C$81:$C$104",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "catalogo",
    "precedentes": [
     "B260",
@@ -6998,7 +6998,7 @@
    "celdaInfo": "B262",
    "celdaNombre": "A262",
    "celdaUnidad": "C262",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B260",
@@ -7019,7 +7019,7 @@
    "celdaInfo": "B263",
    "celdaNombre": "A263",
    "celdaUnidad": "C263",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B260",
@@ -7860,7 +7860,7 @@
    "celdaInfo": "B296",
    "celdaNombre": "A296",
    "celdaUnidad": "C296",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B294",
@@ -7881,7 +7881,7 @@
    "celdaInfo": "B297",
    "celdaNombre": "A297",
    "celdaUnidad": "C297",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B294",
@@ -8737,7 +8737,7 @@
    "celdaInfo": "B330",
    "celdaNombre": "A330",
    "celdaUnidad": "C330",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B328",
@@ -8758,7 +8758,7 @@
    "celdaInfo": "B331",
    "celdaNombre": "A331",
    "celdaUnidad": "C331",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B328",
@@ -8862,7 +8862,7 @@
    "celdaInfo": "B336",
    "celdaNombre": "A336",
    "celdaUnidad": "C336",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B335"
@@ -8880,7 +8880,7 @@
    "celdaInfo": "B337",
    "celdaNombre": "A337",
    "celdaUnidad": "C337",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B335"
@@ -8898,7 +8898,7 @@
    "celdaInfo": "B338",
    "celdaNombre": "A338",
    "celdaUnidad": "C338",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B335",
@@ -8951,7 +8951,7 @@
    "celdaInfo": "B341",
    "celdaNombre": "A341",
    "celdaUnidad": "C341",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "origen": "calculo",
    "precedentes": [
     "B338"
@@ -12998,7 +12998,7 @@
   {
    "celda": "I42",
    "propiedad": "I42",
-   "valorPlantilla": null,
+   "valorPlantilla": "Huawei\r\n\r\n\r\n",
    "celdasInfo": [
     "B76",
     "B77"
@@ -13056,25 +13056,25 @@
   {
    "celda": "L42",
    "propiedad": "L42",
-   "valorPlantilla": null,
+   "valorPlantilla": "EMT\r\nFlex. Met.\r\n",
    "hojas": []
   },
   {
    "celda": "L44",
    "propiedad": "L44",
-   "valorPlantilla": null,
+   "valorPlantilla": "EMT\r\nFlex. Met.\r\n",
    "hojas": []
   },
   {
    "celda": "L46",
    "propiedad": "L46",
-   "valorPlantilla": null,
+   "valorPlantilla": "EMT\r\nFlex. Met.\r\n",
    "hojas": []
   },
   {
    "celda": "L48",
    "propiedad": "L48",
-   "valorPlantilla": null,
+   "valorPlantilla": "EMT\r\nFlex. Met.\r\n",
    "hojas": []
   },
   {
@@ -13086,25 +13086,25 @@
   {
    "celda": "M42",
    "propiedad": "M42",
-   "valorPlantilla": null,
+   "valorPlantilla": "32\r\n32\r\n",
    "hojas": []
   },
   {
    "celda": "M44",
    "propiedad": "M44",
-   "valorPlantilla": null,
+   "valorPlantilla": "32\r\n32\r\n",
    "hojas": []
   },
   {
    "celda": "M46",
    "propiedad": "M46",
-   "valorPlantilla": null,
+   "valorPlantilla": "32\r\n32\r\n",
    "hojas": []
   },
   {
    "celda": "M48",
    "propiedad": "M48",
-   "valorPlantilla": null,
+   "valorPlantilla": "32\r\n32\r\n",
    "hojas": []
   },
   {
@@ -13429,7 +13429,7 @@
   {
    "celda": "D60",
    "propiedad": "D60",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "celdasInfo": [
     "B112",
     "B150",
@@ -13894,7 +13894,7 @@
   {
    "celda": "R62",
    "propiedad": "R62",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "celdasInfo": [
     "B226"
    ],
@@ -13930,7 +13930,7 @@
   {
    "celda": "R65",
    "propiedad": "R65",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "celdasInfo": [
     "B260"
    ],
@@ -13966,7 +13966,7 @@
   {
    "celda": "R68",
    "propiedad": "R68",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "celdasInfo": [
     "B294"
    ],
@@ -14002,7 +14002,7 @@
   {
    "celda": "R71",
    "propiedad": "R71",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "celdasInfo": [
     "B328"
    ],
@@ -14066,7 +14066,7 @@
   {
    "celda": "S62",
    "propiedad": "S62",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "celdasInfo": [
     "B227"
    ],
@@ -14099,7 +14099,7 @@
   {
    "celda": "S65",
    "propiedad": "S65",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "celdasInfo": [
     "B261"
    ],
@@ -14132,7 +14132,7 @@
   {
    "celda": "S68",
    "propiedad": "S68",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "celdasInfo": [
     "B295"
    ],
@@ -14165,7 +14165,7 @@
   {
    "celda": "S71",
    "propiedad": "S71",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "celdasInfo": [
     "B329"
    ],
@@ -14435,7 +14435,7 @@
   {
    "celda": "Q106",
    "propiedad": "Q106",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "celdasInfo": [
     "B294"
    ],
@@ -14447,7 +14447,7 @@
   {
    "celda": "R106",
    "propiedad": "R106",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "celdasInfo": [
     "B295"
    ],
@@ -14597,7 +14597,7 @@
   {
    "celda": "Q109",
    "propiedad": "Q109",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "celdasInfo": [
     "B328"
    ],
@@ -14609,7 +14609,7 @@
   {
    "celda": "R109",
    "propiedad": "R109",
-   "valorPlantilla": null,
+   "valorPlantilla": "",
    "celdasInfo": [
     "B329"
    ],
