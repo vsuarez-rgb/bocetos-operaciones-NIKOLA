@@ -36,7 +36,7 @@ export const EQUIPOS = {
   dcdc: { n: 'Módulo DC/DC', l: 'DC', w: 670, h: 150, a: 240, c: '#FF3DFF', huawei: true },
   sg: { n: 'SmartGuard', l: 'SG', w: 355, h: 150, a: 485, c: '#FF3DFF', huawei: true },
   sm: { n: 'Smart Power Sensor', l: 'SM', w: 72, h: 80, a: 100, c: '#35D0FF' },
-  cdj: { n: 'Caja de derivación', l: 'CD', w: 200, h: 100, a: 200, c: '#FF3DFF' },
+  cdj: { n: 'Caja de derivación', l: 'CD', w: 100, h: 50, a: 100, c: '#FF3DFF' },
   cp: { n: 'Caja de paso', l: '', w: 150, h: 75, a: 150, c: '#00E5FF' },
   ev: { n: 'Cargador EV', l: 'EV', w: 180, h: 145, a: 335, c: '#52C892' },
   bc: { n: 'Bomba de calor', l: 'BC', w: 1000, h: 400, a: 800, c: '#2BB3A3' },

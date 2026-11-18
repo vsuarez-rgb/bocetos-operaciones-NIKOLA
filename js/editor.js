@@ -275,6 +275,7 @@ function equipoEn(q) { return [...E.p.equipos].reverse().find(e => { const Q = t
 const rutaEn = q => [...E.p.rutas].reverse().find(r => r.pts.some((v, i) => i && distSeg(q, r.pts[i - 1], v) < tol()));
 const cotaEn = q => E.p.cotas.find(c => distSeg(q, c.a, c.b) < tol());
 function textoEn(q) { return E.p.textos.find(t => { const h = Math.max(altoTextoPx(E.p, t), 7 / E.V.k); return q[0] >= t.p[0] - 3 / E.V.k && q[0] <= t.p[0] + t.s.length * h * .55 && q[1] <= t.p[1] + 3 / E.V.k && q[1] >= t.p[1] - h; }); }
+const RECT_LIBRE = new Set(['marca', 'bpc']);         // equipos que se estiran desde sus esquinas
 const figEn = q => [...(E.p.figPaneles || [])].reverse().find(f => f.pts.length >= 3 && pointInPoly(q, f.pts));
 const norteEn = q => E.p.norte && dist(q, [E.p.norte.x, E.p.norte.y]) < 36 / E.V.k;
 function bloqueEn(q) { const B = E.R.bloques.find(b => pointInPoly(q, b.q)); return B ? { ...B, rid: E.p.roofs[B.ri].id } : null; }
@@ -284,8 +285,13 @@ function gripEn(q) {
   if (s.t === 'ruta') { const r = E.p.rutas.find(x => x.id === s.id); const i = r ? r.pts.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: r.pts, i }; }
   if (s.t === 'fig') { const f = (E.p.figPaneles || []).find(x => x.id === s.id); const i = f ? f.pts.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: f.pts, i }; }
   if (s.t === 'cota') { const c = E.p.cotas.find(x => x.id === s.id); if (c) { if (dist(c.a, q) < d) return { obj: c, k: 'a' }; if (dist(c.b, q) < d) return { obj: c, k: 'b' }; } }
+  // ubicación propuesta y bandeja: cada esquina estira el rectángulo (la esquina opuesta queda fija)
+  if (s.t === 'equipo') { const e = E.p.equipos.find(x => x.id === s.id); if (e && RECT_LIBRE.has(e.k)) { const Q = tamEquipoPx(E.p, e), w = Q.w / 2, h = Q.h / 2;
+    const i = [[-1, -1], [1, -1], [1, 1], [-1, 1]].findIndex(([sx, sy]) => dist([e.x + sx * w, e.y + sy * h], q) < d);
+    if (i >= 0) { const [sx, sy] = [[-1, -1], [1, -1], [1, 1], [-1, 1]][i], a = (e.ang || 0) * Math.PI / 180, R = v => [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)];
+      const o = R([-sx * w, -sy * h]); return { rect: e, fijo: [e.x + o[0], e.y + o[1]], a, mmPx: Q.md.w / Q.w }; } } }
   // sin escala, las esquinas de un equipo lo agrandan o achican
-  if (s.t === 'equipo' && !escala(E.p)) { const e = E.p.equipos.find(x => x.id === s.id); if (e) { const Q = tamEquipoPx(E.p, e), w = Math.max(Q.w, 12 / E.V.k) / 2, h = Math.max(Q.h, 12 / E.V.k) / 2;
+  if (s.t === 'equipo' && !escala(E.p)) { const e = E.p.equipos.find(x => x.id === s.id); if (e && !RECT_LIBRE.has(e.k)) { const Q = tamEquipoPx(E.p, e), w = Math.max(Q.w, 12 / E.V.k) / 2, h = Math.max(Q.h, 12 / E.V.k) / 2;
     if ([[-w, -h], [w, -h], [w, h], [-w, h]].some(v => dist([e.x + v[0], e.y + v[1]], q) < d)) return { eq: e, d0: Math.max(dist([e.x, e.y], q), 1e-6), f0: e.f || 1 }; } }
   if (s.t === 'ref' && E.p.ref) { if (dist(E.p.ref.a, q) < d) return { obj: E.p.ref, k: 'a' }; if (dist(E.p.ref.b, q) < d) return { obj: E.p.ref, k: 'b' }; }
   return null;
@@ -378,6 +384,9 @@ function move(ev) {
   const D = E.D;
   if (D) {
     if (D.kind === 'pan') { E.V.ox = D.o[0] - (sp[0] - D.s[0]); E.V.oy = D.o[1] - (sp[1] - D.s[1]); }
+    else if (D.kind === 'grip' && D.gr.rect) {             // estirar el rectángulo: medidas nuevas en mm y centro entre las dos esquinas
+      const g2 = D.gr, e = g2.rect, v = [q[0] - g2.fijo[0], q[1] - g2.fijo[1]], ca = Math.cos(-g2.a), sa = Math.sin(-g2.a), l = [v[0] * ca - v[1] * sa, v[0] * sa + v[1] * ca];
+      e.mw = Math.max(20, Math.round(Math.abs(l[0]) * g2.mmPx)); e.mh = Math.max(20, Math.round(Math.abs(l[1]) * g2.mmPx)); e.x = g2.fijo[0] + v[0] / 2; e.y = g2.fijo[1] + v[1] / 2; }
     else if (D.kind === 'grip' && D.gr.eq) { const e = D.gr.eq; e.f = Math.max(.1, Math.min(20, Math.round(D.gr.f0 * dist([e.x, e.y], q) / D.gr.d0 * 100) / 100)); }
     else if (D.kind === 'grip') { const qq = cursorFoto(); if (D.gr.arr) D.gr.arr[D.gr.i] = qq; else D.gr.obj[D.gr.k] = qq; recalcular(); }
     else if (D.kind === 'mover' || D.kind === 'moverBloque') {
@@ -792,7 +801,7 @@ function panel() {
   if (E.step === 'equipos') {
     const vista = vistaEq(p), mis = E.conjuntos || [];
     h += sec('Vista de los equipos', `${seg('hoja.vista', vista, [['planta', 'Planta (desde arriba)'], ['elevacion', 'De frente (zona de equipos)']])}
-      <p class="mut">${vista === 'elevacion' ? 'Equipos dibujados de frente, como en los planos de AutoCAD (ancho × alto).' : 'Equipos vistos desde arriba, como en la planta del techo (ancho × profundidad).'}</p>`);
+      <p class="mut">${vista === 'elevacion' ? 'Equipos dibujados de frente, como en los planos de AutoCAD (ancho × alto).' : 'Equipos vistos desde arriba, como en la planta del techo (ancho × profundidad).'}</p>`, true);
     if (vista === 'elevacion') h += sec('Conjuntos para empezar', `<p class="mut">Equipos y canalizaciones ya armados: elige uno, haz clic en la foto y después mueve o cambia lo que haga falta.</p>
       <div class="lista">${[...CONJUNTOS_INCLUIDOS, ...mis].map(cj => `<div class="row cj-f"><button class="li" data-act="conj" data-k="${cj.id}" aria-pressed="${E.tool === 'conjunto' && E.conjunto === cj.id}" title="${esc(cj.detalle || '')}"><b>${esc(cj.nombre)}</b><span>${esc(cj.detalle || '')}</span></button>${cj.id.startsWith('cj-') ? '' : `<button class="btn sm del" data-act="conj-del" data-k="${cj.id}" title="Borrar este conjunto">${ic('trash', 14)}</button>`}</div>`).join('')}</div>
       <button class="btn sm" data-act="conj-guardar" ${p.equipos.length ? '' : 'disabled'}>${ic('save', 14)} Guardar los equipos de esta hoja como conjunto</button>`);
@@ -832,8 +841,8 @@ function propsSel(s, { num, rango, seg }) {
     return `<label class="f"><span>Tipo</span><select class="in" data-campo="eq.k">${Object.entries(EQUIPOS).map(([k, Q]) => `<option value="${k}" ${e.k === k ? 'selected' : ''}>${Q.n}</option>`).join('')}</select></label>
       ${e.k === 'inv' ? `<dl class="dl"><dt>Modelo</dt><dd>${esc(inversorDe(p).modelo)}</dd></dl><p class="mut">El modelo se elige en el paso Strings.</p>` : MODELOS_EQUIPO(e.k).length ? `<label class="f"><span>Modelo</span><select class="in" data-campo="eq.modelo"><option value="">Genérico</option>${MODELOS_EQUIPO(e.k).map(x => `<option value="${esc(x.sku || x.item)}" ${e.modelo === (x.sku || x.item) ? 'selected' : ''}>${esc(x.item)}</option>`).join('')}</select></label>` : ''}
       ${(() => { const base = medidaEquipo(p, { ...e, mw: 0, mh: 0 }); return `<div class="row"><label class="f mini"><span>Ancho</span><span class="fi"><input class="in" data-campo="eq.mw" value="${e.mw || ''}" placeholder="${fmt(base.w, 0)}" inputmode="numeric"><em>mm</em></span></label>
-        <label class="f mini"><span>Profundidad</span><span class="fi"><input class="in" data-campo="eq.mh" value="${e.mh || ''}" placeholder="${fmt(base.h, 0)}" inputmode="numeric"><em>mm</em></span></label></div>
-        <p class="mut">Medida en planta. Vacío = la del ${e.k === 'inv' || e.modelo ? 'modelo' : 'símbolo'} (${fmt(base.w, 0)} × ${fmt(base.h, 0)} mm).</p>`; })()}
+        <label class="f mini"><span>${vistaEq(p) === 'elevacion' ? 'Alto' : 'Profundidad'}</span><span class="fi"><input class="in" data-campo="eq.mh" value="${e.mh || ''}" placeholder="${fmt(base.h, 0)}" inputmode="numeric"><em>mm</em></span></label></div>
+        <p class="mut">Medida ${vistaEq(p) === 'elevacion' ? 'de frente' : 'en planta'}${RECT_LIBRE.has(e.k) ? ' (también arrastrando sus esquinas)' : ''}. Vacío = la del ${e.k === 'inv' || e.modelo ? 'modelo' : 'símbolo'} (${fmt(base.w, 0)} × ${fmt(base.h, 0)} mm).</p>`; })()}
       <label class="chk"><input type="checkbox" data-campo="eq.verMed" ${p.verMedidas && e.verMed !== false ? 'checked' : ''}> Mostrar sus medidas en el dibujo</label>
       ${escala(p) ? '' : rango('eq.f', Math.round((e.f || 1) * 100), 10, 500, 'Tamaño en el dibujo (sin escala)', ' %')}
       ${e.k === 'bat' ? `<div class="f"><span>Módulos de batería</span><span class="row">${stepper('eq.mods', e.mods || 3)} módulos (de frente se apilan)</span></div>` : ''}
