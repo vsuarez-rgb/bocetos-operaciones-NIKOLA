@@ -21,7 +21,8 @@ export const ZONAS = {
   obs: { n: 'Obstáculo o sombra', corto: 'Obstáculo', d: 'Chimeneas, claraboyas, antenas, sombra de árboles.', bloquea: true, c: '#FF5A5A' },
   nou: { n: 'Zona no utilizable', corto: 'No utilizable', d: 'Filtraciones, estructura inestable u otro motivo.', bloquea: true, c: '#C9A2FF' },
   mov: { n: 'Se retira', corto: 'Se retira', d: 'Objetos que se sacan antes de instalar. Encima sí van paneles.', bloquea: false, c: '#5BC0EB' },
-  pas: { n: 'Pasillo de mantención', corto: 'Pasillo', d: 'Franja libre para caminar sobre el techo.', bloquea: true, c: '#FFD166' }
+  pas: { n: 'Pasillo de mantención', corto: 'Pasillo', d: 'Franja libre para caminar sobre el techo.', bloquea: true, c: '#FFD166' },
+  eqz: { n: 'Zona de equipos', corto: 'Equipos', d: 'Donde van el inversor, tableros o baterías. Ahí no van paneles.', bloquea: true, c: '#FF3DFF' }
 };
 
 /* Cada equipo se dibuja de uno de dos modos (e.modo): 'real' = de frente con su medida real (ancho × alto del
