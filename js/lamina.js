@@ -10,6 +10,7 @@ import { CANAL, EQUIPOS, PANELES } from './catalogo.js';
 import { escala, panelDe, inversorDe, calcCA, zonaPoly, CAIDA_MAX, medidaEquipo } from './geom.js';
 import { dibujar, cargarImg, colorString } from './render.js';
 import { hoy } from './store.js';
+import { dibujoLibre } from './uni-dibujo.js';
 
 const W = 841, H = 594, M = 10;                // hoja y margen
 const FONT = "'Archivo Narrow','Arial Narrow',Arial,sans-serif";
@@ -124,6 +125,7 @@ export function baseSugerida(p) {
 export const baseUni = p => BASES_UNI.find(b => b.id === p.uni?.base) || baseSugerida(p);
 
 function unilineal(p, D, SI, x0, y0, w, h) {
+  if (p.uni?.libre) return dibujoLibre(p.uni.libre);          // editado a mano: el dibujo tal cual quedó
   const I = D.inv, ca = D.ca, L = D.L, R = '#D11', A = '#22B', V = '#1A8F3C', MG = '#C0C', Y = '#E6C200', U = opcUni(p), B = baseUni(p);
   const X = { bat: B.bat || U.extras.bat, sg: B.sg || U.extras.sg, ev: !B.soloEV && !B.evTablero && U.extras.ev };
   const TU = (k, x, y, def, size, o = {}) => { const v = U.textos[k] != null ? U.textos[k] : def; return T(x, y, v, size, { ...o, attr: `data-u="${esc(k)}"${U.textos[k] != null ? ' data-mod="1"' : ''}` }); };
@@ -234,9 +236,9 @@ function unilineal(p, D, SI, x0, y0, w, h) {
   if (!SI.lista.length) for (let i = 0; i < nM; i++) s += Ln(sx(i), iy + 45, sx(i), sy + 22, { st: R, sw: .3, dash: '1.5 1' }) + Rc(sx(i) - 3.5, sy + 22, 7, 7, { st: V, fill: '#E6F6EA' }) + T(sx(i), sy + 33, `Str.A.${i + 1}.1`, fs, { a: 'middle' });
   return s;
 }
-const breaker = (x, y, c) => `<path d="M${x} ${y - 4}v1.5M${x} ${y + 4}v-1.5" stroke="#111" stroke-width=".3"/><path d="M${x} ${y + 2.5}c-2 -1.5 -2 -3.5 0 -5" fill="none" stroke="${c}" stroke-width=".4"/><circle cx="${x}" cy="${y + 2.6}" r=".6" fill="none" stroke="${c}" stroke-width=".25"/>`;
+const breaker = (x, y, c) => `<g><path d="M${x} ${y - 4}v1.5M${x} ${y + 4}v-1.5" stroke="#111" stroke-width=".3"/><path d="M${x} ${y + 2.5}c-2 -1.5 -2 -3.5 0 -5" fill="none" stroke="${c}" stroke-width=".4"/><circle cx="${x}" cy="${y + 2.6}" r=".6" fill="none" stroke="${c}" stroke-width=".25"/></g>`;
 const tierra = (x, y) => `<path d="M${x} ${y}v3M${x - 3} ${y + 3}h6M${x - 2} ${y + 4.2}h4M${x - 1} ${y + 5.4}h2" stroke="#111" stroke-width=".3"/>`;
-const tierraP = (x, y) => `<path d="M${x} ${y}v2M${x - 3} ${y + 2}h6" stroke="#111" stroke-width=".3"/>` + Array.from({ length: 5 }, (_, i) => `<path d="M${x - 3 + i * 1.5} ${y + 2}l-1 1.5" stroke="#111" stroke-width=".2"/>`).join('');
+const tierraP = (x, y) => '<g>' + `<path d="M${x} ${y}v2M${x - 3} ${y + 2}h6" stroke="#111" stroke-width=".3"/>` + Array.from({ length: 5 }, (_, i) => `<path d="M${x - 3 + i * 1.5} ${y + 2}l-1 1.5" stroke="#111" stroke-width=".2"/>`).join('') + '</g>';
 function cond(x, y, t, I, k = 'c', TU = (kk, ...a) => T(...a)) {
   return [`RVK Reviflex Monopolar ${I.fase === 'Trifásico' ? '4' : '1'}x8,37 mm² (F)`, 'RVK Reviflex Monopolar 1x8,37 mm² (N)', `Tub. ${t.ducto}`, `DISTANCIA = ${fmt(t.largo, 0)} m`, `Vp = ${fmt(t.dv, 2)} V / ${fmt(t.dvp, 2)} %`].map((l, i) => TU(`${k}.${i}`, x, y + i * 2.2, l, 1.45)).join('');
 }

@@ -449,3 +449,31 @@ select.fi-ctl { background: #1C2228; border-color: var(--ed-line); cursor: point
 .uni-gal-v { background: #fff; border-radius: 6px; aspect-ratio: 262 / 314; overflow: hidden; pointer-events: none; }
 .uni-gal-v svg { width: 100%; height: 100%; display: block; }
 .uni-gal-b em { font-style: normal; font-size: 11px; color: var(--ed-mut); } .uni-gal-b em.act { color: var(--nk-amarillo); }
+
+/* ---------- Unilineal: barra de dibujo ---------- */
+.uni-herr { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 6px 10px; background: var(--ed-bar2, #1C2228); border-bottom: 1px solid var(--ed-line); font-size: 12.5px; position: relative; z-index: 4; }
+.uh-b { display: inline-flex; align-items: center; gap: 5px; background: var(--ed-bar); border: 1px solid var(--ed-line); color: var(--ed-ink); border-radius: 7px; padding: 4px 9px; font: 12px var(--f-body); cursor: pointer; }
+.uh-b:hover:not(:disabled) { border-color: var(--nk-amarillo); }
+.uh-b[aria-pressed="true"] { border-color: var(--nk-amarillo); color: var(--nk-amarillo); background: rgba(250,183,4,.08); }
+.uh-b:disabled { opacity: .4; cursor: default; }
+.uh-g { display: inline-flex; align-items: center; gap: 4px; }
+.uh-cols { display: inline-flex; gap: 2px; padding: 2px 4px; border: 1px solid var(--ed-line); border-radius: 7px; }
+.uh-col { width: 16px; height: 16px; border-radius: 4px; border: 1px solid transparent; background: var(--ed-bar); cursor: pointer; position: relative; padding: 0; }
+.uh-col::after { content: ''; position: absolute; left: 2px; right: 2px; top: 50%; border-top: 3px var(--d, solid) var(--c); transform: translateY(-50%); }
+.uh-col[aria-pressed="true"] { border-color: var(--nk-amarillo); }
+.uh-sep { width: 1px; height: 22px; background: var(--ed-line); margin: 0 4px; }
+.uh-nota { color: var(--ed-mut); font-size: 11.5px; }
+.uh-dd { position: relative; }
+.uh-menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 230px; max-height: 60vh; overflow-y: auto; background: var(--ed-bar); border: 1px solid var(--ed-line); border-radius: 10px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.45); display: flex; flex-direction: column; gap: 2px; }
+.uh-menu button { display: flex; align-items: center; gap: 8px; text-align: left; background: none; border: 0; color: var(--ed-ink); padding: 5px 8px; border-radius: 6px; font: 12.5px var(--f-body); cursor: pointer; }
+.uh-menu button:hover:not(:disabled) { background: rgba(250,183,4,.12); }
+.uh-menu button:disabled { opacity: .45; cursor: default; }
+.uh-menu svg { background: #fff; border-radius: 4px; flex: none; }
+.uh-menu hr { border: 0; border-top: 1px solid var(--ed-line); margin: 4px 0; width: 100%; }
+.uh-menu p { margin: 4px 8px; color: var(--ed-mut); }
+.uh-bl { display: flex; align-items: center; } .uh-bl > button:first-child { flex: 1; } .uh-bl em { font-style: normal; color: var(--ed-mut); font-size: 11px; }
+.uh-menu .uh-del { color: var(--ed-mut); padding: 5px; } .uh-menu .uh-del:hover { color: #FF6B6B; }
+.uni-ed .ue { cursor: move; }
+.uni-ed .ue.sel :is(polyline, rect, path, circle, line):not([stroke="transparent"]) { stroke: #1F6FEB !important; }
+.uni-ed .ue.sel text { fill: #1F6FEB !important; }
+.uni-ed .ue:hover :is(polyline, rect, path, circle, line):not([stroke="transparent"]) { stroke-opacity: .7; }
