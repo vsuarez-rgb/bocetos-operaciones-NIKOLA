@@ -358,7 +358,7 @@ export function panelLamina(p, R, SI, cb = {}) {
   if (!escala(p)) av.push('Falta la escala (paso 1).'); if (!R.n) av.push('No hay paneles (paso 4).');
   if (SI.sinString) av.push(`${SI.sinString} paneles sin string (paso 5).`); SI.lista.filter(x => !x.ok).forEach(x => av.push(`String ${x.idx + 1}: ${x.av.join('; ')}`));
   if (!p.equipos.some(e => e.k === 'inv')) av.push('No se ubicó el inversor (paso 6).');
-  return `<details class="pp" open><summary>7 · Lámina</summary><div class="pp-b">
+  return `<details class="pp"><summary>Lámina</summary><div class="pp-b">
     <div class="kpis"><div><b>${D.nMod}</b><span>módulos</span></div><div><b>${fmt(D.kwp, 2)}</b><span>kWp</span></div><div><b>${fmt(D.kwn, 0)}</b><span>kW nom.</span></div></div>
     ${av.length ? `<div class="aviso warn">${ic('alert', 16)}<span>${av.map(esc).join('<br>')}</span></div>` : `<div class="aviso ok">${ic('check', 16)}<span>Diseño completo y sin observaciones.</span></div>`}
     <button class="btn pri" data-act="lam-pdf">${ic('print')} Imprimir / guardar PDF (A1)</button>

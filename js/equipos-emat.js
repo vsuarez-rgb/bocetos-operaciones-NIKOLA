@@ -41,7 +41,7 @@ export const PANELES_EMAT = [
    imaxMppt: corriente máx. de entrada por MPPT (ficha; null si no se confirmó).
    iac: corriente máx. de salida AC (a 380 V en trifásicos). Medidas con placa de montaje.
    libre: espacio libre de montaje (mm) — pendiente de leer en el manual de cada familia. */
-const L1 = { familia: 'SUN2000-KTL-L1', ancho: 365, alto: 375, prof: 156, peso: 12, imaxMppt: 12.5, fuente: 'https://solar.huawei.com/id/products/SUN2000-3-4-5-6KTL-L1/specs', confianza: 'alta' };
+const L1 = { familia: 'SUN2000-KTL-L1', ancho: 365, alto: 365, prof: 156, peso: 12, imaxMppt: 12.5, fuente: 'https://solar.huawei.com/id/products/SUN2000-3-4-5-6KTL-L1/specs', confianza: 'alta', nota: 'Alto 365 mm según la ficha técnica (el folleto dice 375)' };
 const LB0 = { familia: 'SUN2000-K-LB0', ancho: 425, alto: 376.5, prof: 150, peso: 15, imaxMppt: 16, fuente: 'https://solar.huawei.com/en/products/sun2000-3-368-4-46-5-6k-lb0/specs/', confianza: 'media' };
 const LC0 = { familia: 'SUN2000-K-LC0', ancho: 425, alto: 376.5, prof: 150, peso: 14.5, imaxMppt: 16, fuente: 'https://solar.huawei.com/admin/asset/v1/pro/view/ada802421c674daa9047aeec9d28a710.pdf', confianza: 'alta' };
 const M1 = { familia: 'SUN2000-KTL-M1', ancho: 525, alto: 470, prof: 146.5, peso: 17, imaxMppt: 11, fuente: 'https://solar.huawei.com/th/products/SUN2000-3-4-5-6-8-10KTL-M1/specs/', confianza: 'alta' };

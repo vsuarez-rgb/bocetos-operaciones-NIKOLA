@@ -32,7 +32,7 @@ let E = null;          // estado del editor
 const ICONO_HOJA = { principal: 'drone', canalizacion: 'pline', equipos: 'inverter', cargador: 'plug', empalme: 'block', otra: 'crop' };
 const hojaActiva = () => E.hojaId ? (E.proyecto.hojas || []).find(h => h.id === E.hojaId) : null;
 const hojaCorta = () => !!E.hojaId || tipoPrincipal(E.proyecto) !== 'techo';      // sin techos ni paneles: foto, dibujo e informe
-const pasosVisibles = () => hojaCorta() ? PASOS.filter(([k]) => ['ficha', 'escala', 'equipos', 'etiquetas', 'unilineal', 'informe'].includes(k)) : PASOS;
+const pasosVisibles = () => hojaCorta() ? PASOS.filter(([k]) => ['ficha', 'escala', 'paneles', 'equipos', 'etiquetas', 'unilineal', 'informe'].includes(k)) : PASOS;
 const nombrePaso = (k, n) => hojaCorta() && k === 'equipos' ? 'Dibujo' : hojaCorta() && k === 'escala' ? 'Foto y escala' : n;
 let alSalir = null;
 
@@ -42,7 +42,7 @@ export function abrirEditor(p, volver) {
   E = { proyecto: p, hojaId, p: vistaHoja(p, hojaId), step: (p._paso === 'lamina' ? 'informe' : p._paso) || (p.ref ? (p.roofs.some(r => r.closed) ? 'paneles' : 'techos') : 'escala'), tool: null, sel: null, V: null, temp: null, D: null,
     orto: false, refent: true, rejilla: false, capas: new Set(CAPAS.map(c => c.id)), bloqueadas: new Set(), hist: [], fut: [], cmdLog: [],
     zonaK: 'obs', zonaForma: 'rect', figForma: 'grid', figFC: { f: 2, c: 5 }, eqK: 'inv', rutaK: 'cc', blk: { f: 2, c: 4 }, strAct: p.strings[0]?.id || null, selPanels: new Set(), mouse: null, snap: null,
-    fotoAlpha: .85, guardado: true, R: null, SI: null };
+    fotoAlpha: .85, guardado: true, R: null, SI: null, abiertas: new Map() };
   E.tool = HERR_DEF[E.step];
   leerAjuste('conjuntosEquipos').then(x => { if (E) { E.conjuntos = x || []; if (E.step === 'equipos') panel(); } });
   render();
@@ -135,8 +135,9 @@ function render() {
 function herramientas() {
   const t = (k, icono, n, extra = '') => `<button class="tool" data-act="tool" data-k="${k}" aria-pressed="${E.tool === k}" title="${n}" ${extra}>${ic(icono, 20)}<span>${n}</span></button>`;
   const porPaso = { escala: t('ref', 'ruler', 'Referencia'), techos: t('roof', 'roof', 'Techo'), elementos: t('zona', 'block', 'Zona'), paneles: '', strings: t('str', 'string', 'Asignar'),
-    equipos: t('equipo', 'inverter', 'Equipo') + t('ruta', 'pline', 'Canalización') + t('figpan', 'grid', 'Paneles') };
-  return t('sel', 'cursor', 'Seleccionar') + t('pan', 'hand', 'Encuadre') + `<hr>` + (porPaso[E.step] || '') + `<hr>` + t('cota', 'dim', 'Cota') + t('texto', 'text', 'Texto') + t('norte', 'north', 'Norte');
+    equipos: t('equipo', 'inverter', 'Equipo') + t('ruta', 'pline', 'Canalización'),
+    paneles: t('figpan', 'grid', 'Paneles a mano') + `<button class="tool" data-act="rutaK" data-k="riel" aria-pressed="${E.tool === 'ruta' && E.rutaK === 'riel'}" title="Riel a mano">${ic('pline', 20)}<span>Riel</span></button>` };
+  return t('sel', 'cursor', 'Seleccionar') + t('pan', 'hand', 'Encuadre') + `<hr>` + (porPaso[E.step] || '') + (E.step === 'etiquetas' ? `<hr>` + t('cota', 'dim', 'Cota') + t('texto', 'text', 'Texto') + t('norte', 'north', 'Norte') : '');
 }
 function pasoOk(k) {
   const p = E.p, R = E.R || calcular(p);
@@ -147,7 +148,7 @@ function pasoOk(k) {
   if (k === 'escala') return !!escala(p) || (!!p.img && !!p.sinEscala);
   if (k === 'techos') return p.roofs.some(r => r.closed);
   if (k === 'elementos') return p.zonas.length > 0 || !!p.sinElementos;
-  if (k === 'paneles') return R.n > 0;
+  if (k === 'paneles') return hojaCorta() ? ((p.figPaneles || []).length + p.rutas.filter(r => r.k === 'riel').length) > 0 : R.n > 0;
   if (k === 'strings') { const S = E.SI || calcStrings(p, R); return p.strings.length > 0 && !S.sinString && S.lista.every(x => x.ok); }
   if (k === 'equipos') return E.hojaId ? (p.rutas.length + p.equipos.length + p.cotas.length + p.textos.length + (p.figPaneles || []).length) > 0 : p.equipos.some(e => e.k === 'inv') && p.rutas.length > 0;
   if (k === 'lamina') return !!(p.lamina.jefe && p.lamina.ingeniero && p.codigo);
@@ -167,6 +168,9 @@ const aPant = q => [q[0] * E.V.k - E.V.ox, q[1] * E.V.k - E.V.oy];
 function ptEv(ev) { const rc = $('#cv').getBoundingClientRect(); return [ev.clientX - rc.left, ev.clientY - rc.top]; }
 
 /* ---------- Dibujo ---------- */
+/* Clave de una sección del panel: su título sin HTML, sin números ni el detalle variable ("Techo 2" = "Techo") */
+const claveSec = t => String(t).replace(/<[^>]+>/g, '').replace(/·.*$/, '').replace(/\d+/g, '').trim().toLowerCase();
+document.addEventListener('toggle', ev => { const d = ev.target; if (!E || !d.matches?.('#props details.pp[data-sec]')) return; E.abiertas.set(d.dataset.sec, d.open); }, true);
 function formu() {
   const num = (campo, val, unidad, extra = '') => `<label class="f"><span>${unidad.l}</span><span class="fi"><input class="in" data-campo="${campo}" value="${val ?? ''}" inputmode="decimal" ${extra}><em>${unidad.u}</em></span></label>`;
   const rango = (campo, val, min, max, l, u = '°') => `<label class="f"><span>${l}</span><span class="fr"><input type="range" min="${min}" max="${max}" step="1" value="${val}" data-campo="${campo}" data-u="${u}"><output>${val}${u}</output></span></label>`;
@@ -364,7 +368,7 @@ function downPaneles(raw, ev) {
   }
   if (act && act.modo !== 'manual' && pointInPoly(raw, act.poly)) { const pn = panelEn(raw); if (pn && pn.rid === act.id) { antes(); act.off = act.off || []; const i = act.off.indexOf(pn.key); i >= 0 ? act.off.splice(i, 1) : act.off.push(pn.key); despues(); return; } }
   const et0 = etqEn(raw), r = techoEn(raw); E.sel = et0 ? { t: 'etq', of: et0.of, id: et0.id } : r ? { t: 'roof', id: r.id } : objetoEn(raw);
-  if (E.sel && ['equipo', 'texto', 'norte', 'cota', 'ruta', 'etq'].includes(E.sel.t)) E.D = { kind: 'mover', a: raw, last: raw, first: true };
+  if (E.sel && ['equipo', 'texto', 'norte', 'cota', 'ruta', 'etq', 'fig'].includes(E.sel.t)) E.D = { kind: 'mover', a: raw, last: raw, first: true };
   panel(); dibujarTodo();
 }
 function move(ev) {
@@ -668,16 +672,17 @@ function panel() {
   if (E.step === 'lamina') { el.innerHTML = panelLamina(E.proyecto, E.R, E.SI, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, rerender: () => panel() }); return; }
   const p = E.p, R = E.R, s = escala(p);
   let h = '';
-  const sec = (titulo, cuerpo, abierto = true) => `<details class="pp" ${abierto ? 'open' : ''}><summary>${titulo}</summary><div class="pp-b">${cuerpo}</div></details>`;
+  const sec = (titulo, cuerpo, abierto = false) => { const k = claveSec(titulo), ab = E.abiertas.has(k) ? E.abiertas.get(k) : abierto;
+    return `<details class="pp" data-sec="${esc(k)}" ${ab ? 'open' : ''}><summary>${titulo}</summary><div class="pp-b">${cuerpo}</div></details>`; };
   const { num, rango, seg } = formu();
 
   // Propiedades de lo seleccionado (siempre arriba, como la paleta Propiedades)
   const sl = E.sel;
-  if (sl && !(['bloque', 'roof'].includes(sl.t) && E.step === 'paneles')) h += sec(`Propiedades · ${nombreSel(sl)}`, propsSel(sl, { num, rango, seg }));
+  if (sl && !(['bloque', 'roof'].includes(sl.t) && E.step === 'paneles')) h += sec(`Propiedades · ${nombreSel(sl)}`, propsSel(sl, { num, rango, seg }), true);
 
   if (E.step === 'escala') {
     const gsd = droneGSD(p), dif = s && gsd ? Math.abs(gsd - s) / s * 100 : null;
-    h += sec(hojaCorta() ? 'Foto y escala' : '1 · Escala de la foto', `
+    h += sec(hojaCorta() ? 'Foto y escala' : 'Escala de la foto', `
       <p class="mut">Traza una línea sobre algo que mediste en terreno y escribe su largo: con eso se miden distancias y los equipos quedan a su tamaño real. ${hojaCorta() ? 'Es opcional: sin referencia igual puedes dibujar equipos, canalización y textos (los equipos salen con un tamaño aproximado).' : ''}</p>
       ${!s ? `<label class="chk"><input type="checkbox" data-campo="_sinEscala" ${p.sinEscala ? 'checked' : ''}> Esta hoja no necesita escala</label>` : ''}
       <dl class="dl"><dt>Referencia</dt><dd>${p.ref && p.ref.mm ? fmt(p.ref.mm / 1000, 2) + ' m' : p.ref ? 'Falta el largo' : 'Sin trazar'}</dd><dt>Escala</dt><dd>${s ? `1 px = ${fmt(s, 1)} mm` : '—'}</dd></dl>
@@ -692,32 +697,35 @@ function panel() {
       <label class="btn pri">${ic('upload')} ${p.img ? 'Cambiar foto' : 'Subir foto'}${hojaCorta() ? '' : ' de dron'}<input type="file" accept="image/*" data-act="foto" hidden></label>`);
   }
   if (E.step === 'techos') {
-    h += sec('2 · Techos', `
+    h += sec('Techos', `
       <p class="mut">Dibuja cada agua por separado. Puedes escribir el largo de cada lado en metros (en la dirección del cursor) y activar ORTO (F8).</p>
       <div class="lista">${p.roofs.map((r, i) => `<button class="li" data-act="sel-roof" data-id="${r.id}" aria-pressed="${E.sel && E.sel.id === r.id}"><b>Techo ${i + 1}</b><span>${r.closed ? `${fmt(R.porTecho[i].area, 1)} m² · incl. ${r.incl}°` : 'sin cerrar'}</span></button>`).join('') || '<p class="mut">Sin techos todavía.</p>'}</div>
       <div class="row"><button class="btn" data-act="tool" data-k="roof">${ic('plus')} Dibujar techo</button>${E.temp && E.tool === 'roof' ? `<button class="btn" data-act="cerrar-techo">Cerrar (Enter)</button>` : ''}</div>
       <dl class="dl"><dt>Área total</dt><dd>${R.area ? fmt(R.area, 1) + ' m²' : '—'}</dd></dl>`);
   }
   if (E.step === 'elementos') {
-    h += sec('3 · Elementos', `
+    h += sec('Elementos', `
       <p class="mut">Marca lo que no puede llevar paneles. Elige el tipo y arrastra sobre la foto.</p>
       ${seg('_zonaForma', E.zonaForma, [['rect', 'Rectángulo'], ['circ', 'Círculo']])}
       <div class="lista">${Object.entries(ZONAS).map(([k, Z]) => `<button class="li" data-act="zonaK" data-k="${k}" aria-pressed="${E.zonaK === k}"><i class="sw" style="border-color:${Z.c};background:${Z.c}33"></i><b>${Z.n}</b><span>${Z.d}</span><em>${p.zonas.filter(z => z.k === k).length || ''}</em></button>`).join('')}</div>
       ${!p.zonas.length ? `<label class="chk"><input type="checkbox" data-campo="sinElementos" ${p.sinElementos ? 'checked' : ''}> El techo no tiene obstáculos</label>` : ''}`);
   }
-  if (E.step === 'paneles') {
+  if (E.step === 'paneles' && hojaCorta()) {
+    h += sec('Paneles en esta hoja', `<p class="mut">Esta hoja no tiene techos con paneles calculados. Aquí puedes dibujar paneles a mano (también en perspectiva) y rieles a mano.</p>`);
+  }
+  if (E.step === 'paneles' && !hojaCorta()) {
     const r = techoAct(), ri = r ? p.roofs.indexOf(r) : -1, T = ri >= 0 ? R.porTecho[ri] : null;
     h += sec('Paneles del proyecto', `<div class="kpis"><div><b>${R.n}</b><span>paneles</span></div><div><b>${fmt(R.kwp, 2)}</b><span>kWp</span></div><div><b>${R.area ? fmt(R.area, 0) : '—'}</b><span>m² de techo</span></div></div>
       ${R.rieles && (R.rieles.mm || p.rutas.some(x => x.k === 'riel')) ? `<dl class="dl"><dt>Metros de riel</dt><dd>${fmt((R.rieles.mm / 1000) + p.rutas.filter(x => x.k === 'riel').reduce((t, x) => t + largoRuta(p, x), 0), 1)} m${R.rieles.filas ? ` · ${R.rieles.filas} fila(s)` : ''}</dd></dl>` : ''}
       <div class="lista">${p.roofs.filter(t => t.closed).map(t => { const i = p.roofs.indexOf(t); return `<button class="li" data-act="sel-roof" data-id="${t.id}" aria-pressed="${r && r.id === t.id}"><b>Techo ${i + 1}</b><span>${R.porTecho[i].n} paneles · ${t.modo === 'manual' ? `manual, ${(t.bloques || []).length} bloque(s)` : `automático, paneles a ${inclPanelesDe(t)}°`}</span></button>`; }).join('') || '<p class="mut">Dibuja un techo primero.</p>'}</div>
       ${!r ? '<p class="mut">Elige un techo (en la lista o con un clic en el dibujo) para caracterizarlo y poner sus paneles.</p>' : ''}`);
     if (r) {
-      h += sec(`1 · Techo ${ri + 1}: cómo es`, `${rango('roof.incl', r.incl || 0, 0, 60, 'Inclinación del techo')}
+      h += sec(`Techo ${ri + 1}: cómo es`, `${rango('roof.incl', r.incl || 0, 0, 60, 'Inclinación del techo')}
         <label class="f"><span>La pendiente baja hacia</span>${seg('roof.baja', r.baja || 'abajo', [['abajo', '↓'], ['arriba', '↑'], ['izq', '←'], ['der', '→']])}</label>
         ${num('roof.setback', fmt((r.setback ?? 400) / 1000, 2), { l: 'Retiro al borde', u: 'm' })}
         <dl class="dl"><dt>Área real</dt><dd>${T ? fmt(T.area, 1) : '—'} m²</dd></dl>`);
       const sobre = r.inclPan == null;
-      h += sec(`2 · Paneles del techo ${ri + 1}`, `${seg('roof.modo', r.modo || 'auto', [['auto', 'Automático'], ['manual', 'Manual (bloques)']])}
+      h += sec(`Paneles del techo ${ri + 1}`, `${seg('roof.modo', r.modo || 'auto', [['auto', 'Automático'], ['manual', 'Manual (bloques)']])}
         <label class="f"><span>Panel</span><select class="in" data-campo="roof.panel">${PANELES.map(x => `<option value="${x.id}" ${panelDe(p, r).id === x.id ? 'selected' : ''}>${x.n}</option>`).join('')}</select></label>
         ${r.modo === 'manual' ? `
           <div class="f"><span>Bloque nuevo</span><span class="row">${stepper('blk.f', E.blk.f)} filas × ${stepper('blk.c', E.blk.c)} col.</span></div>
@@ -734,14 +742,24 @@ function panel() {
           ${num('roof.sepFila', fmt((r.sepFila ?? GAP_FILA) / 10, 0), { l: sobre ? 'Espacio entre filas' : 'Espacio mínimo entre filas', u: 'cm' })}
           ${(r.off || []).length ? `<button class="btn sm" data-act="devolver">Devolver ${r.off.length} panel(es) sacados</button>` : ''}`}
         ${r.modo === 'manual' && R.panels.some(pn => pn.rid === r.id && pn.bad) ? `<div class="aviso warn">${ic('alert', 16)}<span>Hay paneles en rojo (fuera del techo, en el retiro, sobre una zona o en sombra). No se cuentan.</span></div>` : ''}`);
-      h += sec(`3 · Rieles del techo ${ri + 1}`, `${seg('riel.modo', (r.rieles && r.rieles.modo) || 'no', [['no', 'Sin rieles'], ['perp', 'Perpendiculares'], ['paral', 'Paralelos']])}
+      h += sec(`Rieles del techo ${ri + 1}`, `${seg('riel.modo', (r.rieles && r.rieles.modo) || 'no', [['no', 'Sin rieles'], ['perp', 'Perpendiculares'], ['paral', 'Paralelos']])}
         ${r.rieles && r.rieles.modo && r.rieles.modo !== 'no' ? num('riel.d', r.rieles.d ? fmt(r.rieles.d / 10, 0) : '', { l: 'Distancia entre los 2 rieles', u: 'cm' }, `placeholder="${fmt((r.rieles.modo === 'paral' ? panelDe(p, r).w : panelDe(p, r).h) / 20, 0)} (la mitad del panel)"`) : ''}
-        ${R.rieles && R.rieles.porTecho[ri] ? `<dl class="dl"><dt>Metros de riel (techo)</dt><dd>${fmt(R.rieles.porTecho[ri] / 1000, 1)} m</dd></dl>` : ''}`, !!(r.rieles && r.rieles.modo && r.rieles.modo !== 'no'));
+        ${R.rieles && R.rieles.porTecho[ri] ? `<dl class="dl"><dt>Metros de riel (techo)</dt><dd>${fmt(R.rieles.porTecho[ri] / 1000, 1)} m</dd></dl>` : ''}`);
     }
+  }
+  if (E.step === 'paneles') {
+    const figs = p.figPaneles || [], rielesL = p.rutas.filter(r => r.k === 'riel');
+    h += sec('Paneles dibujados', `<p class="mut">Para hojas sin escala o en perspectiva: figuras con el mismo relleno de los paneles. No se suman al conteo de paneles del proyecto.</p>
+      ${seg('_figForma', E.figForma, [['grid', 'Cuadrícula (4 esquinas)'], ['poly', 'Figura libre']])}
+      ${E.figForma === 'grid' ? `<div class="f"><span>Nueva cuadrícula</span><span class="row">${stepper('fig.nf', E.figFC.f)} filas × ${stepper('fig.nc', E.figFC.c)} col.</span></div>` : ''}
+      <button class="btn sm" data-act="tool" data-k="figpan">${ic('grid', 14)} Dibujar paneles</button>${figs.length ? `<p class="mut">${figs.length} figura(s) en esta hoja.</p>` : ''}`);
+    h += sec('Rieles (dibujo libre)', `<p class="mut">Para casos en perspectiva o sin cálculo automático: dibuja cada riel como una línea. ${s ? 'Se miden solos con la escala.' : 'Sin escala, escribe su largo en Propiedades.'}</p>
+      <button class="btn sm" data-act="rutaK" data-k="riel">${ic('pline', 14)} Dibujar riel</button>
+      ${rielesL.length ? `<dl class="dl"><dt>Rieles dibujados</dt><dd>${rielesL.length}</dd><dt>Total aprox.</dt><dd>${fmt(rielesL.reduce((t, r) => t + largoRuta(p, r), 0), 1)} m</dd></dl>` : ''}`);
   }
   if (E.step === 'strings') {
     const S = E.SI, inv = S.inv;
-    h += sec('5 · Strings', `
+    h += sec('Strings', `
       <label class="f"><span>Inversor</span><select class="in" data-campo="inversor">${['Monofásico', 'Trifásico'].map(fa => `<optgroup label="${fa}s">${INVERSORES.filter(x => x.fase === fa).map(x => `<option value="${x.id}" ${inv.id === x.id ? 'selected' : ''}>${x.modelo} · ${x.kw} kW</option>`).join('')}</optgroup>`).join('')}</select></label>
       <dl class="dl"><dt>MPPT</dt><dd>${inv.mppt} · ${inv.vmin}–${inv.vmax} V</dd><dt>Potencia DC/AC</dt><dd>${fmt(S.pw / 1000, 2)} kWp / ${inv.kw} kW (${fmt(S.ratio * 100, 0)} %)</dd><dt>Sin string</dt><dd class="${S.sinString ? 'neg' : ''}">${S.sinString} paneles</dd></dl>
       <div class="lista">${S.lista.map(x => `<div class="str ${E.strAct === x.st.id ? 'on' : ''}">
@@ -775,27 +793,17 @@ function panel() {
     const vista = vistaEq(p), mis = E.conjuntos || [];
     h += sec('Vista de los equipos', `${seg('hoja.vista', vista, [['planta', 'Planta (desde arriba)'], ['elevacion', 'De frente (zona de equipos)']])}
       <p class="mut">${vista === 'elevacion' ? 'Equipos dibujados de frente, como en los planos de AutoCAD (ancho × alto).' : 'Equipos vistos desde arriba, como en la planta del techo (ancho × profundidad).'}</p>`);
-    h += sec('Conjuntos para empezar', `<p class="mut">Equipos y canalizaciones ya armados: elige uno, haz clic en la foto y después mueve o cambia lo que haga falta.</p>
+    if (vista === 'elevacion') h += sec('Conjuntos para empezar', `<p class="mut">Equipos y canalizaciones ya armados: elige uno, haz clic en la foto y después mueve o cambia lo que haga falta.</p>
       <div class="lista">${[...CONJUNTOS_INCLUIDOS, ...mis].map(cj => `<div class="row cj-f"><button class="li" data-act="conj" data-k="${cj.id}" aria-pressed="${E.tool === 'conjunto' && E.conjunto === cj.id}" title="${esc(cj.detalle || '')}"><b>${esc(cj.nombre)}</b><span>${esc(cj.detalle || '')}</span></button>${cj.id.startsWith('cj-') ? '' : `<button class="btn sm del" data-act="conj-del" data-k="${cj.id}" title="Borrar este conjunto">${ic('trash', 14)}</button>`}</div>`).join('')}</div>
-      <button class="btn sm" data-act="conj-guardar" ${p.equipos.length ? '' : 'disabled'}>${ic('save', 14)} Guardar los equipos de esta hoja como conjunto</button>`, !p.equipos.length);
-    h += sec('6 · Equipos', `
+      <button class="btn sm" data-act="conj-guardar" ${p.equipos.length ? '' : 'disabled'}>${ic('save', 14)} Guardar los equipos de esta hoja como conjunto</button>`);
+    h += sec('Equipos', `
       <div class="grid2">${Object.entries(EQUIPOS).map(([k, Q]) => `<button class="li cmp" data-act="eqK" data-k="${k}" aria-pressed="${E.tool === 'equipo' && E.eqK === k}"><i class="sw" style="border-color:${Q.c}"></i><b>${Q.n}</b><em>${p.equipos.filter(e => e.k === k).length || ''}</em></button>`).join('')}</div>
       <label class="f"><span>Cantidad de inversores</span><input class="in" data-campo="cantInv" value="${p.cantInv || 1}" inputmode="numeric"></label>
       <label class="chk"><input type="checkbox" data-campo="hoja.verMedidas" ${p.verMedidas ? 'checked' : ''}> Mostrar las medidas de los equipos (ancho × profundidad, mm)</label>
       ${s ? '' : `${rango('hoja.tamSimb', Math.round((p.tamSimb || 1) * 100), 20, 400, 'Tamaño de los equipos y textos', ' %')}<p class="mut">Esta hoja no tiene escala: los equipos salen con un tamaño aproximado. Agrándalos o achícalos aquí (todos) o uno por uno arrastrando las esquinas del equipo seleccionado.</p>`}`);
-    h += sec('Cotas y textos', `<div class="row wrap"><button class="btn sm" data-act="tool" data-k="cota">${ic('dim', 14)} Cota</button><button class="btn sm" data-act="tool" data-k="texto">${ic('text', 14)} Texto</button><button class="btn sm" data-act="tool" data-k="norte">${ic('north', 14)} Norte</button></div>
-      <p class="mut">Cota: clic en dos puntos. ${s ? 'Mide sola con la escala de la hoja; puedes cambiar su texto en Propiedades.' : 'Como la hoja no tiene escala, escribe la medida en la línea de comandos al terminarla (o después, en Propiedades).'}</p>`);
     const largos = Object.keys(CANAL).map(k => [k, p.rutas.filter(r => r.k === k).reduce((t, r) => t + largoM(p, r.pts), 0)]);
-    const figs = p.figPaneles || [], rielesL = p.rutas.filter(r => r.k === 'riel');
-    h += sec('Paneles dibujados', `<p class="mut">Para hojas sin escala o en perspectiva: figuras con el mismo relleno de los paneles. No se suman al conteo de paneles del proyecto.</p>
-      ${seg('_figForma', E.figForma, [['grid', 'Cuadrícula (4 esquinas)'], ['poly', 'Figura libre']])}
-      ${E.figForma === 'grid' ? `<div class="f"><span>Nueva cuadrícula</span><span class="row">${stepper('fig.nf', E.figFC.f)} filas × ${stepper('fig.nc', E.figFC.c)} col.</span></div>` : ''}
-      <button class="btn sm" data-act="tool" data-k="figpan">${ic('grid', 14)} Dibujar paneles</button>${figs.length ? `<p class="mut">${figs.length} figura(s) en esta hoja.</p>` : ''}`, figs.length > 0 || E.tool === 'figpan');
-    h += sec('Rieles (dibujo libre)', `<p class="mut">Para casos en perspectiva o sin cálculo automático: dibuja cada riel como una línea. ${s ? 'Se miden solos con la escala.' : 'Sin escala, escribe su largo en Propiedades.'}</p>
-      <button class="btn sm" data-act="rutaK" data-k="riel">${ic('pline', 14)} Dibujar riel</button>
-      ${rielesL.length ? `<dl class="dl"><dt>Rieles dibujados</dt><dd>${rielesL.length}</dd><dt>Total aprox.</dt><dd>${fmt(rielesL.reduce((t, r) => t + largoRuta(p, r), 0), 1)} m</dd></dl>` : ''}`, rielesL.length > 0);
     h += sec('Canalización', `
-      <div class="lista">${Object.entries(CANAL).map(([k, C]) => `<button class="li" data-act="rutaK" data-k="${k}" aria-pressed="${E.tool === 'ruta' && E.rutaK === k}"><i class="ln" style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i><b>${C.n}</b><em>${fmt(largos.find(x => x[0] === k)[1], 1)} m</em></button>`).join('')}</div>
+      <div class="lista">${Object.entries(CANAL).filter(([k]) => k !== 'riel').map(([k, C]) => `<button class="li" data-act="rutaK" data-k="${k}" aria-pressed="${E.tool === 'ruta' && E.rutaK === k}"><i class="ln" style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i><b>${C.n}</b><em>${fmt(largos.find(x => x[0] === k)[1], 1)} m</em></button>`).join('')}</div>
       <p class="mut">Elige un tipo y haz clic en cada punto del recorrido. Enter o doble clic termina. El largo de cada tramo se ve aquí (no en el dibujo) y pasa a los cuadros de la lámina.</p>
       ${p.rutas.filter(r => r.k !== 'riel').length ? `<div class="sub">Largo aprox. de cada canalización</div><div class="lista">${p.rutas.filter(r => r.k !== 'riel').map(r => { const C = CANAL[r.k] || CANAL.ca, tr = CANAL[r.k]?.dc ? (p.strings.findIndex(st => st.id === r.tramo) + 1 ? `String ${p.strings.findIndex(st => st.id === r.tramo) + 1}` : '') : { 'inv-tg': 'Inversor – TGFV', 'tg-emp': 'TG – Empalme' }[r.tramo] || '';
         return `<button class="li" data-act="sel-ruta" data-id="${r.id}" aria-pressed="${E.sel && E.sel.id === r.id}"><i class="ln" style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i><b>${C.corto}${tr ? ' · ' + esc(tr) : ''}</b><em>${s ? fmt(largoM(p, r.pts), 1) + ' m' : '—'}</em></button>`; }).join('')}</div>` : ''}`);

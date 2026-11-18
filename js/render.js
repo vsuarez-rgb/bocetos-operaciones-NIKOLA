@@ -337,7 +337,10 @@ export function equipoPlanta(g, e, E, w, h, plot, u) {
   if (e.k === 'marca') { g.lineWidth = 2.6 * u; g.strokeStyle = plot ? '#E00000' : '#FF2B2B'; g.strokeRect(-w / 2, -h / 2, w, h); return; }
   g.fillStyle = plot ? '#fff' : 'rgba(10,20,28,.8)'; g.fillRect(-w / 2, -h / 2, w, h);
   g.lineWidth = 1.4 * u; g.strokeStyle = col; g.strokeRect(-w / 2, -h / 2, w, h);
-  if (e.k === 'inv') { g.beginPath(); g.moveTo(-w / 2, h / 2); g.lineTo(w / 2, -h / 2); g.stroke(); g.beginPath(); g.moveTo(-w * .38, -h * .2); g.quadraticCurveTo(-w * .28, -h * .42, -w * .18, -h * .2); g.quadraticCurveTo(-w * .08, 0, w * .02, -h * .2); g.stroke(); g.beginPath(); g.moveTo(w * .05, h * .3); g.lineTo(w * .38, h * .3); g.stroke(); }
+  if (e.k === 'inv') {                                             // símbolo del inversor (~ / =) en un cuadrado al centro, sin estirarlo
+    const a = Math.min(w, h) * .82, x = -a / 2, y = -a / 2; g.lineWidth = 1 * u; g.strokeRect(x, y, a, a); g.beginPath(); g.moveTo(x, y + a); g.lineTo(x + a, y); g.stroke();
+    g.beginPath(); g.moveTo(x + a * .12, y + a * .3); g.quadraticCurveTo(x + a * .22, y + a * .08, x + a * .32, y + a * .3); g.quadraticCurveTo(x + a * .42, y + a * .52, x + a * .52, y + a * .3); g.stroke();
+    g.beginPath(); g.moveTo(x + a * .55, y + a * .72); g.lineTo(x + a * .88, y + a * .72); g.moveTo(x + a * .55, y + a * .84); g.lineTo(x + a * .88, y + a * .84); g.stroke(); }
   else if (e.k === 'bat' || e.k === 'dcdc') {                                       // símbolo de batería: celdas + borne
     const bw = w * .5, bh = Math.min(h * .55, bw * .5); g.lineWidth = 1 * u; g.strokeRect(-bw / 2, -bh / 2, bw, bh); g.fillStyle = col; g.fillRect(bw / 2, -bh * .2, bw * .07, bh * .4);
     g.beginPath(); for (let i = 1; i < 4; i++) { const x = -bw / 2 + bw * i / 4; g.moveTo(x, -bh * .3); g.lineTo(x, bh * .3); } g.stroke();
