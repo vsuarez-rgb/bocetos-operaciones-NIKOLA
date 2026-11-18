@@ -534,3 +534,4 @@ select.fi-ctl { background: #1C2228; border-color: var(--ed-line); cursor: point
 .sb-b i.sb-cp { width: 12px; height: 12px; border: 2px solid #00E5FF; background: rgba(0,229,255,.32); border-radius: 2px; }
 
 .sb-ico { padding: 4px 7px; } .sb-ico svg { display: block; }
+.sb-b i.sb-perfil { width: 18px; height: 5px; border-top: 1.5px solid #FF3B3B; border-bottom: 1.5px solid #FF3B3B; }

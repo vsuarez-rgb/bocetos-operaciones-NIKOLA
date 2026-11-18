@@ -183,13 +183,27 @@ export function calcular(p) {
    d = distancia entre los 2 rieles (mm). Metros de riel = suma de las 2 líneas de cada fila, en todas las filas. */
 export const DEF_RIEL = (modo, pn) => modo === 'paral' ? Math.round(pn.wmm / 2) : Math.round(pn.hmm / 2);
 export function calcRieles(p, out) {
-  const res = { lineas: [], mm: 0, filas: 0, porTecho: p.roofs.map(() => 0) };
-  const grupos = new Map();
+  const res = { lineas: [], mm: 0, filas: 0, porTecho: p.roofs.map(() => 0), perfiles: [], mmPerfil: 0 };
+  const grupos = new Map(), cols = new Map();
   (out.validos || []).forEach(pn => {
     const r = p.roofs[pn.ri], b = pn.bi != null ? (r.bloques || [])[pn.bi] : null, conf = (b && b.rieles && b.rieles.modo) ? b.rieles : (r.rieles || {});
     if (!conf.modo || conf.modo === 'no') return;
+    if (conf.modo === 'perfil') {   // losa plana: perfiles por columna de paneles (de la primera a la última fila)
+      const kc = pn.bi != null ? `${pn.ri}|b${pn.bi}|${pn.j}` : `${pn.ri}|a|${Math.round(pn.xcm / ((pn.wmm + GAP_COL) / 10))}`;
+      if (!cols.has(kc)) cols.set(kc, { conf, pans: [] }); cols.get(kc).pans.push(pn); return;
+    }
     const k = pn.bi != null ? `${pn.ri}|b${pn.bi}|${pn.i}` : `${pn.ri}|a|${pn.row}`;
     if (!grupos.has(k)) grupos.set(k, { conf, pans: [] }); grupos.get(k).pans.push(pn);
+  });
+  cols.forEach(({ conf, pans }) => {
+    pans.sort((A, B) => (A.bi != null ? A.i - B.i : A.row - B.row));
+    const A = pans[0], B = pans[pans.length - 1], d = conf.d ?? Math.round(A.wmm / 2), sob = conf.sob ?? 150;
+    const pxMm = dist(A.q[0], A.q[3]) / A.hmm, t0 = Math.max(.04, Math.min(.46, .5 - d / 2 / A.wmm));
+    [t0, 1 - t0].forEach(t => {
+      const a = lerp(A.q[0], A.q[1], t), b = lerp(B.q[3], B.q[2], t), L = dist(a, b) || 1, ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, ext = sob * pxMm;
+      res.perfiles.push([[a[0] - ux * ext, a[1] - uy * ext], [b[0] + ux * ext, b[1] + uy * ext]]);
+      res.mmPerfil += L / pxMm + 2 * sob;
+    });
   });
   const fr = (d, largo) => { const t = Math.max(.04, Math.min(.46, .5 - d / 2 / largo)); return [t, 1 - t]; };
   grupos.forEach(({ conf, pans }) => {

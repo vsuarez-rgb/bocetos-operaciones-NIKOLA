@@ -127,6 +127,7 @@ export function dibujar(g, p, V, o) {
   });
 
   // Rieles (naranjos): los calculados sobre los paneles
+  if (vis('rieles') && R && R.rieles) (R.rieles.perfiles || []).forEach(([a, b]) => lineaDoble(g, [T(a), T(b)], plot ? '#D11' : '#FF3B3B', u));
   if (vis('rieles') && R && R.rieles) R.rieles.lineas.forEach(([a, b]) => { const A = T(a), B = T(b); g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.lineWidth = 1.3 * u; g.strokeStyle = plot ? '#E07B00' : '#FF9E3D'; g.stroke(); });
 
   // Strings: contorno de color alrededor de sus paneles + rótulo "String N"
@@ -153,6 +154,7 @@ export function dibujar(g, p, V, o) {
     if (!vis(C.riel ? 'rieles' : 'canal')) return;
     if (sel) { path(g, pts); g.lineWidth = 6; g.strokeStyle = 'rgba(250,183,4,.35)'; g.stroke(); }
     const colR = C.libre ? (rt.color || C.c) : C.c, dashR = C.libre ? (rt.dash ? [10, 6] : []) : C.dash;
+    if (C.doble) { lineaDoble(g, pts, plot ? '#D11' : colR, u); if (sel) grips(g, pts); return; }
     path(g, pts); g.setLineDash(dashR.map(d => d * u)); g.lineWidth = 1.8 * u; g.strokeStyle = plot && C.libre && colR === '#FFFFFF' ? '#222' : plot && C.cPlot ? C.cPlot : colR; g.lineJoin = 'round'; g.stroke(); g.setLineDash([]);
     if (sel) grips(g, pts);
     // etiqueta propia (se mueve, cambia de tamaño, se fija o se quita)
@@ -229,6 +231,14 @@ export function dibujar(g, p, V, o) {
   if (o.temp) o.temp(g, T);
 }
 
+/* Línea doble (perfil de estructura): dos líneas paralelas muy juntas */
+export function lineaDoble(g, pts, col, u = 1) {
+  const sep = 2.2 * u; g.strokeStyle = col; g.lineWidth = 1 * u; g.setLineDash([]);
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, nx = -(b[1] - a[1]) / L * sep, ny = (b[0] - a[0]) / L * sep;
+    g.beginPath(); g.moveTo(a[0] + nx, a[1] + ny); g.lineTo(b[0] + nx, b[1] + ny); g.moveTo(a[0] - nx, a[1] - ny); g.lineTo(b[0] - nx, b[1] - ny); g.stroke();
+  }
+}
 /* Relleno de un área (centrada en 0,0): 'solido' = pintada con su color más transparente;
    'diag' / 'cruz' / 'horiz' = achurado (sombreado, como el Hatch de AutoCAD) */
 export const RELLENOS = { solido: 'Pintar (tarro)', diag: 'Achurado diagonal', cruz: 'Achurado cruzado', horiz: 'Achurado horizontal' };
