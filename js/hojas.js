@@ -7,7 +7,7 @@
    ========================================================================== */
 import { uid } from './util.js';
 
-export const CLAVES_HOJA = ['img', 'w', 'h', 'ref', 'drone', 'roofs', 'zonas', 'strings', 'equipos', 'rutas', 'cotas', 'textos', 'norte', 'sinElementos', 'sinEscala', 'tamSimb', 'verMedidas', 'figPaneles', 'tamEtq', 'tamCotas', 'encerrarStrings', 'vistaEquipos', 'fotoOpac'];
+export const CLAVES_HOJA = ['img', 'w', 'h', 'ref', 'drone', 'roofs', 'zonas', 'strings', 'equipos', 'rutas', 'cotas', 'textos', 'norte', 'sinElementos', 'sinEscala', 'tamSimb', 'verMedidas', 'figPaneles', 'tamEtq', 'tamCotas', 'encerrarStrings', 'vistaEquipos', 'fotoOpac', 'suelo', 'normasOk'];
 export const TIPOS_HOJA = { canalizacion: 'Recorrido de canalización', equipos: 'Zona de equipos', cargador: 'Cargador', empalme: 'Empalme y medidor', otra: 'Otra' };
 /* La hoja principal puede ser el techo con paneles (proyecto fotovoltaico) o cualquier otra, p. ej. un proyecto EXT de solo cargador */
 export const TIPOS_PRINCIPAL = { techo: 'Techo con paneles (foto de dron)', ...TIPOS_HOJA };

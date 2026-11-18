@@ -518,3 +518,16 @@ select.fi-ctl { background: #1C2228; border-color: var(--ed-line); cursor: point
 .pop-bl { left: auto !important; top: 0 !important; right: 0; bottom: 0; max-height: none; border-radius: 12px 0 0 12px; border-right-width: 0; box-shadow: -8px 0 24px rgba(0,0,0,.35); width: 290px; }
 #model.con-pop .vctl, #model.con-pop .foto-op { right: 302px; }
 #model.con-pop .hint { left: calc(50% - 145px); }
+
+/* ---------- Configuración y normas ---------- */
+.ribbon .paso.cfg { margin-left: auto; }
+.dlg-cfg { width: min(720px, 96vw); max-height: 92vh; }
+.cfg-t { font: 600 12px var(--f-body); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2, #5b6770); margin: 6px 0 4px; }
+.cfg-lista { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+.cfg-n { border: 1px solid var(--line, #dde3e8); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.cfg-chips { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 13px; }
+.normas { display: flex; flex-direction: column; gap: 6px; }
+.norma { display: flex; gap: 8px; align-items: flex-start; padding: 8px; border: 1px solid rgba(255,77,77,.6); border-radius: 8px; background: rgba(255,77,77,.08); font-size: 12.5px; cursor: pointer; }
+.norma em { display: block; font-style: normal; color: var(--ed-mut); font-size: 11.5px; margin-top: 2px; }
+.norma.ok { border-color: var(--ed-line); background: none; color: var(--ed-mut); }
+.norma input { margin-top: 2px; }

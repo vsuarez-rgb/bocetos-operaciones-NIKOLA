@@ -10,6 +10,7 @@ import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota } from 
 import { vistaUnilineal, panelUnilineal, accionUnilineal } from './unilineal.js';
 import { CONJUNTOS_INCLUIDOS, insertarConjunto, conjuntoDeHoja } from './conjuntos.js';
 import { leerAjuste, guardarAjuste } from './ajustes.js';
+import { cargarNormas, guardarNormas, revisarNormas, TIPOS_NORMA, NORMAS_BASE } from './normas.js';
 import { nuevoTecho, guardar } from './store.js';
 import { vistaLamina, panelLamina, accionLamina } from './lamina.js';
 import { vistaFicha, panelFicha, accionFicha } from './ficha/ficha.js';
@@ -44,6 +45,7 @@ export function abrirEditor(p, volver) {
     zonaK: 'obs', zonaForma: 'rect', lineaColor: '#FFFFFF', lineaDash: false, figForma: 'grid', figFC: { f: 2, c: 5 }, eqK: 'inv', rutaK: 'cc', blk: { f: 2, c: 4 }, strAct: p.strings[0]?.id || null, selPanels: new Set(), mouse: null, snap: null,
     fotoAlpha: .85, guardado: true, R: null, SI: null, abiertas: new Map() };
   E.tool = HERR_DEF[E.step];
+  cargarNormas().then(n => { if (E) { E.normas = n; if (E.step === 'equipos') { panel(); dibujarTodo(); } } });
   leerAjuste('conjuntosEquipos').then(x => { if (E) { E.conjuntos = x || []; if (E.step === 'equipos') panel(); } });
   render();
   cargarImg(E.p.img).then(() => { ajustarVista(); dibujarTodo(); });
@@ -94,7 +96,7 @@ function render() {
     <span id="guardEstado" class="guard">Guardado</span>
     <button class="tb-btn" data-act="exportar" title="Exportar proyecto (.json)">${ic('download')}</button>
   </header>
-  <div class="ribbon-wrap"><nav class="ribbon" aria-label="Pasos">${pasosVisibles().map(([k, n, i], idx) => `<button class="paso ${pasoOk(k) ? 'ok' : ''}" data-act="paso" data-k="${k}" aria-pressed="${E.step === k}"><i>${pasoOk(k) ? ic('check', 13) : idx + 1}</i>${ic(i, 16)}<span>${nombrePaso(k, n)}</span></button>`).join('')}</nav>${E.step === 'equipos' ? barraLineas() : ''}</div>
+  <div class="ribbon-wrap"><nav class="ribbon" aria-label="Pasos">${pasosVisibles().map(([k, n, i], idx) => `<button class="paso ${pasoOk(k) ? 'ok' : ''}" data-act="paso" data-k="${k}" aria-pressed="${E.step === k}"><i>${pasoOk(k) ? ic('check', 13) : idx + 1}</i>${ic(i, 16)}<span>${nombrePaso(k, n)}</span></button>`).join('')}<button class="paso cfg" data-act="config" title="Configuración: normas que se revisan en la vista de frente"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Configuración</span></button></nav>${E.step === 'equipos' ? barraLineas() : ''}</div>
   <div class="ed-body ${esPagina() ? 'es-lamina' : ''}">
     ${esPagina() ? '' : `<aside class="tools" aria-label="Herramientas">${herramientas()}</aside>`}
     <main class="model" id="model">
@@ -185,6 +187,18 @@ const claveSec = t => String(t).replace(/<[^>]+>/g, '').replace(/·.*$/, '').rep
 document.addEventListener('toggle', ev => { const d = ev.target; if (!E || !d.matches?.('#props details.pp[data-sec]')) return; E.abiertas.set(d.dataset.sec, d.open); }, true);
 /* Opacidad de la foto en el editor: la de cada hoja (se guarda), 85 % si no se ha cambiado */
 const fotoOp = () => E.p.fotoOpac ?? .85;
+/* Marca en rojo lo que no cumple una norma (y no fue marcado como revisado) */
+function avisosNormas(g) {
+  revisarNormas(E.p, E.normas).filter(a => !a.revisada).forEach(a => {
+    let q = [];
+    if (a.t === 'equipo') { const e = E.p.equipos.find(x => x.id === a.id); if (!e) return; const Q = tamEquipoPx(E.p, e); q = [[e.x - Q.w / 2, e.y - Q.h / 2], [e.x + Q.w / 2, e.y + Q.h / 2]]; }
+    else { const r = E.p.rutas.find(x => x.id === a.id); if (!r) return; q = r.pts; }
+    const S = q.map(aPant), x0 = Math.min(...S.map(v => v[0])) - 6, x1 = Math.max(...S.map(v => v[0])) + 6, y0 = Math.min(...S.map(v => v[1])) - 6, y1 = Math.max(...S.map(v => v[1])) + 6;
+    g.setLineDash([5, 3]); g.lineWidth = 1.6; g.strokeStyle = '#FF4D4D'; g.strokeRect(x0, y0, x1 - x0, y1 - y0); g.setLineDash([]);
+    g.beginPath(); g.moveTo(x1, y0 - 15); g.lineTo(x1 + 9, y0 + 1); g.lineTo(x1 - 9, y0 + 1); g.closePath(); g.fillStyle = '#FF4D4D'; g.fill();
+    g.fillStyle = '#fff'; g.font = "700 11px Arial"; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillText('!', x1, y0 - 2);
+  });
+}
 function formu() {
   const num = (campo, val, unidad, extra = '') => `<label class="f"><span>${unidad.l}</span><span class="fi"><input class="in" data-campo="${campo}" value="${val ?? ''}" inputmode="decimal" ${extra}><em>${unidad.u}</em></span></label>`;
   const rango = (campo, val, min, max, l, u = '°') => `<label class="f"><span>${l}</span><span class="fr"><input type="range" min="${min}" max="${max}" step="1" value="${val}" data-campo="${campo}" data-u="${u}"><output>${val}${u}</output></span></label>`;
@@ -221,6 +235,7 @@ function dibujarTodo() {
   if (E.rejilla && s) rejilla(g, W, H, s);
   cursor(g, W, H);
   if ($('#popBloque')) posVentanaBloque();
+  if (['equipos', 'etiquetas'].includes(E.step) && E.normas) avisosNormas(g);
   const n = $('#kN'); if (n) { const RP = E.RP || E.R; n.textContent = RP.n; $('#kK').textContent = fmt(RP.kwp, 2); $('#kS').textContent = E.proyecto.strings.length; }   // totales del proyecto, en cualquier hoja
 }
 function panelesDelActivo() { const st = E.p.strings.find(x => x.id === E.strAct); return new Set(st ? st.panels : []); }
@@ -286,7 +301,7 @@ function equipoEn(q) { return [...E.p.equipos].reverse().find(e => { const Q = t
 const rutaEn = q => [...E.p.rutas].reverse().find(r => r.pts.some((v, i) => i && distSeg(q, r.pts[i - 1], v) < tol()));
 const cotaEn = q => E.p.cotas.find(c => distSeg(q, c.a, c.b) < tol());
 function textoEn(q) { return E.p.textos.find(t => { const h = Math.max(altoTextoPx(E.p, t), 7 / E.V.k); return q[0] >= t.p[0] - 3 / E.V.k && q[0] <= t.p[0] + t.s.length * h * .55 && q[1] <= t.p[1] + 3 / E.V.k && q[1] >= t.p[1] - h; }); }
-const rectLibreE = e => !esReal(E.p, e) || e.k === 'bpc';   // de referencia (y la bandeja, para su largo): se estiran desde sus esquinas
+const rectLibreE = e => !esReal(E.p, e) || ['bpc', 'tg', 'tfv'].includes(e.k);   // de referencia (y la bandeja, para su largo): se estiran desde sus esquinas
 const figEn = q => [...(E.p.figPaneles || [])].reverse().find(f => f.pts.length >= 3 && pointInPoly(q, f.pts));
 const norteEn = q => E.p.norte && dist(q, [E.p.norte.x, E.p.norte.y]) < 36 / E.V.k;
 function bloqueEn(q) { const B = E.R.bloques.find(b => pointInPoly(q, b.q)); return B ? { ...B, rid: E.p.roofs[B.ri].id } : null; }
@@ -357,6 +372,7 @@ function down(ev) {
     else E.temp.pts.push(q);
     dibujarTodo(); return;
   }
+  if (E.tool === 'piso') { antes(); p.suelo = q[1]; E.tool = 'sel'; log('NIVEL DE PISO marcado'); despues(); render(); return; }
   if (E.tool === 'conjunto') { const cj = [...CONJUNTOS_INCLUIDOS, ...(E.conjuntos || [])].find(x => x.id === E.conjunto); if (!cj) return; antes();
     if (cj.vista && !p.equipos.length) p.vistaEquipos = cj.vista;
     const r = insertarConjunto(p, cj, q); E.sel = r.equipos[0] ? { t: 'equipo', id: r.equipos[0].id } : null; E.tool = 'sel'; log(`CONJUNTO  ${cj.nombre}`); despues(); render(); return; }
@@ -664,7 +680,7 @@ function pista() {
     zona: E.zonaForma === 'circ' ? 'Arrastra desde el centro para un círculo · clic en una zona para editarla' : 'Arrastra para marcar la zona · clic en una zona para editarla',
     str: 'Clic en un panel lo agrega o quita del string activo · arrastra una ventana para varios (Shift quita)',
     equipo: `Clic donde va ${EQUIPOS[E.eqK].n.toLowerCase()}`, ruta: 'Clic en cada punto del recorrido · Enter o doble clic termina',
-    cota: 'Clic en dos puntos para acotar', conjunto: 'Clic donde va la esquina superior izquierda del conjunto', figpan: E.figForma === 'poly' ? 'Clic en cada esquina de la figura · Enter o clic en la primera cierra' : 'Clic en las 4 esquinas (arriba-izq, arriba-der, abajo-der, abajo-izq): sirve en perspectiva', texto: 'Clic donde va el texto', norte: 'Clic donde va el norte', pan: 'Arrastra para mover la vista',
+    cota: 'Clic en dos puntos para acotar', piso: 'Clic a la altura del piso terminado (nivel ±0,00): desde ahí se miden las alturas de las normas', conjunto: 'Clic donde va la esquina superior izquierda del conjunto', figpan: E.figForma === 'poly' ? 'Clic en cada esquina de la figura · Enter o clic en la primera cierra' : 'Clic en las 4 esquinas (arriba-izq, arriba-der, abajo-der, abajo-izq): sirve en perspectiva', texto: 'Clic donde va el texto', norte: 'Clic donde va el norte', pan: 'Arrastra para mover la vista',
     sel: E.step === 'etiquetas' ? 'Clic en una etiqueta, cota o texto para editarla · arrástrala para moverla · Supr la quita' : E.step === 'paneles' ? (techoAct() && techoAct().modo === 'manual' ? 'Clic en un lugar vacío del techo para poner un bloque · clic en un bloque para editarlo' : 'Clic en un techo para elegirlo · clic en un panel lo saca o devuelve') : 'Clic para seleccionar · arrastra para mover · Supr borra'
   }[t] || '';
   h.textContent = txt; h.hidden = !txt;
@@ -678,6 +694,39 @@ function barraHojas() {
     ${tab(null, nombrePrincipal(P), tipoPrincipal(P) === 'techo' ? 'principal' : tipoPrincipal(P), !!P.img)}${hs.map(h => tab(h.id, h.nombre, h.tipo, !!h.img)).join('')}
     <button class="hoja-mas" data-act="hoja-nueva" title="Agregar una hoja de diseño: otra foto con su escala y sus dibujos">${ic('plus', 14)}<span>Nueva hoja</span></button>
     <span class="tb-sp"></span><button class="hoja-ed" data-act="hoja-renombrar" title="Cambiar el nombre de la hoja activa (también: doble clic en la pestaña)">Cambiar nombre</button><button class="hoja-ed" data-act="hoja-duplicar" title="Hacer una copia de la hoja activa con su foto y sus dibujos">Duplicar hoja</button><button class="hoja-ed" data-act="hoja-editar" title="Tipo, nombre o borrar la hoja activa">Editar hoja</button></nav>`;
+}
+/* ---------- Configuración: normas (se guardan en este navegador) ---------- */
+function dialogoConfig() {
+  let normas = JSON.parse(JSON.stringify(E.normas || NORMAS_BASE));
+  const d = document.createElement('dialog'); d.className = 'dlg dlg-cfg';
+  const eqs = Object.entries(EQUIPOS).filter(([k, Q]) => !Q.soloRef), cans = Object.entries(CANAL).filter(([k, C]) => !C.riel && !C.libre);
+  const fila = (n, i) => `<div class="cfg-n" data-i="${i}">
+      <div class="row"><label class="chk"><input type="checkbox" data-n="activa" ${n.activa !== false ? 'checked' : ''}> Activa</label><span class="tb-sp"></span><button class="btn sm del" data-cfg="borrar" title="Borrar norma">${ic('trash', 14)}</button></div>
+      <label class="f"><span>Nombre</span><input class="in" data-n="nombre" value="${esc(n.nombre || '')}"></label>
+      <div class="row"><label class="f"><span>Qué revisa</span><select class="in" data-n="tipo">${Object.entries(TIPOS_NORMA).map(([k, t]) => `<option value="${k}" ${n.tipo === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
+      <div class="row"><label class="f mini"><span>Mínimo</span><span class="fi"><input class="in" data-n="min" value="${n.min ?? ''}" inputmode="decimal"><em>m</em></span></label>
+        ${n.tipo === 'alturaSup' ? `<label class="f mini"><span>Máximo</span><span class="fi"><input class="in" data-n="max" value="${n.max ?? ''}" inputmode="decimal"><em>m</em></span></label>` : ''}
+        ${n.tipo === 'alturaInf' ? `<label class="f mini"><span>Solo tableros</span><select class="in" data-n="ubic"><option value="">Cualquiera</option><option value="armario" ${n.ubic === 'armario' ? 'selected' : ''}>En armario</option><option value="intemperie" ${n.ubic === 'intemperie' ? 'selected' : ''}>A la intemperie</option></select></label>` : ''}</div>
+      <div class="cfg-chips">${n.tipo === 'canalMin' ? cans.map(([k, C]) => `<label><input type="checkbox" data-lista="canal" value="${k}" ${(n.canal || []).includes(k) ? 'checked' : ''}> ${esc(C.corto)}</label>`).join('') : eqs.map(([k, Q]) => `<label><input type="checkbox" data-lista="equipos" value="${k}" ${(n.equipos || []).includes(k) ? 'checked' : ''}> ${esc(Q.n)}</label>`).join('')}</div>
+    </div>`;
+  const pintar = () => { d.innerHTML = `<form method="dialog"><h2>Configuración</h2>
+      <h3 class="cfg-t">Normas</h3><p class="mut">Se revisan en la vista de frente de los equipos con medida real, midiendo desde el nivel de piso de cada hoja. Solo dan advertencias, que el ingeniero puede marcar como revisadas. Quedan guardadas en este navegador.</p>
+      <div class="cfg-lista">${normas.map(fila).join('')}</div>
+      <div class="row wrap"><button class="btn sm" data-cfg="nueva">${ic('plus', 14)} Agregar norma</button><button class="btn sm" data-cfg="base">Volver a las normas iniciales</button></div>
+      <div class="row end"><button class="btn" value="cancel">Cancelar</button><button class="btn pri" value="ok">Guardar</button></div></form>`; };
+  const leer = () => d.querySelectorAll('.cfg-n').forEach(el => { const n = normas[+el.dataset.i];
+    el.querySelectorAll('[data-n]').forEach(i => { const k = i.dataset.n; if (i.type === 'checkbox') n[k] = i.checked; else if (k === 'min' || k === 'max') { const v = parseNum(i.value); if (v != null) n[k] = v; else delete n[k]; } else if (k === 'ubic') { if (i.value) n.ubic = i.value; else delete n.ubic; } else n[k] = i.value; });
+    const ls = el.querySelectorAll('[data-lista]'); if (ls.length) { const campo = ls[0].dataset.lista; n[campo] = [...ls].filter(x => x.checked).map(x => x.value); } });
+  pintar(); document.body.appendChild(d); d.showModal();
+  d.addEventListener('change', ev => { if (ev.target.dataset.n === 'tipo') { leer(); pintar(); } });
+  d.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-cfg]'); if (!b) return; ev.preventDefault(); leer();
+    if (b.dataset.cfg === 'nueva') normas.push({ id: 'n' + Date.now().toString(36), nombre: 'Nueva norma', tipo: 'alturaSup', equipos: ['inv'], min: 0.6, max: 2, activa: true });
+    if (b.dataset.cfg === 'borrar') normas.splice(+b.closest('.cfg-n').dataset.i, 1);
+    if (b.dataset.cfg === 'base' && confirm('¿Volver a las normas iniciales? Se pierden las que agregaste o cambiaste.')) normas = JSON.parse(JSON.stringify(NORMAS_BASE));
+    pintar();
+  });
+  d.addEventListener('close', () => { if (d.returnValue === 'ok') { leer(); E.normas = normas; guardarNormas(normas); toast('Normas guardadas'); panel(); dibujarTodo(); } d.remove(); });
 }
 function renombrarHoja() {
   const h = hojaActiva(), P = E.proyecto, actual = h ? h.nombre : nombrePrincipal(P);
@@ -858,6 +907,12 @@ function panel() {
   }
   if (E.step === 'equipos') {
     const mis = E.conjuntos || [];
+    const avisos = E.normas ? revisarNormas(p, E.normas) : [], pend = avisos.filter(a => !a.revisada);
+    h += sec(`Normas${p.suelo != null ? (pend.length ? ` · ${pend.length} advertencia(s)` : ' · sin advertencias') : ''}`, p.suelo == null
+      ? `<p class="mut">Para revisar las normas (alturas de equipos y canalizaciones) marca el nivel de piso en la foto. Se revisan los equipos con medida real (de frente).</p><button class="btn sm" data-act="tool" data-k="piso">Marcar nivel de piso</button>`
+      : `${avisos.length ? `<div class="normas">${avisos.map(a => `<label class="norma${a.revisada ? ' ok' : ''}"><input type="checkbox" data-act="norma-ok" data-k="${esc(a.key)}" ${a.revisada ? 'checked' : ''}><span>${esc(a.texto)}<em>${esc(a.norma.nombre)}</em></span></label>`).join('')}</div>
+        <p class="mut">Son solo advertencias: si ya lo revisaste y está bien, marca la casilla y desaparece del dibujo.</p>` : `<div class="aviso ok">${ic('check', 16)}<span>Todo cumple las normas activas.</span></div>`}
+        <div class="row wrap"><button class="btn sm" data-act="tool" data-k="piso">Marcar el piso de nuevo</button><button class="btn sm" data-act="piso-quitar">Quitar nivel de piso</button><button class="btn sm" data-act="config">Normas…</button></div>`, pend.length > 0);
     h += sec('Conjuntos para empezar', `<p class="mut">Equipos con medida real y canalizaciones ya armados (como la zona de equipos de los planos): elige uno, haz clic en la foto y después mueve o cambia lo que haga falta.</p>
       <div class="lista">${[...CONJUNTOS_INCLUIDOS, ...mis].map(cj => `<div class="row cj-f"><button class="li" data-act="conj" data-k="${cj.id}" aria-pressed="${E.tool === 'conjunto' && E.conjunto === cj.id}" title="${esc(cj.detalle || '')}"><b>${esc(cj.nombre)}</b><span>${esc(cj.detalle || '')}</span></button>${cj.id.startsWith('cj-') ? '' : `<button class="btn sm del" data-act="conj-del" data-k="${cj.id}" title="Borrar este conjunto">${ic('trash', 14)}</button>`}</div>`).join('')}</div>
       <button class="btn sm" data-act="conj-guardar" ${p.equipos.length ? '' : 'disabled'}>${ic('save', 14)} Guardar los equipos de esta hoja como conjunto</button>`);
@@ -907,6 +962,7 @@ function propsSel(s, { num, rango, seg }) {
         <label class="chk"><input type="checkbox" data-campo="eq.verMed" ${p.verMedidas && e.verMed !== false ? 'checked' : ''}> Mostrar sus medidas en el dibujo</label>
         ${escala(p) ? '' : rango('eq.f', Math.round((e.f || 1) * 100), 10, 500, 'Tamaño en el dibujo (sin escala)', ' %')}`; })()}
       ${e.k === 'bat' ? `<div class="f"><span>Módulos de batería</span><span class="row">${stepper('eq.mods', e.mods || 3)} módulos (de frente se apilan)</span></div>` : ''}
+      ${['tg', 'tfv'].includes(e.k) ? `<div class="f"><span>Ubicación del tablero</span>${seg('eq.ubic', e.ubic || 'armario', [['armario', 'En armario'], ['intemperie', 'A la intemperie']])}</div>` : ''}
       <label class="chk"><input type="checkbox" data-campo="eq.etqVer" ${!(e.etq && e.etq.oculta) ? 'checked' : ''}> Mostrar su etiqueta</label>
       <label class="f"><span>Rótulo</span><input class="in" data-campo="eq.rotulo" value="${esc(e.rotulo || '')}" placeholder="${esc(EQUIPOS[e.k].n)}"></label>${rango('eq.ang', Math.round(e.ang || 0), -180, 180, 'Giro')}${del}`; }
   if (s.t === 'ruta') { const r = p.rutas.find(x => x.id === s.id); if (!r) return '';
@@ -915,6 +971,7 @@ function propsSel(s, { num, rango, seg }) {
       ${tramos.length ? `<label class="f"><span>Tramo</span><select class="in" data-campo="ruta.tramo"><option value="">—</option>${tramos.map(([k, n]) => `<option value="${k}" ${r.tramo === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>` : ''}
       ${CANAL[r.k]?.libre ? `<div class="f"><span>Color</span><div class="colores">${COLORES_LINEA.map(c => `<button data-act="set" data-campo="ruta.color" data-v="${c}" aria-pressed="${(r.color || '#FFFFFF') === c}" style="--c:${c}"></button>`).join('')}</div></div>
         <label class="chk"><input type="checkbox" data-campo="ruta.dash" ${r.dash ? 'checked' : ''}> Segmentada</label>` : ''}
+      ${!CANAL[r.k]?.riel && !CANAL[r.k]?.libre && !['sub', 'subcc'].includes(r.k) ? `<label class="chk"><input type="checkbox" data-campo="ruta.aSuelo" ${r.aSuelo ? 'checked' : ''}> Va a suelo (no aplica la altura mínima)</label>` : ''}
       <label class="chk"><input type="checkbox" data-campo="ruta.etqVer" ${!(r.etq && r.etq.oculta) ? 'checked' : ''}> Mostrar su etiqueta</label>
       ${r.k === 'riel' && !escala(p) ? num('ruta.mManual', r.mManual ?? '', { l: 'Largo real del riel', u: 'm' }) : ''}
       <dl class="dl"><dt>Largo</dt><dd>${escala(p) ? fmt(largoM(p, r.pts), 2) + ' m' : r.mManual ? fmt(r.mManual, 2) + ' m (escrito)' : '— (sin escala)'}</dd><dt>Vértices</dt><dd>${r.pts.length}</dd></dl><p class="mut">Arrastra los cuadros azules para mover vértices.</p>${del}`; }
@@ -1010,6 +1067,8 @@ document.addEventListener('click', ev => {
     case 'conj-guardar': { const n = (window.prompt('Nombre del conjunto (queda guardado en este navegador para otros proyectos):', 'Mi zona de equipos') || '').trim(); if (!n) break; const cj = conjuntoDeHoja(p, n); if (!cj) break; E.conjuntos = [...(E.conjuntos || []), cj]; guardarAjuste('conjuntosEquipos', E.conjuntos); toast(`Conjunto «${n}» guardado`); panel(); break; }
     case 'linea-color': E.lineaColor = b.dataset.v; E.rutaK = 'otra'; E.tool = 'ruta'; E.temp = null; render(); pista(); break;
     case 'linea-dash': E.lineaDash = !E.lineaDash; E.rutaK = 'otra'; E.tool = 'ruta'; E.temp = null; render(); pista(); break;
+    case 'piso-quitar': antes(); delete p.suelo; despues(); break;
+    case 'config': dialogoConfig(); break;
     case 'etq-sel': E.sel = { t: 'etq', of: b.dataset.of, id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'sel-obj': E.sel = { t: b.dataset.t, id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'etq-ojo': { const ow = listaEtq(b.dataset.of).find(x => x.id === b.dataset.id); if (!ow) break; antes(); const et = (ow.etq ||= {}); et.oculta = !et.oculta; if (!et.oculta && E.sel && E.sel.id === ow.id) E.sel = null; despues(); break; }
@@ -1030,6 +1089,7 @@ document.addEventListener('click', ev => {
 document.addEventListener('change', ev => {
   if (!E) return; const t = ev.target;
   if (t.dataset.act === 'foto' && t.files[0]) { subirFoto(t.files[0]); return; }
+  if (t.dataset.act === 'norma-ok') { const p = E.p, key = t.dataset.k; p.normasOk = { ...(p.normasOk || {}) }; if (t.checked) p.normasOk[key] = true; else delete p.normasOk[key]; E.guardado = false; estadoGuardado(); programarGuardado(); panel(); dibujarTodo(); return; }
   if (esPagina()) return;
   if (t.dataset.campo) aplicar(t.dataset.campo, t.type === 'checkbox' ? t.checked : t.value, true);
 });

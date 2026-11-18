@@ -193,6 +193,11 @@ export function dibujar(g, p, V, o) {
     if (sel) grips(g, [[c[0] - w / 2, c[1] - h / 2], [c[0] + w / 2, c[1] - h / 2], [c[0] + w / 2, c[1] + h / 2], [c[0] - w / 2, c[1] + h / 2], c]);
   });
 
+  // Nivel de piso (para medir alturas en la vista de frente)
+  if (p.suelo != null) { const y = p.suelo * k - V.oy, x0 = -V.ox, x1 = (p.w || 1000) * k - V.ox;
+    g.setLineDash([10 * u, 5 * u]); g.lineWidth = 1.2 * u; g.strokeStyle = plot ? '#555' : 'rgba(255,255,255,.75)'; g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke(); g.setLineDash([]);
+    texto(g, 'NIVEL DE PISO ±0,00', x0 + 6 * u, y - 4 * u, { size: 10 * u, color: plot ? '#333' : '#fff', halo: plot ? null : 'rgba(0,0,0,.75)' }); }
+
   // Cotas
   if (vis('cotas')) {
     const cota = (A, B, txt, col, ref) => {
