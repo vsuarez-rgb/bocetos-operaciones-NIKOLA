@@ -48,7 +48,8 @@ export const CANAL = {
   cc: { n: 'Línea corriente continua (CC)', corto: 'CC', c: '#3D6BFF', dash: [10, 6], cond: 'PV1-F 2x6 mm²', ducto: 'EMT 32 / Flex. Met. 32' },
   ca: { n: 'Línea corriente alterna (CA)', corto: 'CA', c: '#FF3B3B', dash: [], cond: 'RVK 3x8,37 mm²', ducto: 'EMT 32 / Flex. Met. 32' },
   sub: { n: 'Canalización subterránea', corto: 'Subterránea', c: '#FF8A00', dash: [3, 5], cond: 'RVK 3x8,37 mm²', ducto: 'PVC 32' },
-  tie: { n: 'Línea de tierra', corto: 'Tierra', c: '#9DB0BD', dash: [], cond: 'Cu desnudo 16 mm²', ducto: '—' }
+  tie: { n: 'Línea de tierra', corto: 'Tierra', c: '#9DB0BD', dash: [], cond: 'Cu desnudo 16 mm²', ducto: '—' },
+  riel: { n: 'Riel (dibujo libre)', corto: 'Riel', c: '#FF9E3D', dash: [], cond: '—', ducto: '—', riel: true }
 };
 
 /* Colores de strings (como en AutoCAD: cian, magenta, verde, amarillo…). */
@@ -60,6 +61,7 @@ export const CAPAS = [
   { id: 'techos', n: 'TECHOS', c: '#FFFFFF' },
   { id: 'zonas', n: 'ZONAS', c: '#FF5A5A' },
   { id: 'paneles', n: 'PANELES', c: '#2FD06B' },
+  { id: 'rieles', n: 'RIELES', c: '#FF9E3D' },
   { id: 'strings', n: 'STRINGS', c: '#00E5FF' },
   { id: 'canal', n: 'CANALIZACION', c: '#3D6BFF' },
   { id: 'equipos', n: 'EQUIPOS', c: '#FF3DFF' },

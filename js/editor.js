@@ -39,7 +39,7 @@ export function abrirEditor(p, volver) {
   const hojaId = p._hoja && (p.hojas || []).some(h => h.id === p._hoja) ? p._hoja : null;
   E = { proyecto: p, hojaId, p: vistaHoja(p, hojaId), step: (p._paso === 'lamina' ? 'informe' : p._paso) || (p.ref ? (p.roofs.some(r => r.closed) ? 'paneles' : 'techos') : 'escala'), tool: null, sel: null, V: null, temp: null, D: null,
     orto: false, refent: true, rejilla: false, capas: new Set(CAPAS.map(c => c.id)), bloqueadas: new Set(), hist: [], fut: [], cmdLog: [],
-    zonaK: 'obs', zonaForma: 'rect', eqK: 'inv', rutaK: 'cc', blk: { f: 2, c: 4 }, strAct: p.strings[0]?.id || null, selPanels: new Set(), mouse: null, snap: null,
+    zonaK: 'obs', zonaForma: 'rect', figForma: 'grid', figFC: { f: 2, c: 5 }, eqK: 'inv', rutaK: 'cc', blk: { f: 2, c: 4 }, strAct: p.strings[0]?.id || null, selPanels: new Set(), mouse: null, snap: null,
     fotoAlpha: .85, guardado: true, R: null, SI: null };
   E.tool = HERR_DEF[E.step];
   render();
@@ -132,7 +132,7 @@ function render() {
 function herramientas() {
   const t = (k, icono, n, extra = '') => `<button class="tool" data-act="tool" data-k="${k}" aria-pressed="${E.tool === k}" title="${n}" ${extra}>${ic(icono, 20)}<span>${n}</span></button>`;
   const porPaso = { escala: t('ref', 'ruler', 'Referencia'), techos: t('roof', 'roof', 'Techo'), elementos: t('zona', 'block', 'Zona'), paneles: '', strings: t('str', 'string', 'Asignar'),
-    equipos: t('equipo', 'inverter', 'Equipo') + t('ruta', 'pline', 'Canalización') };
+    equipos: t('equipo', 'inverter', 'Equipo') + t('ruta', 'pline', 'Canalización') + t('figpan', 'grid', 'Paneles') };
   return t('sel', 'cursor', 'Seleccionar') + t('pan', 'hand', 'Encuadre') + `<hr>` + (porPaso[E.step] || '') + `<hr>` + t('cota', 'dim', 'Cota') + t('texto', 'text', 'Texto') + t('norte', 'north', 'Norte');
 }
 function pasoOk(k) {
@@ -145,7 +145,7 @@ function pasoOk(k) {
   if (k === 'elementos') return p.zonas.length > 0 || !!p.sinElementos;
   if (k === 'paneles') return R.n > 0;
   if (k === 'strings') { const S = E.SI || calcStrings(p, R); return p.strings.length > 0 && !S.sinString && S.lista.every(x => x.ok); }
-  if (k === 'equipos') return E.hojaId ? (p.rutas.length + p.equipos.length + p.cotas.length + p.textos.length) > 0 : p.equipos.some(e => e.k === 'inv') && p.rutas.length > 0;
+  if (k === 'equipos') return E.hojaId ? (p.rutas.length + p.equipos.length + p.cotas.length + p.textos.length + (p.figPaneles || []).length) > 0 : p.equipos.some(e => e.k === 'inv') && p.rutas.length > 0;
   if (k === 'lamina') return !!(p.lamina.jefe && p.lamina.ingeniero && p.codigo);
 }
 function log(t) { E.cmdLog.push(t); const el = $('#cmdLog'); if (el) el.innerHTML = E.cmdLog.slice(-3).map(l => `<div>${esc(l)}</div>`).join(''); }
@@ -213,6 +213,7 @@ function puntosRef() {
   p.rutas.forEach(r => r.pts.forEach(q => pts.push(q)));
   p.equipos.forEach(e => pts.push([e.x, e.y]));
   p.cotas.forEach(c => { pts.push(c.a); pts.push(c.b); });
+  (p.figPaneles || []).forEach(f => f.pts.forEach(q => pts.push(q)));
   if (E.step === 'equipos' && E.R) E.R.validos.forEach(pn => pn.q.forEach(q => pts.push(q)));
   if (E.temp && E.temp.pts) E.temp.pts.forEach(q => pts.push(q));
   return pts;
@@ -220,7 +221,7 @@ function puntosRef() {
 function cursorFoto() {
   if (!E.mouse) return null;
   let q = aFoto(...E.mouse); E.snap = null;
-  if (E.refent && ['ref', 'roof', 'ruta', 'cota', 'equipo'].includes(E.tool)) {
+  if (E.refent && ['ref', 'roof', 'ruta', 'cota', 'equipo', 'figpan'].includes(E.tool)) {
     let best = 10 / E.V.k, bq = null; puntosRef().forEach(v => { const d = dist(v, q); if (d < best) { best = d; bq = v; } });
     if (bq) { E.snap = bq; return [...bq]; }
   }
@@ -239,12 +240,14 @@ function equipoEn(q) { return [...E.p.equipos].reverse().find(e => { const Q = t
 const rutaEn = q => [...E.p.rutas].reverse().find(r => r.pts.some((v, i) => i && distSeg(q, r.pts[i - 1], v) < tol()));
 const cotaEn = q => E.p.cotas.find(c => distSeg(q, c.a, c.b) < tol());
 function textoEn(q) { return E.p.textos.find(t => { const h = Math.max(altoTextoPx(E.p, t), 7 / E.V.k); return q[0] >= t.p[0] - 3 / E.V.k && q[0] <= t.p[0] + t.s.length * h * .55 && q[1] <= t.p[1] + 3 / E.V.k && q[1] >= t.p[1] - h; }); }
+const figEn = q => [...(E.p.figPaneles || [])].reverse().find(f => f.pts.length >= 3 && pointInPoly(q, f.pts));
 const norteEn = q => E.p.norte && dist(q, [E.p.norte.x, E.p.norte.y]) < 36 / E.V.k;
 function bloqueEn(q) { const B = E.R.bloques.find(b => pointInPoly(q, b.q)); return B ? { ...B, rid: E.p.roofs[B.ri].id } : null; }
 function gripEn(q) {
   const s = E.sel; if (!s) return null; const d = 8 / E.V.k;
   if (s.t === 'roof') { const r = E.p.roofs.find(x => x.id === s.id); const i = r ? r.poly.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: r.poly, i }; }
   if (s.t === 'ruta') { const r = E.p.rutas.find(x => x.id === s.id); const i = r ? r.pts.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: r.pts, i }; }
+  if (s.t === 'fig') { const f = (E.p.figPaneles || []).find(x => x.id === s.id); const i = f ? f.pts.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: f.pts, i }; }
   if (s.t === 'cota') { const c = E.p.cotas.find(x => x.id === s.id); if (c) { if (dist(c.a, q) < d) return { obj: c, k: 'a' }; if (dist(c.b, q) < d) return { obj: c, k: 'b' }; } }
   // sin escala, las esquinas de un equipo lo agrandan o achican
   if (s.t === 'equipo' && !escala(E.p)) { const e = E.p.equipos.find(x => x.id === s.id); if (e) { const Q = tamEquipoPx(E.p, e), w = Math.max(Q.w, 12 / E.V.k) / 2, h = Math.max(Q.h, 12 / E.V.k) / 2;
@@ -260,6 +263,7 @@ function objetoEn(q) {
   const rt = E.capas.has('canal') && rutaEn(q); if (rt) return { t: 'ruta', id: rt.id };
   if (E.step === 'elementos' || E.step === 'techos') { const z = E.capas.has('zonas') && zonaEn(q); if (z) return { t: 'zona', id: z.id }; }
   if (E.step === 'escala' && E.p.ref && distSeg(q, E.p.ref.a, E.p.ref.b) < tol()) return { t: 'ref' };
+  const fg = E.capas.has('paneles') && figEn(q); if (fg) return { t: 'fig', id: fg.id };
   const r = E.capas.has('techos') && techoEn(q); if (r && E.step !== 'equipos') return { t: 'roof', id: r.id };
   return null;
 }
@@ -284,6 +288,12 @@ function down(ev) {
     else E.temp.pts.push(q);
     dibujarTodo(); return;
   }
+  if (E.tool === 'figpan') {
+    if (!E.temp) { E.temp = { tipo: 'poly', pts: [q], col: '#2FD06B' }; prompt(E.figForma === 'poly' ? 'PANELES  Precise el siguiente punto (Enter cierra):' : 'PANELES  Esquinas en orden: arriba-izq, arriba-der, abajo-der, abajo-izq'); }
+    else if (E.figForma === 'poly' && E.temp.pts.length >= 3 && dist(aPant(E.temp.pts[0]), sp) < 10) cerrarFigura();
+    else { E.temp.pts.push(q); if (E.figForma !== 'poly' && E.temp.pts.length === 4) cerrarFigura(); }
+    dibujarTodo(); return;
+  }
   if (E.tool === 'ruta') {
     if (!E.temp) { E.temp = { tipo: 'poly', pts: [q], col: CANAL[E.rutaK].c, dash: CANAL[E.rutaK].dash }; prompt(`${CANAL[E.rutaK].corto}  Precise el siguiente punto (Enter o doble clic termina):`); }
     else E.temp.pts.push(q);
@@ -302,7 +312,7 @@ function down(ev) {
   if (E.step === 'paneles') return downPaneles(raw, ev);
   const o = objetoEn(raw);
   E.sel = o; if (o && o.t === 'roof' && E.step === 'equipos') E.sel = null;
-  if (o && ['equipo', 'zona', 'texto', 'norte', 'ruta', 'cota'].includes(o.t)) E.D = { kind: 'mover', a: raw, last: raw, first: true };
+  if (o && ['equipo', 'zona', 'texto', 'norte', 'ruta', 'cota', 'fig'].includes(o.t)) E.D = { kind: 'mover', a: raw, last: raw, first: true };
   panel(); dibujarTodo();
 }
 function downPaneles(raw, ev) {
@@ -371,6 +381,7 @@ function moverSel(dx, dy, D) {
   if (s.t === 'norte') { p.norte.x += dx; p.norte.y += dy; }
   if (s.t === 'cota') { const c = p.cotas.find(x => x.id === s.id); c.a = [c.a[0] + dx, c.a[1] + dy]; c.b = [c.b[0] + dx, c.b[1] + dy]; }
   if (s.t === 'ruta') { const r = p.rutas.find(x => x.id === s.id); r.pts = r.pts.map(v => [v[0] + dx, v[1] + dy]); }
+  if (s.t === 'fig') { const f = (p.figPaneles || []).find(x => x.id === s.id); if (f) f.pts = f.pts.map(v => [v[0] + dx, v[1] + dy]); }
   if (s.t === 'bloque') { const b = p.roofs[s.ri].bloques[s.bi]; b.x += dx; b.y += dy; }
 }
 
@@ -382,8 +393,16 @@ function cerrarTecho() {
   prompt('TECHO  Precise el primer punto del siguiente techo:'); despues();
   log(`TECHO ${p.roofs.length} cerrado · ${fmt(E.R.porTecho[p.roofs.length - 1].area, 1)} m²`);
 }
+/* Paneles dibujados (cualquier hoja, con o sin escala, también en perspectiva) */
+function cerrarFigura() {
+  const t = E.temp; if (!t || t.pts.length < 3) return;
+  antes(); const f = { id: uid('f'), tipo: E.figForma === 'poly' || t.pts.length !== 4 ? 'poly' : 'grid', pts: t.pts, f: E.figFC.f, c: E.figFC.c };
+  (E.p.figPaneles ||= []).push(f); E.p.figPaneles = E.p.figPaneles; E.temp = null; E.sel = { t: 'fig', id: f.id };
+  log(`PANELES dibujados ${f.tipo === 'grid' ? `${f.f} × ${f.c}` : '(figura)'}`); prompt('Comando:'); despues();
+}
 function terminar() {
   const t = E.temp;
+  if (E.tool === 'figpan' && t) { if (t.pts.length >= 3) cerrarFigura(); else { E.temp = null; dibujarTodo(); } return; }
   if (E.tool === 'roof' && t) { if (t.pts.length >= 3) cerrarTecho(); else { E.temp = null; dibujarTodo(); } return; }
   if (E.tool === 'ruta' && t) {
     if (t.pts.length >= 2) { antes(); const st = E.p.strings[0]; const r = { id: uid('r'), k: E.rutaK, pts: t.pts, tramo: E.rutaK === 'cc' ? (E.strAct || (st && st.id) || '') : E.rutaK === 'tie' ? '' : 'inv-tg' }; E.p.rutas.push(r); E.sel = { t: 'ruta', id: r.id }; log(`CANALIZACIÓN ${CANAL[r.k].corto}  ${fmt(largoM(E.p, r.pts), 1)} m`); E.temp = null; despues(); }
@@ -513,6 +532,7 @@ function borrarSel() {
   else if (s.t === 'equipo') quitar(p.equipos, s.id);
   else if (s.t === 'ruta') quitar(p.rutas, s.id);
   else if (s.t === 'cota') quitar(p.cotas, s.id);
+  else if (s.t === 'fig') quitar(p.figPaneles || [], s.id);
   else if (s.t === 'texto') quitar(p.textos, s.id);
   else if (s.t === 'norte') p.norte = null;
   else if (s.t === 'ref') p.ref = null;
@@ -531,7 +551,7 @@ function pista() {
     zona: E.zonaForma === 'circ' ? 'Arrastra desde el centro para un círculo · clic en una zona para editarla' : 'Arrastra para marcar la zona · clic en una zona para editarla',
     str: 'Clic en un panel lo agrega o quita del string activo · arrastra una ventana para varios (Shift quita)',
     equipo: `Clic donde va ${EQUIPOS[E.eqK].n.toLowerCase()}`, ruta: 'Clic en cada punto del recorrido · Enter o doble clic termina',
-    cota: 'Clic en dos puntos para acotar', texto: 'Clic donde va el texto', norte: 'Clic donde va el norte', pan: 'Arrastra para mover la vista',
+    cota: 'Clic en dos puntos para acotar', figpan: E.figForma === 'poly' ? 'Clic en cada esquina de la figura · Enter o clic en la primera cierra' : 'Clic en las 4 esquinas (arriba-izq, arriba-der, abajo-der, abajo-izq): sirve en perspectiva', texto: 'Clic donde va el texto', norte: 'Clic donde va el norte', pan: 'Arrastra para mover la vista',
     sel: E.step === 'paneles' ? (techoAct() && techoAct().modo === 'manual' ? 'Clic en un lugar vacío del techo para poner un bloque · clic en un bloque para editarlo' : 'Clic en un techo para elegirlo · clic en un panel lo saca o devuelve') : 'Clic para seleccionar · arrastra para mover · Supr borra'
   }[t] || '';
   h.textContent = txt; h.hidden = !txt;
@@ -635,6 +655,7 @@ function panel() {
     const r = techoAct();
     h += sec('4 · Paneles', `
       <div class="kpis"><div><b>${R.n}</b><span>paneles</span></div><div><b>${fmt(R.kwp, 2)}</b><span>kWp</span></div><div><b>${R.area ? fmt(R.area, 0) : '—'}</b><span>m²</span></div></div>
+      ${R.rieles && (R.rieles.mm || p.rutas.some(x => x.k === 'riel')) ? `<dl class="dl"><dt>Metros de riel</dt><dd>${fmt((R.rieles.mm / 1000) + p.rutas.filter(x => x.k === 'riel').reduce((t, x) => t + largoRuta(p, x), 0), 1)} m${R.rieles.filas ? ` · ${R.rieles.filas} fila(s)` : ''}</dd></dl>` : ''}
       <div class="lista">${p.roofs.filter(t => t.closed).map(t => { const i = p.roofs.indexOf(t); return `<button class="li" data-act="sel-roof" data-id="${t.id}" aria-pressed="${r && r.id === t.id}"><b>Techo ${i + 1}</b><span>${R.porTecho[i].n} paneles · ${t.modo === 'manual' ? 'manual' : 'automático'}</span></button>`; }).join('') || '<p class="mut">Dibuja un techo primero.</p>'}</div>
       ${r ? `<div class="sub">Techo ${p.roofs.indexOf(r) + 1}</div>
         ${seg('roof.modo', r.modo || 'auto', [['auto', 'Automático'], ['manual', 'Manual (bloques)']])}
@@ -645,6 +666,10 @@ function panel() {
         <button class="btn sm" data-act="alinear">${ic('rot', 15)} Alinear con el borde más largo</button>
         ${num('roof.sepFila', fmt((r.sepFila ?? GAP_FILA) / 10, 0), { l: 'Espacio entre filas', u: 'cm' })}`}
         ${num('roof.setback', fmt((r.setback ?? 400) / 1000, 2), { l: 'Retiro al borde', u: 'm' })}
+        <div class="sub">Rieles</div>
+        ${seg('riel.modo', (r.rieles && r.rieles.modo) || 'no', [['no', 'Sin rieles'], ['perp', 'Perpendiculares'], ['paral', 'Paralelos']])}
+        ${r.rieles && r.rieles.modo && r.rieles.modo !== 'no' ? num('riel.d', r.rieles.d ? fmt(r.rieles.d / 10, 0) : '', { l: 'Distancia entre los 2 rieles', u: 'cm' }, `placeholder="${fmt((r.rieles.modo === 'paral' ? panelDe(p, r).w : panelDe(p, r).h) / 20, 0)} (la mitad del panel)"`) : ''}
+        ${R.rieles && R.rieles.porTecho[p.roofs.indexOf(r)] ? `<dl class="dl"><dt>Metros de riel (techo)</dt><dd>${fmt(R.rieles.porTecho[p.roofs.indexOf(r)] / 1000, 1)} m</dd></dl>` : ''}
         ${rango('roof.incl', r.incl || 0, 0, 45, 'Inclinación del techo')}
         <label class="f"><span>La pendiente baja hacia</span>${seg('roof.baja', r.baja || 'abajo', [['abajo', '↓'], ['arriba', '↑'], ['izq', '←'], ['der', '→']])}</label>
         ${(r.off || []).length ? `<button class="btn sm" data-act="devolver">Devolver ${r.off.length} panel(es) sacados</button>` : ''}
@@ -675,20 +700,31 @@ function panel() {
     h += sec('Cotas y textos', `<div class="row wrap"><button class="btn sm" data-act="tool" data-k="cota">${ic('dim', 14)} Cota</button><button class="btn sm" data-act="tool" data-k="texto">${ic('text', 14)} Texto</button><button class="btn sm" data-act="tool" data-k="norte">${ic('north', 14)} Norte</button></div>
       <p class="mut">Cota: clic en dos puntos. ${s ? 'Mide sola con la escala de la hoja; puedes cambiar su texto en Propiedades.' : 'Como la hoja no tiene escala, escribe la medida en la línea de comandos al terminarla (o después, en Propiedades).'}</p>`);
     const largos = Object.keys(CANAL).map(k => [k, p.rutas.filter(r => r.k === k).reduce((t, r) => t + largoM(p, r.pts), 0)]);
+    const figs = p.figPaneles || [], rielesL = p.rutas.filter(r => r.k === 'riel');
+    h += sec('Paneles dibujados', `<p class="mut">Para hojas sin escala o en perspectiva: figuras con el mismo relleno de los paneles. No se suman al conteo de paneles del proyecto.</p>
+      ${seg('_figForma', E.figForma, [['grid', 'Cuadrícula (4 esquinas)'], ['poly', 'Figura libre']])}
+      ${E.figForma === 'grid' ? `<div class="f"><span>Nueva cuadrícula</span><span class="row">${stepper('fig.nf', E.figFC.f)} filas × ${stepper('fig.nc', E.figFC.c)} col.</span></div>` : ''}
+      <button class="btn sm" data-act="tool" data-k="figpan">${ic('grid', 14)} Dibujar paneles</button>${figs.length ? `<p class="mut">${figs.length} figura(s) en esta hoja.</p>` : ''}`, figs.length > 0 || E.tool === 'figpan');
+    h += sec('Rieles (dibujo libre)', `<p class="mut">Para casos en perspectiva o sin cálculo automático: dibuja cada riel como una línea. ${s ? 'Se miden solos con la escala.' : 'Sin escala, escribe su largo en Propiedades.'}</p>
+      <button class="btn sm" data-act="rutaK" data-k="riel">${ic('pline', 14)} Dibujar riel</button>
+      ${rielesL.length ? `<dl class="dl"><dt>Rieles dibujados</dt><dd>${rielesL.length}</dd><dt>Total aprox.</dt><dd>${fmt(rielesL.reduce((t, r) => t + largoRuta(p, r), 0), 1)} m</dd></dl>` : ''}`, rielesL.length > 0);
     h += sec('Canalización', `
       <div class="lista">${Object.entries(CANAL).map(([k, C]) => `<button class="li" data-act="rutaK" data-k="${k}" aria-pressed="${E.tool === 'ruta' && E.rutaK === k}"><i class="ln" style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i><b>${C.n}</b><em>${fmt(largos.find(x => x[0] === k)[1], 1)} m</em></button>`).join('')}</div>
-      <p class="mut">Elige un tipo y haz clic en cada punto del recorrido. Enter o doble clic termina. Los largos pasan a los cuadros de la lámina.</p>`);
+      <p class="mut">Elige un tipo y haz clic en cada punto del recorrido. Enter o doble clic termina. El largo de cada tramo se ve aquí (no en el dibujo) y pasa a los cuadros de la lámina.</p>
+      ${p.rutas.filter(r => r.k !== 'riel').length ? `<div class="sub">Largo aprox. de cada canalización</div><div class="lista">${p.rutas.filter(r => r.k !== 'riel').map(r => { const C = CANAL[r.k] || CANAL.ca, tr = r.k === 'cc' ? (p.strings.findIndex(st => st.id === r.tramo) + 1 ? `String ${p.strings.findIndex(st => st.id === r.tramo) + 1}` : '') : { 'inv-tg': 'Inversor – TGFV', 'tg-emp': 'TG – Empalme' }[r.tramo] || '';
+        return `<button class="li" data-act="sel-ruta" data-id="${r.id}" aria-pressed="${E.sel && E.sel.id === r.id}"><i class="ln" style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i><b>${C.corto}${tr ? ' · ' + esc(tr) : ''}</b><em>${s ? fmt(largoM(p, r.pts), 1) + ' m' : '—'}</em></button>`; }).join('')}</div>` : ''}`);
   }
   // Capas (como el administrador de capas)
   h += sec(`${ic('layers', 15)} Capas`, `<div class="capas">${CAPAS.map(c => `<div class="capa"><button data-act="capa" data-k="${c.id}" aria-pressed="${E.capas.has(c.id)}" title="${E.capas.has(c.id) ? 'Ocultar' : 'Mostrar'}">${ic(E.capas.has(c.id) ? 'eye' : 'eyeoff', 15)}</button><i style="background:${c.c}"></i><span>${c.n}</span></div>`).join('')}</div>`, false);
   h += `<div class="pp-pie"><button class="btn pri" data-act="siguiente">Siguiente paso →</button></div>`;
   el.innerHTML = h;
 }
+const largoRuta = (p, r) => escala(p) ? largoM(p, r.pts) : (r.mManual || 0);
 const stepper = (campo, val) => `<span class="stp"><button data-act="stp" data-campo="${campo}" data-d="-1">−</button><b>${val}</b><button data-act="stp" data-campo="${campo}" data-d="1">+</button></span>`;
 function nombreSel(s) {
   const p = E.p;
   return { roof: () => `Techo ${p.roofs.findIndex(r => r.id === s.id) + 1}`, zona: () => 'Zona', equipo: () => EQUIPOS[(p.equipos.find(e => e.id === s.id) || {}).k]?.n || 'Equipo', ruta: () => 'Canalización',
-    cota: () => 'Cota', texto: () => 'Texto', norte: () => 'Norte', ref: () => 'Referencia', bloque: () => 'Bloque de paneles' }[s.t]?.() || '';
+    fig: () => 'Paneles dibujados', cota: () => 'Cota', texto: () => 'Texto', norte: () => 'Norte', ref: () => 'Referencia', bloque: () => 'Bloque de paneles' }[s.t]?.() || '';
 }
 function propsSel(s, { num, rango, seg }) {
   const p = E.p, del = `<button class="btn sm del" data-act="borrar">${ic('trash', 14)} Borrar</button>`;
@@ -707,10 +743,15 @@ function propsSel(s, { num, rango, seg }) {
       ${escala(p) ? '' : rango('eq.f', Math.round((e.f || 1) * 100), 10, 500, 'Tamaño en el dibujo (sin escala)', ' %')}
       <label class="f"><span>Rótulo</span><input class="in" data-campo="eq.rotulo" value="${esc(e.rotulo || '')}" placeholder="${esc(EQUIPOS[e.k].n)}"></label>${rango('eq.ang', Math.round(e.ang || 0), -180, 180, 'Giro')}${del}`; }
   if (s.t === 'ruta') { const r = p.rutas.find(x => x.id === s.id); if (!r) return '';
-    const tramos = r.k === 'cc' ? p.strings.map((st, i) => [st.id, `String ${i + 1} (${nombreString(st)})`]) : r.k === 'tie' ? [] : [['inv-tg', 'Inversor – TGFV'], ['tg-emp', 'TG – Empalme']];
+    const tramos = r.k === 'cc' ? p.strings.map((st, i) => [st.id, `String ${i + 1} (${nombreString(st)})`]) : ['tie', 'riel'].includes(r.k) ? [] : [['inv-tg', 'Inversor – TGFV'], ['tg-emp', 'TG – Empalme']];
     return `<label class="f"><span>Tipo</span><select class="in" data-campo="ruta.k">${Object.entries(CANAL).map(([k, C]) => `<option value="${k}" ${r.k === k ? 'selected' : ''}>${C.n}</option>`).join('')}</select></label>
       ${tramos.length ? `<label class="f"><span>Tramo</span><select class="in" data-campo="ruta.tramo"><option value="">—</option>${tramos.map(([k, n]) => `<option value="${k}" ${r.tramo === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>` : ''}
-      <dl class="dl"><dt>Largo</dt><dd>${fmt(largoM(p, r.pts), 2)} m</dd><dt>Vértices</dt><dd>${r.pts.length}</dd></dl><p class="mut">Arrastra los cuadros azules para mover vértices.</p>${del}`; }
+      ${r.k === 'riel' && !escala(p) ? num('ruta.mManual', r.mManual ?? '', { l: 'Largo real del riel', u: 'm' }) : ''}
+      <dl class="dl"><dt>Largo</dt><dd>${escala(p) ? fmt(largoM(p, r.pts), 2) + ' m' : r.mManual ? fmt(r.mManual, 2) + ' m (escrito)' : '— (sin escala)'}</dd><dt>Vértices</dt><dd>${r.pts.length}</dd></dl><p class="mut">Arrastra los cuadros azules para mover vértices.</p>${del}`; }
+  if (s.t === 'fig') { const f = (p.figPaneles || []).find(x => x.id === s.id); if (!f) return '';
+    return `${f.pts.length === 4 ? seg('fig.tipo', f.tipo, [['grid', 'Cuadrícula'], ['poly', 'Figura entera']]) : ''}
+      ${f.tipo === 'grid' ? `<div class="f"><span>Paneles</span><span class="row">${stepper('fig.f', f.f)} filas × ${stepper('fig.c', f.c)} col.</span></div>` : ''}
+      <p class="mut">Arrastra los cuadros azules para ajustar las esquinas (en perspectiva también).</p>${del}`; }
   if (s.t === 'texto') { const t = p.textos.find(x => x.id === s.id); if (!t) return '';
     return `<label class="f"><span>Texto</span><input class="in" data-campo="tx.s" value="${esc(t.s)}"></label>${escala(p) ? num('tx.h', fmt((t.h || 400) / 1000, 2), { l: 'Altura', u: 'm' }) : rango('tx.f', Math.round((t.f || 1) * 100), 20, 600, 'Tamaño', ' %')}${del}`; }
   if (s.t === 'norte') return `${rango('norte.ang', Math.round(p.norte.ang), 0, 359, 'Giro del norte')}${del}`;
@@ -726,6 +767,8 @@ function propsSel(s, { num, rango, seg }) {
     return `<div class="f"><span>Tamaño</span><span class="row">${stepper('b.f', b.f)} filas × ${stepper('b.c', b.c)} col.</span></div>
       ${rango('b.ang', Math.round(b.ang ?? r.ang ?? 0), -90, 90, 'Giro')}<button class="btn sm" data-act="blk-paralelo">Paralelo al borde más cercano</button>
       ${seg('b.orient', b.orient || r.orient || 'v', [['v', 'Vertical'], ['h', 'Horizontal']])}
+      ${seg('riel.bModo', (b.rieles && b.rieles.modo) || 'hereda', [['hereda', 'Rieles del techo'], ['no', 'Sin'], ['perp', 'Perp.'], ['paral', 'Paral.']])}
+      ${b.rieles && b.rieles.modo && b.rieles.modo !== 'no' ? num('riel.bD', b.rieles.d ? fmt(b.rieles.d / 10, 0) : '', { l: 'Distancia entre rieles', u: 'cm' }) : ''}
       ${rango('b.incl', b.incl ?? r.incl ?? 0, 0, 45, 'Inclinación (estructura)')}
       ${num('b.sep', fmt((b.sep ?? GAP_FILA) / 10, 0), { l: 'Entre filas', u: 'cm' })}
       <div class="row"><button class="btn sm" data-act="blk-rep" data-k="der">Repetir →</button><button class="btn sm" data-act="blk-rep" data-k="abajo">Repetir ↓</button></div>${del}`; }
@@ -756,6 +799,7 @@ document.addEventListener('click', ev => {
     case 'zext': ajustarVista(); dibujarTodo(); break;
     case 'tog': toggle(k); break;
     case 'capa': E.capas.has(k) ? E.capas.delete(k) : E.capas.add(k); panel(); dibujarTodo(); break;
+    case 'sel-ruta': E.sel = { t: 'ruta', id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'sel-roof': E.sel = { t: 'roof', id: b.dataset.id }; panel(); dibujarTodo(); pista(); break;
     case 'cerrar-techo': cerrarTecho(); break;
     case 'zonaK': E.zonaK = k; E.tool = 'zona'; panel(); pista(); render(); break;
@@ -765,7 +809,10 @@ document.addEventListener('click', ev => {
     case 'alinear': { const r = techoAct(); if (r) { antes(); r.ang = edgeAngle(r.poly); despues(); } break; }
     case 'devolver': { const r = techoAct(); if (r) { antes(); r.off = []; despues(); } break; }
     case 'set': aplicar(b.dataset.campo, b.dataset.v); break;
-    case 'stp': { const c = b.dataset.campo, d = +b.dataset.d; if (c.startsWith('blk.')) { E.blk[c.slice(4)] = Math.max(1, E.blk[c.slice(4)] + d); panel(); dibujarTodo(); } else { const bl = bloqueSel(); if (bl) { aplicar(c, Math.max(1, bl[c.slice(2)] + d)); } } break; }
+    case 'stp': { const c = b.dataset.campo, d = +b.dataset.d;
+      if (c === 'fig.nf' || c === 'fig.nc') { const k2 = c === 'fig.nf' ? 'f' : 'c'; E.figFC[k2] = Math.max(1, E.figFC[k2] + d); panel(); break; }
+      if (c === 'fig.f' || c === 'fig.c') { const f = (p.figPaneles || []).find(x => E.sel && x.id === E.sel.id); if (f) aplicar(c, Math.max(1, (f[c.slice(4)] || 1) + d)); break; }
+      if (c.startsWith('blk.')) { E.blk[c.slice(4)] = Math.max(1, E.blk[c.slice(4)] + d); panel(); dibujarTodo(); } else { const bl = bloqueSel(); if (bl) { aplicar(c, Math.max(1, bl[c.slice(2)] + d)); } } break; }
     case 'blk-paralelo': { const bl = bloqueSel(), r = techoAct(); if (bl && r) { antes(); bl.ang = anguloBordeCercano(r.poly, [bl.x, bl.y]); despues(); } break; }
     case 'blk-rep': { const r = p.roofs[E.sel.ri], bl = bloqueSel(), s = escala(p); if (!bl || !s) break; antes(); const G = geomTecho(p, r, s), g = geomBloque(p, G, bl); const d = girarV(k === 'der' ? [g.BW + g.gx, 0] : [0, g.BH + g.sep], g.a); r.bloques.push({ ...clone(bl), id: uid('b'), x: bl.x + d[0], y: bl.y + d[1] }); E.sel = { ...E.sel, bi: r.bloques.length - 1 }; despues(); break; }
     case 'borrar': borrarSel(); break;
@@ -794,6 +841,7 @@ let enVivo = false;
 function aplicar(campo, v, desdeChange, vivo) {
   const p = E.p, n = parseNum(v), r = techoAct(), s = E.sel;
   if (campo === '_zonaForma') { E.zonaForma = v; panel(); pista(); return; }
+  if (campo === '_figForma') { E.figForma = v; E.tool = 'figpan'; E.temp = null; render(); pista(); return; }
   if (campo === '_sinEscala') { antes(); p.sinEscala = !!v; despues(); render(); return; }
   if (campo === '_fotoAlpha') return;
   if (vivo) { if (!enVivo) { antes(); enVivo = true; } } else { if (!enVivo) antes(); enVivo = false; }
@@ -811,7 +859,9 @@ function aplicar(campo, v, desdeChange, vivo) {
     else e[k] = k === 'ang' ? +v : v; }
   else if (pre === 'cota') { const c = s && p.cotas.find(x => x.id === s.id); if (!c) return; const t = String(v).trim(); if (t) c.txt = t; else delete c.txt; }
   else if (pre === 'hoja') { if (k === 'verMedidas') { p.verMedidas = !!v; if (v) p.equipos.forEach(x => delete x.verMed); } else if (k === 'tamSimb') p.tamSimb = Math.max(.2, +v / 100); }
-  else if (pre === 'ruta') { const rt = obj.ruta(); if (!rt) return; rt[k] = v; }
+  else if (pre === 'ruta') { const rt = obj.ruta(); if (!rt) return; if (k === 'mManual') { if (n > 0) rt.mManual = n; else delete rt.mManual; } else rt[k] = v; }
+  else if (pre === 'fig') { const f = (p.figPaneles || []).find(x => s && x.id === s.id); if (!f) return; if (k === 'tipo') f.tipo = v; else f[k] = Math.max(1, Math.round(+v || 1)); }
+  else if (pre === 'riel') { const tgt = k.startsWith('b') ? bloqueSel() : r; if (!tgt) return; const kk = k.replace(/^b/, '').toLowerCase(); tgt.rieles ||= {}; if (kk === 'modo') { if (v === 'hereda') delete tgt.rieles; else tgt.rieles.modo = v; } else { if (n > 0) tgt.rieles.d = n * 10; else delete tgt.rieles.d; } }
   else if (pre === 'tx') { const t = obj.tx(); if (!t) return; if (k === 'h') t.h = (n || .4) * 1000; else if (k === 'f') t.f = Math.max(.1, +v / 100); else t.s = v; }
   else if (pre === 'norte') { p.norte.ang = +v; }
   else if (pre === 'str') { const st = obj.str(); if (!st) return; if (k === 'mppt') { st.mppt = +v; st.num = p.strings.filter(x => x !== st && x.mppt === +v).length + 1; } else if (k === 'largo') st.largo = n; else if (k === 'seccion') st.seccion = n || 6; }

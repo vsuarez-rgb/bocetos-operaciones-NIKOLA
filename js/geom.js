@@ -71,14 +71,14 @@ export function geomBloque(p, G, b) {
   const pw = wB / fx, ph = hB / fy;
   const sep = (sombra != null && vert ? sombra : (b.sep ?? GAP_FILA)) / (propia ? G.s : fy);
   const gx = (sombra != null && !vert ? sombra : GAP_COL) / (propia ? G.s : fx);
-  return { sep, pw, ph, o, gx, sombra, a: b.ang != null ? b.ang * Math.PI / 180 : G.a, BW: b.c * pw + (b.c - 1) * gx, BH: b.f * ph + (b.f - 1) * sep };
+  return { sep, pw, ph, o, gx, sombra, wB, hB, a: b.ang != null ? b.ang * Math.PI / 180 : G.a, BW: b.c * pw + (b.c - 1) * gx, BH: b.f * ph + (b.f - 1) * sep };
 }
 export const girarV = (d, a) => [d[0] * Math.cos(a) - d[1] * Math.sin(a), d[0] * Math.sin(a) + d[1] * Math.cos(a)];
 
 /* Paneles de todo el proyecto. Cada panel: {q (4 esquinas), key, rid, ri, bi?, off, bad} */
 export function calcular(p) {
   const out = { panels: [], bloques: [], sombras: [], filas: {}, porTecho: p.roofs.map(() => ({ n: 0, area: 0, wp: 0 })), n: 0, kwp: 0, area: 0 };
-  const s = escala(p); if (!s) { out.validos = []; out.porKey = new Map(); return out; }   // sin escala (hojas que no la necesitan): listas vacías
+  const s = escala(p); if (!s) { out.validos = []; out.porKey = new Map(); out.rieles = { lineas: [], mm: 0, filas: 0, porTecho: [] }; return out; }   // sin escala (hojas que no la necesitan): listas vacías
   const bloquean = p.zonas.filter(z => (ZONAS[z.k] || ZONAS.obs).bloquea).map(zonaPoly);
   p.roofs.forEach((r, ri) => {
     if (!r.closed || r.poly.length < 3) return;
@@ -96,7 +96,7 @@ export function calcular(p) {
           const x = x0 + j * (g.pw + g.gx), y = y0 + i * (g.ph + g.sep), key = `${r.id}:b${b.id || bi}:${i}:${j}`;
           const q = gira([[x, y], [x + g.pw, y], [x + g.pw, y + g.ph], [x, y + g.ph]]);
           const sac = off.has(key);
-          out.panels.push({ q, key, rid: r.id, ri, bi, i, j, off: sac, bad: !sac && !cabe(q) });
+          out.panels.push({ q, key, rid: r.id, ri, bi, i, j, off: sac, bad: !sac && !cabe(q), wmm: g.wB, hmm: g.hB });
         }
         out.bloques.push({ ri, bi, q: gira([[x0, y0], [x0 + g.BW, y0], [x0 + g.BW, y0 + g.BH], [x0, y0 + g.BH]]) });
         if (g.sombra != null) {
@@ -125,7 +125,7 @@ export function calcular(p) {
       while (x + pw <= maxX - sx + .01) {
         if (valid(x, y)) {
           const key = `${r.id}:a:${row}:${Math.round((x - minX) * s / 10)}`;
-          out.panels.push({ q: [[x, y], [x + pw, y], [x + pw, y + ph], [x, y + ph]].map(q => rotP(q, c, a)), key, rid: r.id, ri, off: off.has(key) });
+          out.panels.push({ q: [[x, y], [x + pw, y], [x + pw, y + ph], [x, y + ph]].map(q => rotP(q, c, a)), key, rid: r.id, ri, row, xcm: Math.round((x - minX) * s / 10), off: off.has(key), wmm: G.wmm, hmm: G.hmm });
           x += pw + gx;
         } else x += 3;
       }
@@ -145,7 +145,46 @@ export function calcular(p) {
   out.area = out.porTecho.reduce((t, x) => t + x.area, 0);
   out.validos = out.panels.filter(vale);
   out.porKey = new Map(out.validos.map(pn => [pn.key, pn]));
+  out.rieles = calcRieles(p, out);
   return out;
+}
+
+/* Rieles de los paneles (r.rieles = { modo, d } por techo; un bloque puede tener los suyos en b.rieles).
+     modo 'perp' · perpendiculares a los paneles: 2 rieles a lo largo de cada fila (como el CONJUNTO 1 de los planos)
+     modo 'paral' · paralelos a los paneles: 2 rieles por panel, en el sentido de su largo
+   d = distancia entre los 2 rieles (mm). Metros de riel = suma de las 2 líneas de cada fila, en todas las filas. */
+export const DEF_RIEL = (modo, pn) => modo === 'paral' ? Math.round(pn.wmm / 2) : Math.round(pn.hmm / 2);
+export function calcRieles(p, out) {
+  const res = { lineas: [], mm: 0, filas: 0, porTecho: p.roofs.map(() => 0) };
+  const grupos = new Map();
+  (out.validos || []).forEach(pn => {
+    const r = p.roofs[pn.ri], b = pn.bi != null ? (r.bloques || [])[pn.bi] : null, conf = (b && b.rieles && b.rieles.modo) ? b.rieles : (r.rieles || {});
+    if (!conf.modo || conf.modo === 'no') return;
+    const k = pn.bi != null ? `${pn.ri}|b${pn.bi}|${pn.i}` : `${pn.ri}|a|${pn.row}`;
+    if (!grupos.has(k)) grupos.set(k, { conf, pans: [] }); grupos.get(k).pans.push(pn);
+  });
+  const fr = (d, largo) => { const t = Math.max(.04, Math.min(.46, .5 - d / 2 / largo)); return [t, 1 - t]; };
+  grupos.forEach(({ conf, pans }) => {
+    const pn0 = pans[0], d = conf.d ?? DEF_RIEL(conf.modo, pn0);
+    if (conf.modo === 'paral') {
+      pans.forEach(pn => { fr(d, pn.wmm).forEach(t => res.lineas.push([lerp(pn.q[0], pn.q[1], t), lerp(pn.q[3], pn.q[2], t)])); res.mm += 2 * pn.hmm; res.porTecho[pn.ri] += 2 * pn.hmm; });
+      res.filas++; return;
+    }
+    // perpendiculares: tramos continuos de paneles vecinos en la fila (un hueco corta el riel)
+    pans.sort((A, B) => pn0.bi != null ? A.j - B.j : A.xcm - B.xcm);
+    const tramos = []; let act = [pans[0]];
+    for (let i = 1; i < pans.length; i++) {
+      const a = pans[i - 1], b = pans[i], seguido = pn0.bi != null ? b.j === a.j + 1 : b.xcm - a.xcm <= (a.wmm + GAP_COL) / 10 + 3;
+      if (seguido) act.push(b); else { tramos.push(act); act = [b]; }
+    }
+    tramos.push(act);
+    tramos.forEach(tr => {
+      const A = tr[0], B = tr[tr.length - 1], largo = tr.length * A.wmm + (tr.length - 1) * GAP_COL;
+      fr(d, A.hmm).forEach(t => res.lineas.push([lerp(A.q[0], A.q[3], t), lerp(B.q[1], B.q[2], t)]));
+      res.mm += 2 * largo; res.porTecho[A.ri] += 2 * largo; res.filas++;
+    });
+  });
+  return res;
 }
 
 /* Largo real (m) de una polilínea de la foto */

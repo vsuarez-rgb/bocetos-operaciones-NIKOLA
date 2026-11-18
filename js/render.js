@@ -107,6 +107,17 @@ export function dibujar(g, p, V, o) {
     if (!plot && o.step === 'paneles' && o.selBloque) { const B = R.bloques.find(b => b.ri === o.selBloque.ri && b.bi === o.selBloque.bi); if (B) { path(g, B.q.map(T), true); g.setLineDash([6, 4]); g.lineWidth = 1.6; g.strokeStyle = '#FAB704'; g.stroke(); g.setLineDash([]); grips(g, B.q.map(T)); } }
   }
 
+  // Paneles dibujados a mano (sin escala o en perspectiva): misma apariencia que los paneles
+  if (vis('paneles')) (p.figPaneles || []).forEach(f => {
+    const sel = o.sel && o.sel.t === 'fig' && o.sel.id === f.id, pts = f.pts.map(T);
+    if (f.tipo === 'poly' || f.pts.length !== 4) { panelDibujo(g, pts, { plot, u, sel }); }
+    else celdasFigura(f).forEach(c => panelDibujo(g, c.map(T), { plot, u, sel }));
+    if (sel) { path(g, pts, true); g.setLineDash([5, 4]); g.lineWidth = 1.4; g.strokeStyle = '#FAB704'; g.stroke(); g.setLineDash([]); grips(g, pts); }
+  });
+
+  // Rieles (naranjos): los calculados sobre los paneles
+  if (vis('rieles') && R && R.rieles) R.rieles.lineas.forEach(([a, b]) => { const A = T(a), B = T(b); g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.lineWidth = 1.3 * u; g.strokeStyle = plot ? '#E07B00' : '#FF9E3D'; g.stroke(); });
+
   // Strings: contorno de color alrededor de sus paneles + rótulo "String N"
   if (vis('strings') && R && o.SI) o.SI.lista.forEach((x, i) => {
     const pans = x.st.panels.map(k2 => R.porKey.get(k2)).filter(Boolean); if (!pans.length) return;
@@ -127,11 +138,11 @@ export function dibujar(g, p, V, o) {
   });
 
   // Canalización
-  if (vis('canal')) p.rutas.forEach(rt => {
+  p.rutas.forEach(rt => {
     const C = CANAL[rt.k] || CANAL.ca, pts = rt.pts.map(T), sel = o.sel && o.sel.t === 'ruta' && o.sel.id === rt.id; if (pts.length < 2) return;
+    if (!vis(C.riel ? 'rieles' : 'canal')) return;
     if (sel) { path(g, pts); g.lineWidth = 6; g.strokeStyle = 'rgba(250,183,4,.35)'; g.stroke(); }
     path(g, pts); g.setLineDash(C.dash.map(d => d * u)); g.lineWidth = 1.8 * u; g.strokeStyle = C.c; g.lineJoin = 'round'; g.stroke(); g.setLineDash([]);
-    if (s && !plot) { const m = Math.floor((pts.length - 1) / 2), q = lerp(pts[m], pts[m + 1], .5); texto(g, `${fmt(largoM(p, rt.pts), 1)} m`, q[0] + 5, q[1] - 5, { size: 11, color: C.c, halo: 'rgba(0,0,0,.8)' }); }
     if (sel) grips(g, pts);
   });
 
@@ -195,6 +206,28 @@ export function dibujar(g, p, V, o) {
   if (o.temp) o.temp(g, T);
 }
 
+/* Un panel (o una figura) con el relleno y achurado verde de los paneles */
+export function panelDibujo(g, pts, { plot, u = 1, sel } = {}) {
+  if (pts.length < 3) return;
+  path(g, pts, true); g.fillStyle = plot ? 'rgba(47,160,90,.18)' : 'rgba(47,208,107,.16)'; g.fill();
+  g.save(); path(g, pts, true); g.clip(); g.strokeStyle = plot ? 'rgba(29,107,51,.75)' : 'rgba(47,208,107,.55)'; g.lineWidth = .7 * u;
+  const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const L = Math.max(x1 - x0, y1 - y0), paso = Math.max(4 * u, Math.min(L / 9, 14 * u));
+  for (let t = -L; t <= L * 2; t += paso) { g.beginPath(); g.moveTo(x0 + t, y1); g.lineTo(x0 + t + (y1 - y0), y0); g.stroke(); }
+  g.restore();
+  path(g, pts, true); g.lineWidth = 1.3 * u; g.strokeStyle = sel ? '#FAB704' : plot ? '#1d6b33' : '#2FD06B'; g.stroke();
+}
+/* Celdas de una figura de 4 esquinas (filas × columnas), repartidas en perspectiva */
+export function celdasFigura(f) {
+  const [A, B, C, D] = f.pts, nf = Math.max(1, f.f || 1), nc = Math.max(1, f.c || 1), sep = f.sep ?? .04;
+  const P = (s, t) => { const top = lerp(A, B, s), bot = lerp(D, C, s); return lerp(top, bot, t); };
+  const out = [];
+  for (let i = 0; i < nf; i++) for (let j = 0; j < nc; j++) {
+    const s0 = (j + sep / 2) / nc, s1 = (j + 1 - sep / 2) / nc, t0 = (i + sep / 2) / nf, t1 = (i + 1 - sep / 2) / nf;
+    out.push([P(s0, t0), P(s1, t0), P(s1, t1), P(s0, t1)]);
+  }
+  return out;
+}
 /* Texto de una cota: el escrito a mano (sirve en hojas sin escala) o el largo medido */
 export function textoCota(p, ct) {
   if (ct.txt) return /^[\d.,]+$/.test(ct.txt.trim()) ? `${ct.txt.trim()} m` : ct.txt;
