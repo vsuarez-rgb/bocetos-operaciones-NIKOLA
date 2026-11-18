@@ -196,19 +196,16 @@ function ventanaBloque(contenido) {
   const m = $('#model'); if (!m) return;
   let pop = $('#popBloque');
   const ver = E && E.step === 'paneles' && E.sel && E.sel.t === 'bloque' && bloqueSel();
-  if (!ver) { if (pop) pop.remove(); return; }
+  if (!ver) { if (pop) pop.remove(); m.classList.remove('con-pop'); return; }
   if (!pop) { pop = document.createElement('div'); pop.id = 'popBloque'; pop.className = 'pop-bl'; m.appendChild(pop); pop.addEventListener('pointerdown', ev => ev.stopPropagation()); }
   if (contenido) { pop.innerHTML = `<div class="pop-bl-t"><b>Bloque ${E.sel.bi + 1}</b><span>Techo ${E.sel.ri + 1}</span><button data-act="pop-cerrar" title="Cerrar (Esc)">${ic('close', 14)}</button></div><div class="pop-bl-b">${propsSel(E.sel, formu())}</div>`; }
   posVentanaBloque();
 }
+/* La ventana del bloque va pegada al panel de la derecha (a todo lo alto del dibujo); el zoom y la barra
+   de la foto se corren a su izquierda mientras está abierta */
 function posVentanaBloque() {
-  const pop = $('#popBloque'); if (!pop || !E.R) return;
-  const B = E.R.bloques.find(b => b.ri === E.sel.ri && b.bi === E.sel.bi); if (!B) { pop.hidden = true; return; } pop.hidden = false;
-  const [W, H] = tam(), q = B.q.map(aPant), x0 = Math.min(...q.map(v => v[0])), x1 = Math.max(...q.map(v => v[0])), y0 = Math.min(...q.map(v => v[1]));
-  const pw = pop.offsetWidth || 270, ph = pop.offsetHeight || 300;
-  let left = x1 + 16; if (left + pw > W - 60) left = x0 - pw - 16; left = Math.max(8, Math.min(W - pw - 60, left));
-  const top = Math.max(8, Math.min(H - ph - 8, y0));
-  pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  const pop = $('#popBloque'), m = $('#model'); if (!pop || !E.R) return;
+  const B = E.R.bloques.find(b => b.ri === E.sel.ri && b.bi === E.sel.bi); pop.hidden = !B; if (m) m.classList.toggle('con-pop', !!B);
 }
 function dibujarTodo() {
   const cv = $('#cv'); if (!cv || !E) return;

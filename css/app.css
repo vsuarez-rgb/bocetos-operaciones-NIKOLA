@@ -513,3 +513,8 @@ select.fi-ctl { background: #1C2228; border-color: var(--ed-line); cursor: point
 .foto-op { position: absolute; right: 12px; top: 150px; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 6px; background: rgba(20,26,32,.82); border: 1px solid var(--ed-line); border-radius: 10px; font: 600 10.5px var(--f-body); color: var(--ed-mut); }
 .foto-op input { writing-mode: vertical-lr; direction: rtl; width: 18px; height: 130px; accent-color: var(--nk-amarillo); cursor: pointer; }
 .foto-op b { color: var(--ed-ink); font-weight: 600; }
+
+/* Ventana del bloque pegada al panel derecho */
+.pop-bl { left: auto !important; top: 0 !important; right: 0; bottom: 0; max-height: none; border-radius: 12px 0 0 12px; border-right-width: 0; box-shadow: -8px 0 24px rgba(0,0,0,.35); width: 290px; }
+#model.con-pop .vctl, #model.con-pop .foto-op { right: 302px; }
+#model.con-pop .hint { left: calc(50% - 145px); }
