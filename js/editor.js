@@ -142,6 +142,8 @@ function barraLineas() {
   return `<div class="subbar"><span class="subbar-t">Trazar</span>
     ${Object.entries(CANAL).filter(([k, C]) => !C.riel && !C.libre).map(([k, C]) => `<button class="sb-b" data-act="rutaK" data-k="${k}" aria-pressed="${act(k)}" title="${esc(C.n)}"><i style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i>${esc(C.corto)}</button>`).join('')}
     <span class="sb-sep"></span>
+    <button class="sb-b" data-act="eqK" data-k="cp" data-m="real" aria-pressed="${E.tool === 'equipo' && E.eqK === 'cp'}" title="Caja de paso (medida real, clic donde va)"><i class="sb-cp"></i>Caja de paso</button>
+    <span class="sb-sep"></span>
     <button class="sb-b" data-act="rutaK" data-k="otra" aria-pressed="${act('otra')}" title="Una línea cualquiera con el color que elijas"><i style="border-top:3px ${E.lineaDash ? 'dashed' : 'solid'} ${E.lineaColor}"></i>Otra línea</button>
     <span class="colores sb-cols">${COLORES_LINEA.map(c => `<button data-act="linea-color" data-v="${c}" aria-pressed="${E.lineaColor === c}" style="--c:${c}" title="${c}"></button>`).join('')}</span>
     <button class="sb-b" data-act="linea-dash" aria-pressed="${!!E.lineaDash}" title="Línea segmentada">- - -</button></div>`;

@@ -345,7 +345,8 @@ export function equipoFrente(g, e, E, md, w, h, plot, u) {
     case 'libre': equipoLibre(g, e, w, h, plot, u, relleno); break;
     case 'marca': g.lineWidth = 2.6 * u; g.strokeStyle = plot ? '#E00000' : '#FF2B2B'; g.strokeRect(-w / 2, -h / 2, w, h); break;
     case 'bpc': g.fillStyle = relleno; g.fillRect(-w / 2, -h / 2, w, h); g.strokeRect(-w / 2, -h / 2, w, h); break;
-    case 'cp': case 'cdj': g.fillStyle = relleno; g.fillRect(-w / 2, -h / 2, w, h); g.strokeRect(-w / 2, -h / 2, w, h); break;
+    case 'cp': g.fillStyle = plot ? 'rgba(0,183,212,.22)' : 'rgba(0,229,255,.32)'; g.fillRect(-w / 2, -h / 2, w, h); g.strokeRect(-w / 2, -h / 2, w, h); break;   // caja de paso: área celeste
+    case 'cdj': g.fillStyle = relleno; g.fillRect(-w / 2, -h / 2, w, h); g.strokeRect(-w / 2, -h / 2, w, h); break;
     default: caja(); if (E.l) texto(g, E.l, 0, 0, { size: Math.min(h * .4, 11 * u), color: col, align: 'center', base: 'middle', bold: true });
   }
 }
