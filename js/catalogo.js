@@ -28,20 +28,23 @@ export const ZONAS = {
    por defecto; cada equipo puede elegir un modelo de OTROS_EMAT (equipos-emat.js) con su medida real.
    El inversor toma la medida del modelo elegido en el paso Strings. */
 export const EQUIPOS = {
-  inv: { n: 'Inversor', l: '', w: 425, h: 150, c: '#FF3DFF' },
-  tg: { n: 'Tablero General', l: 'TG', w: 400, h: 200, c: '#FFE14D' },
-  tfv: { n: 'Tablero FV', l: 'TFV', w: 400, h: 200, c: '#FFE14D' },
-  med: { n: 'Medidor', l: 'M', w: 300, h: 200, c: '#35D0FF' },
-  bat: { n: 'Batería', l: 'BAT', w: 670, h: 150, c: '#52C892' },
-  dcdc: { n: 'Módulo DC/DC', l: 'DC', w: 670, h: 150, c: '#52C892' },
-  sg: { n: 'SmartGuard', l: 'SG', w: 355, h: 150, c: '#8FA8FF' },
-  sm: { n: 'Smart Power Sensor', l: 'SM', w: 72, h: 80, c: '#35D0FF' },
-  cdj: { n: 'Caja de derivación', l: 'CD', w: 200, h: 100, c: '#FFFFFF' },
-  ev: { n: 'Cargador EV', l: 'EV', w: 180, h: 145, c: '#52C892' },
-  bc: { n: 'Bomba de calor', l: 'BC', w: 1000, h: 400, c: '#2BB3A3' }
+  inv: { n: 'Inversor', l: '', w: 425, h: 150, a: 470, c: '#FF3DFF', huawei: true },
+  tg: { n: 'Tablero General', l: 'TG', w: 400, h: 200, a: 500, c: '#FFE14D', frente: 'TABLERO|GENERAL' },
+  tfv: { n: 'Tablero FV', l: 'TFV', w: 400, h: 200, a: 500, c: '#FFE14D', frente: 'TABLERO|GENERAL|FOTOVOLTAICO' },
+  med: { n: 'Medidor', l: 'M', w: 300, h: 200, a: 400, c: '#35D0FF' },
+  bat: { n: 'Batería', l: 'BAT', w: 670, h: 150, a: 360, c: '#FF3DFF', huawei: true },
+  dcdc: { n: 'Módulo DC/DC', l: 'DC', w: 670, h: 150, a: 240, c: '#FF3DFF', huawei: true },
+  sg: { n: 'SmartGuard', l: 'SG', w: 355, h: 150, a: 485, c: '#FF3DFF', huawei: true },
+  sm: { n: 'Smart Power Sensor', l: 'SM', w: 72, h: 80, a: 100, c: '#35D0FF' },
+  cdj: { n: 'Caja de derivación', l: 'CD', w: 200, h: 100, a: 200, c: '#FF3DFF' },
+  cp: { n: 'Caja de paso', l: '', w: 150, h: 75, a: 150, c: '#00E5FF' },
+  ev: { n: 'Cargador EV', l: 'EV', w: 180, h: 145, a: 335, c: '#52C892' },
+  bc: { n: 'Bomba de calor', l: 'BC', w: 1000, h: 400, a: 800, c: '#2BB3A3' },
+  bpc: { n: 'Bandeja porta conductores', l: '', w: 1500, h: 100, a: 100, c: '#FFE14D' },
+  marca: { n: 'Ubicación propuesta', l: '', w: 800, h: 60, a: 800, c: '#FF2B2B' }
 };
 /* Modelos que se pueden elegir para cada símbolo (los que tienen medida). */
-export const MODELOS_EQUIPO = k => OTROS_EMAT.filter(x => x.k === k && x.ancho);
+export const MODELOS_EQUIPO = k => OTROS_EMAT.filter(x => x.k === (k === 'bpc' ? 'bandeja' : k) && x.ancho);
 
 /* Tipos de canalización: colores de la simbología de los planos. */
 export const CANAL = {

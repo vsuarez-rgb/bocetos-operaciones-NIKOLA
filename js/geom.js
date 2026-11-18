@@ -18,12 +18,18 @@ export const bajaDe = r => r.baja || 'abajo';
 /* Escala para dibujar los equipos: la real o, si la hoja no tiene referencia, una aproximada
    (la foto mide unos 6 m de ancho) para que los símbolos se vean de un tamaño razonable. */
 export const escalaSimbolos = p => escala(p) || (p.w ? 6000 / p.w : 10);
+/* Vista de los equipos en la hoja: 'planta' (desde arriba: ancho × profundidad) o 'elevacion' (de frente,
+   como en la zona de equipos: ancho × alto). Las hojas "Zona de equipos" van de frente si no se eligió otra. */
+export const vistaEq = p => p.vistaEquipos || (p.tipoHojaPrincipal === 'equipos' && !p._esHoja ? 'elevacion' : 'planta');
 export function medidaEquipo(p, e) {
   if (e.mw > 0 && e.mh > 0) return { w: e.mw, h: e.mh, modelo: null, propia: true };      // medida escrita a mano (p. ej. la caja de derivación real)
-  if (e.k === 'inv') { const I = inversorDe(p); return { w: I.ancho || EQUIPOS.inv.w, h: I.prof || EQUIPOS.inv.h, modelo: I.modelo }; }
+  const frente = vistaEq(p) === 'elevacion', Q = EQUIPOS[e.k] || EQUIPOS.inv;
+  if (e.k === 'inv') { const I = inversorDe(p); return { w: I.ancho || Q.w, h: frente ? (I.alto || Q.a) : (I.prof || Q.h), modelo: I.modelo }; }
   const M = e.modelo && OTROS_EMAT.find(x => (x.sku || x.item) === e.modelo);
-  if (M && M.ancho) return { w: M.ancho, h: M.prof || M.alto, modelo: M.modelo };
-  const Q = EQUIPOS[e.k] || EQUIPOS.inv; return { w: Q.w, h: Q.h, modelo: null };
+  if (e.k === 'bat') { const mods = Math.max(1, e.mods || 3), wB = (M && M.ancho) || Q.w; return { w: wB, h: frente ? 240 + mods * ((M && M.alto) || Q.a) : ((M && M.prof) || Q.h), modelo: M ? M.modelo : null, mods }; }
+  if (e.k === 'bpc') { const L = (M && M.alto) || Q.w; return { w: L, h: frente ? ((M && M.prof) || Q.a) : ((M && M.ancho) || Q.h), modelo: M ? M.modelo : null }; }
+  if (M && M.ancho) return { w: M.ancho, h: frente ? (M.alto || M.prof) : (M.prof || M.alto), modelo: M.modelo };
+  return { w: Q.w, h: frente ? (Q.a || Q.h) : Q.h, modelo: null };
 }
 /* Tamaño de un equipo en px de la foto. Con escala es el real; sin escala es aproximado y se puede
    agrandar o achicar: el de toda la hoja (p.tamSimb) por el de cada equipo (e.f). */

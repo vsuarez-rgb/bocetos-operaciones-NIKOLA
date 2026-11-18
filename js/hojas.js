@@ -7,7 +7,7 @@
    ========================================================================== */
 import { uid } from './util.js';
 
-export const CLAVES_HOJA = ['img', 'w', 'h', 'ref', 'drone', 'roofs', 'zonas', 'strings', 'equipos', 'rutas', 'cotas', 'textos', 'norte', 'sinElementos', 'sinEscala', 'tamSimb', 'verMedidas', 'figPaneles', 'tamEtq', 'tamCotas', 'encerrarStrings'];
+export const CLAVES_HOJA = ['img', 'w', 'h', 'ref', 'drone', 'roofs', 'zonas', 'strings', 'equipos', 'rutas', 'cotas', 'textos', 'norte', 'sinElementos', 'sinEscala', 'tamSimb', 'verMedidas', 'figPaneles', 'tamEtq', 'tamCotas', 'encerrarStrings', 'vistaEquipos'];
 export const TIPOS_HOJA = { canalizacion: 'Recorrido de canalización', equipos: 'Zona de equipos', cargador: 'Cargador', empalme: 'Empalme y medidor', otra: 'Otra' };
 /* La hoja principal puede ser el techo con paneles (proyecto fotovoltaico) o cualquier otra, p. ej. un proyecto EXT de solo cargador */
 export const TIPOS_PRINCIPAL = { techo: 'Techo con paneles (foto de dron)', ...TIPOS_HOJA };
@@ -21,7 +21,7 @@ export function vistaHoja(pr, id) {
   if (!id) return pr;
   const hoja = t => (t.hojas || []).find(x => x.id === id);
   return new Proxy(pr, {
-    get(t, k) { const h = hoja(t); return h && CLAVES_HOJA.includes(k) ? h[k] : t[k]; },
+    get(t, k) { const h = hoja(t); if (h && k === '_esHoja') return true; if (h && k === 'vistaEquipos') return h.vistaEquipos || (h.tipo === 'equipos' ? 'elevacion' : 'planta'); return h && CLAVES_HOJA.includes(k) ? h[k] : t[k]; },
     set(t, k, v) { const h = hoja(t); if (h && CLAVES_HOJA.includes(k)) h[k] = v; else t[k] = v; return true; }
   });
 }
