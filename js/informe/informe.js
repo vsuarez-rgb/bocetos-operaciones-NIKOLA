@@ -167,7 +167,7 @@ function propsBloque(b) {
     h += `${sel('hoja', 'Hoja de diseño', ops)}
       <label class="f"><span>Encuadre</span><select class="in" data-in-encuadre><option value="dibujo" ${!b.ventana && b.encuadre !== 'foto' ? 'selected' : ''}>Ajustado a lo dibujado</option><option value="foto" ${!b.ventana && b.encuadre === 'foto' ? 'selected' : ''}>Foto completa</option><option value="propio" ${b.ventana ? 'selected' : ''}>Propio (encuadrado con el mouse)</option></select></label>
       <button class="btn sm ${S.encuadre === b.id ? 'pri' : ''}" data-act="in-encuadrar">${ic('ext', 14)} ${S.encuadre === b.id ? 'Terminar encuadre' : 'Encuadrar con el mouse'}</button>
-      ${V && V.escala ? `<label class="f"><span>Escala de la vista</span><span class="fi"><em>1 :</em><input class="in" data-in-escala value="${esc1}" inputmode="numeric"></span></label>` : '<p class="mut">La hoja no tiene referencia de escala: la vista se encuadra libre.</p>'}
+      ${V && V.escala ? `<label class="f"><span>Escala de la vista: 1 : (escribe el número)</span><input class="in" data-in-escala value="${esc1}" inputmode="numeric"></label>` : '<p class="mut">La hoja no tiene referencia de escala: la vista se encuadra libre.</p>'}
       <label class="f"><span>Foto (opacidad)</span><span class="fr"><input type="range" min="0" max="100" data-in="b.foto" value="${b.foto ?? 100}"><output>${b.foto ?? 100}%</output></span></label>`;
   }
   if (b.tipo === 'tabla') h += `<p class="mut">Doble clic en una celda de la página para escribir en ella (Enter guarda, Tab pasa a la siguiente, Esc cancela).</p>

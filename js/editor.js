@@ -100,6 +100,7 @@ function render() {
     <main class="model" id="model">
       ${E.step === 'lamina' ? `<div id="laminaWrap" class="lamina-wrap"></div>` : E.step === 'ficha' ? `<div id="fichaWrap" class="ficha-wrap"></div>` : E.step === 'informe' ? `<div id="informeWrap" class="informe-wrap"></div>` : E.step === 'unilineal' ? `<div id="uniWrap" class="informe-wrap"></div>` : `<canvas id="cv" tabindex="0" aria-label="Espacio modelo"></canvas>
       <div class="ucs">${ic('move', 14)}<span>X</span></div>
+      <div class="foto-op" title="Transparencia de la foto mientras dibujas (no cambia la del informe)"><span>Foto</span><input type="range" min="0" max="100" value="${Math.round(fotoOp() * 100)}" data-campo="_fotoAlpha" aria-label="Opacidad de la foto"><b>${Math.round(fotoOp() * 100)}%</b></div>
       <div class="vctl"><button data-act="zin" title="Acercar">${ic('zoomin', 16)}</button><button data-act="zout" title="Alejar">${ic('zoomout', 16)}</button><button data-act="zext" title="Zoom extensión (Z)">${ic('ext', 16)}</button></div>
       <div class="hint" id="hint"></div>`}
     </main>
@@ -117,7 +118,7 @@ function render() {
     <button data-act="tog" data-k="refent" aria-pressed="${E.refent}" title="Referencia a objetos (F3)">REFENT</button>
     <span class="st-sp"></span>
     <span>${escala(p) ? `1 px = ${fmt(escala(p), 1)} mm` : 'Sin escala'}</span>
-    <label class="st-foto">Foto <input type="range" min="0" max="100" value="${Math.round(E.fotoAlpha * 100)}" data-campo="_fotoAlpha" aria-label="Opacidad de la foto"></label>
+
   </div>`}`;
   panel();
   if (E.step === 'lamina') { vistaLamina($('#laminaWrap'), E.proyecto, E.R, E.SI); return; }
@@ -182,6 +183,8 @@ function ptEv(ev) { const rc = $('#cv').getBoundingClientRect(); return [ev.clie
 /* Clave de una sección del panel: su título sin HTML, sin números ni el detalle variable ("Techo 2" = "Techo") */
 const claveSec = t => String(t).replace(/<[^>]+>/g, '').replace(/·.*$/, '').replace(/\d+/g, '').trim().toLowerCase();
 document.addEventListener('toggle', ev => { const d = ev.target; if (!E || !d.matches?.('#props details.pp[data-sec]')) return; E.abiertas.set(d.dataset.sec, d.open); }, true);
+/* Opacidad de la foto en el editor: la de cada hoja (se guarda), 85 % si no se ha cambiado */
+const fotoOp = () => E.p.fotoOpac ?? .85;
 function formu() {
   const num = (campo, val, unidad, extra = '') => `<label class="f"><span>${unidad.l}</span><span class="fi"><input class="in" data-campo="${campo}" value="${val ?? ''}" inputmode="decimal" ${extra}><em>${unidad.u}</em></span></label>`;
   const rango = (campo, val, min, max, l, u = '°') => `<label class="f"><span>${l}</span><span class="fr"><input type="range" min="${min}" max="${max}" step="1" value="${val}" data-campo="${campo}" data-u="${u}"><output>${val}${u}</output></span></label>`;
@@ -216,7 +219,7 @@ function dibujarTodo() {
   const p = E.p, s = escala(p);
   const selBloque = E.sel && E.sel.t === 'bloque' ? E.sel : null;
   E.hits = [];
-  dibujar(g, p, E.V, { hits: E.hits, rotulos: E.step === 'etiquetas', capas: E.capas, sel: E.sel, step: E.step, R: E.R, SI: E.SI, fotoAlpha: E.fotoAlpha, selBloque, selPanels: E.step === 'strings' ? panelesDelActivo() : null, verRef: E.step === 'escala',
+  dibujar(g, p, E.V, { hits: E.hits, rotulos: E.step === 'etiquetas', capas: E.capas, sel: E.sel, step: E.step, R: E.R, SI: E.SI, fotoAlpha: fotoOp(), selBloque, selPanels: E.step === 'strings' ? panelesDelActivo() : null, verRef: E.step === 'escala',
     temp: (g2, T) => temporal(g2, T) });
   if (E.rejilla && s) rejilla(g, W, H, s);
   cursor(g, W, H);
@@ -991,7 +994,7 @@ document.addEventListener('change', ev => {
 document.addEventListener('input', ev => {
   if (!E) return; const t = ev.target; if (t.type !== 'range' || !t.dataset.campo) return;
   const o = t.parentElement.querySelector('output'); if (o) o.textContent = t.value + (t.dataset.u ?? (o.textContent.endsWith('°') ? '°' : ''));
-  if (t.dataset.campo === '_fotoAlpha') { E.fotoAlpha = t.value / 100; dibujarTodo(); return; }
+  if (t.dataset.campo === '_fotoAlpha') { E.p.fotoOpac = t.value / 100; const b = t.parentElement.querySelector('b'); if (b) b.textContent = t.value + '%'; E.guardado = false; estadoGuardado(); programarGuardado(); dibujarTodo(); return; }
   aplicar(t.dataset.campo, t.value, false, true);
 });
 function bloqueSel() { const s = E.sel; return s && s.t === 'bloque' ? (E.p.roofs[s.ri] || {}).bloques?.[s.bi] : null; }
