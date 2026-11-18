@@ -12,7 +12,7 @@
 import { esc, fmt, ic, toast, parseNum } from './util.js';
 import { INVERSORES } from './catalogo.js';
 import { calcular, calcStrings, calcCA, inversorDe } from './geom.js';
-import { unilinealSVG, opcUni } from './lamina.js';
+import { unilinealSVG, opcUni, BASES_UNI, baseUni, baseSugerida } from './lamina.js';
 
 const VB = [262, 314];                 // viewBox del unilineal (mm)
 const S = { p: null, el: null, cb: {}, zoom: null, z: 1 };
@@ -23,7 +23,7 @@ const cambio = () => { S.cb.cambio && S.cb.cambio(); };
 export function vistaUnilineal(el, p, cb = {}) {
   S.el = el; S.p = p; S.cb = cb;
   el.innerHTML = `<div class="uni">
-    <div class="inf-bar"><span class="inf-bar-t">Diagrama unilineal</span><span class="uni-ayuda">Clic en cualquier texto para cambiarlo · Ctrl + rueda = zoom</span><span class="tb-sp"></span>
+    <div class="inf-bar"><span class="inf-bar-t">Unilineal · <span id="uniBase"></span></span><button class="inf-btn" data-act="uni-bases" style="margin-left:10px">Unilineales base…</button><span class="uni-ayuda">Clic en cualquier texto para cambiarlo · Ctrl + rueda = zoom</span><span class="tb-sp"></span>
       <span class="inf-zoom"><button data-act="uni-z" data-k="-1" title="Alejar">−</button><button data-act="uni-z" data-k="0" title="Ajustar a la pantalla" id="uniZ">Ajustar</button><button data-act="uni-z" data-k="1" title="Acercar">+</button></span></div>
     <div class="inf-scroll uni-scroll"><div class="uni-papel"></div></div></div>`;
   dibujarSVG();
@@ -32,6 +32,7 @@ function dibujarSVG() {
   const pap = S.el?.querySelector('.uni-papel'); if (!pap) return;
   const R = calcular(S.p), SI = calcStrings(S.p, R);
   pap.innerHTML = unilinealSVG(S.p, R, SI);
+  const nb = S.el.querySelector('#uniBase'); if (nb) nb.textContent = baseUni(S.p).n;
   ajustar();
 }
 function ajustar() {
@@ -52,7 +53,11 @@ export function panelUnilineal(p) {
   const chk = (k, l, on) => `<label class="chk"><input type="checkbox" data-uni="${k}" ${on ? 'checked' : ''}> ${l}</label>`;
   const disyDef = `${inv.fase === 'Trifásico' ? '4' : '2'}x${ca.prot} A Curva C`, difDef = inv.dif || `${inv.fase === 'Trifásico' ? '4' : '2'}x63 A 300 mA Tipo A`;
   const mods = Object.entries(U.textos || {});
-  let h = sec('Unilineal', `<p class="mut">Se arma solo con los datos del proyecto. Cambia los datos aquí o haz clic en cualquier texto del diagrama para escribirlo a mano. Es el mismo unilineal de las láminas A1 y del bloque «Unilineal» del informe.</p>
+  const B = baseUni(p), sug = baseSugerida(p), grupos = [...new Set(BASES_UNI.map(b => b.g))];
+  let h = sec('Unilineal base', `<label class="f"><span>Base</span><select class="in" data-uni="u.base"><option value="" ${!p.uni?.base ? 'selected' : ''}>Sugerido por el inversor: ${esc(sug.n)}</option>${grupos.map(g => `<optgroup label="${esc(g)}">${BASES_UNI.filter(b => b.g === g).map(b => `<option value="${b.id}" ${p.uni?.base === b.id ? 'selected' : ''}>${esc(b.n)}</option>`).join('')}</optgroup>`).join('')}</select></label>
+    <button class="btn sm" data-act="uni-bases">Ver todos los unilineales base</button>
+    ${(o => o ? `<div class="aviso warn">${ic('alert', 15)}<span>Esta base no calza con el inversor del proyecto (${esc(inv.modelo)}).</span></div><button class="btn sm" data-act="uni-inv" data-id="${o.id}">Cambiar el inversor a ${esc(o.modelo)}</button>` : '')(invDeBase(B, p))}`);
+  h += sec('Unilineal', `<p class="mut">Se arma solo con los datos del proyecto. Cambia los datos aquí o haz clic en cualquier texto del diagrama para escribirlo a mano. Es el mismo unilineal de las láminas A1 y del bloque «Unilineal» del informe.</p>
     <div class="kpis"><div><b>${SI.lista.length}</b><span>strings</span></div><div><b>${inv.mppt}</b><span>MPPT</span></div><div><b>${fmt(inv.kw * (p.cantInv || 1), 1)}</b><span>kW nom.</span></div></div>`);
   h += sec('Inversor', `<label class="f"><span>Modelo</span><select class="in" data-uni="p.inversor">${['Monofásico', 'Trifásico'].map(fa => `<optgroup label="${fa}s">${INVERSORES.filter(x => x.fase === fa).map(x => `<option value="${x.id}" ${inv.id === x.id ? 'selected' : ''}>${esc(x.modelo)} · ${x.kw} kW</option>`).join('')}</optgroup>`).join('')}</select></label>
     ${inp('p.cantInv', 'Cantidad de inversores', p.cantInv || 1)}`);
@@ -77,6 +82,8 @@ export function panelUnilineal(p) {
 /* ---------- Acciones y cambios ---------- */
 export function accionUnilineal(a, b) {
   if (!a.startsWith('uni-')) return false;
+  if (a === 'uni-bases') galeria();
+  if (a === 'uni-inv') { S.p.inversor = b.dataset.id; listo(); toast('Inversor cambiado; revisa los strings en el paso Strings'); }
   if (a === 'uni-z') { const k = +b.dataset.k, fit = S.zoom ? null : S.z; S.zoom = k === 0 ? null : Math.max(.3, Math.min(12, (S.zoom || fit || 1) * (k > 0 ? 1.25 : .8))); ajustar(); }
   if (a === 'uni-reset') { delete uni().textos?.[b.dataset.k]; listo(); }
   if (a === 'uni-reset-all') { if (confirm('¿Volver todos los textos del unilineal al texto calculado?')) { uni().textos = {}; listo(); } }
@@ -90,6 +97,7 @@ document.addEventListener('change', ev => {
   const [pre, ...resto] = k.split('.'), campo = resto.join('.');
   if (pre === 'p') { if (campo === 'cantInv') p.cantInv = Math.max(1, Math.round(parseNum(v) || 1)); else p[campo] = v; }
   else if (pre === 'L') { if (campo.startsWith('largo_')) { const n = parseNum(v); if (n != null && isFinite(n)) L[campo] = n; else delete L[campo]; } else L[campo] = v; }
+  else if (pre === 'u' && campo === 'base') { if (v) U.base = v; else delete U.base; }
   else if (pre === 'u') { if (v) delete U[campo]; else U[campo] = false; }
   else if (pre === 'x') { U.extras ||= {}; if (typeof v === 'boolean') { if (v) U.extras[campo] = true; else delete U.extras[campo]; } else if (String(v).trim()) U.extras[campo] = String(v).trim(); else delete U.extras[campo]; }
   else if (pre === 's') {
@@ -98,7 +106,7 @@ document.addEventListener('change', ev => {
     else if (c === 'largo') { const n = parseNum(v); if (n != null && isFinite(n)) st.largo = n; else delete st.largo; }
     else if (c === 'seccion') st.seccion = parseNum(v) || 6;
   }
-  listo(typeof v === 'boolean' || ['p.inversor', 'p.cantInv'].includes(k) || pre === 's' || pre === 'L');
+  listo(typeof v === 'boolean' || k === 'u.base' ||['p.inversor', 'p.cantInv'].includes(k) || pre === 's' || pre === 'L');
 });
 
 /* ---------- Clic en un texto del diagrama: escribirlo ahí mismo ---------- */
@@ -137,3 +145,30 @@ document.addEventListener('wheel', ev => {
   S.zoom = Math.max(.3, Math.min(12, z0 * (ev.deltaY < 0 ? 1.15 : 1 / 1.15))); ajustar();
   const f = S.z / z0; sc.scrollLeft = mx * f - (ev.clientX - r.left); sc.scrollTop = my * f - (ev.clientY - r.top);
 }, { passive: false });
+
+/* Inversor que corresponde a una base cuando el del proyecto no calza (null si calza o no aplica) */
+function invDeBase(b, p) {
+  const I = inversorDe(p);
+  if (b.soloEV || (b.inv ? b.inv.test(I.modelo) : (!b.fase || b.fase === I.fase))) return null;
+  return INVERSORES.find(x => (b.inv ? b.inv.test(x.modelo) : true) && (!b.fase || x.fase === b.fase)) || null;
+}
+/* ---------- Galería de los unilineales base: todos a la vista, armados con este proyecto ---------- */
+function galeria() {
+  const p = S.p, R = calcular(p), SI = calcStrings(p, R), act = baseUni(p).id, sug = baseSugerida(p).id, grupos = [...new Set(BASES_UNI.map(b => b.g))];
+  // cada base se muestra con un inversor que le calce (si el del proyecto no calza, con strings de muestra)
+  const vista = b => {
+    const otro = invDeBase(b, p), q = { ...p, inversor: otro ? otro.id : p.inversor, uni: { ...(p.uni || {}), base: b.id, textos: {} } };
+    return unilinealSVG(q, R, otro ? { ...calcStrings(q, R), lista: [] } : SI);
+  };
+  const tarjeta = b => `<button class="uni-gal-b${b.id === act ? ' on' : ''}" data-base="${b.id}"><div class="uni-gal-v">${vista(b)}</div><b>${esc(b.n)}</b>${b.id === sug ? '<em>Sugerido</em>' : ''}${b.id === act ? '<em class="act">En uso</em>' : ''}</button>`;
+  const d = document.createElement('dialog'); d.className = 'dlg dlg-uni';
+  d.innerHTML = `<form method="dialog"><h2>Unilineales base</h2><p class="mut">Los unilineales base de Ops, armados con los datos de este proyecto. Elige uno; después ajusta los datos y escribe cualquier texto con un clic.</p>
+    ${grupos.map(g => `<div class="dl-sec"><h3>${esc(g)}</h3><div class="uni-gal">${BASES_UNI.filter(b => b.g === g).map(tarjeta).join('')}</div></div>`).join('')}
+    <div class="row end"><button class="btn" value="cancel">Cerrar</button></div></form>`;
+  document.body.appendChild(d); d.showModal();
+  d.addEventListener('click', ev => {
+    const t = ev.target.closest('[data-base]'); if (!t) return; ev.preventDefault();
+    uni().base = t.dataset.base; d.close(); listo(); toast('Unilineal base: ' + BASES_UNI.find(b => b.id === t.dataset.base).n);
+  });
+  d.addEventListener('close', () => d.remove());
+}
