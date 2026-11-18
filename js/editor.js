@@ -96,7 +96,7 @@ function render() {
     <span id="guardEstado" class="guard">Guardado</span>
     <button class="tb-btn" data-act="exportar" title="Exportar proyecto (.json)">${ic('download')}</button>
   </header>
-  <div class="ribbon-wrap"><nav class="ribbon" aria-label="Pasos">${pasosVisibles().map(([k, n, i], idx) => `<button class="paso ${pasoOk(k) ? 'ok' : ''}" data-act="paso" data-k="${k}" aria-pressed="${E.step === k}"><i>${pasoOk(k) ? ic('check', 13) : idx + 1}</i>${ic(i, 16)}<span>${nombrePaso(k, n)}</span></button>`).join('')}<button class="paso cfg" data-act="config" title="Configuración: normas que se revisan en la vista de frente"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Configuración</span></button></nav>${E.step === 'equipos' ? barraLineas() : ''}</div>
+  <div class="ribbon-wrap"><nav class="ribbon" aria-label="Pasos">${pasosVisibles().map(([k, n, i], idx) => `<button class="paso ${pasoOk(k) ? 'ok' : ''}" data-act="paso" data-k="${k}" aria-pressed="${E.step === k}"><i>${pasoOk(k) ? ic('check', 13) : idx + 1}</i>${ic(i, 16)}<span>${nombrePaso(k, n)}</span></button>`).join('')}<button class="paso cfg" data-act="config" title="Configuración: normas que se revisan en la vista de frente"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Configuración</span></button></nav>${E.step === 'equipos' ? barraLineas() : E.step === 'etiquetas' ? barraEtiquetas() : ''}</div>
   <div class="ed-body ${esPagina() ? 'es-lamina' : ''}">
     ${esPagina() ? '' : `<aside class="tools" aria-label="Herramientas">${herramientas()}</aside>`}
     <main class="model" id="model">
@@ -151,6 +151,17 @@ function barraLineas() {
     <span class="sb-sep"></span><span class="subbar-t">Rellenar</span>
     ${[['solido', 'Pintar el área con su color (tarro de pintura)', '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 11l7-7 8 8-7 7z" fill="currentColor" fill-opacity=".35"/><path d="M11 4L8.5 1.5"/><path d="M20 15c0 1.5 1 2.5 1 3.5a1.5 1.5 0 0 1-3 0c0-1 1-2 2-3.5z" fill="currentColor"/></svg>'], ['diag', 'Achurado diagonal (sombreado, como el Hatch de AutoCAD)', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 9.5l8-8M1.5 14.5l13-13M6.5 14.5l8-8"/></svg>'], ['cruz', 'Achurado cruzado', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 9.5l8-8M1.5 14.5l13-13M6.5 14.5l8-8M1.5 6.5l8 8M1.5 1.5l13 13M6.5 1.5l8 8"/></svg>'], ['horiz', 'Achurado horizontal', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 5h13M1.5 8h13M1.5 11h13"/></svg>'], ['quitar', 'Quitar el relleno o el achurado', '✕']].map(([k, t, i]) => `<button class="sb-b sb-ico" data-act="relleno" data-k="${k}" aria-pressed="${E.tool === 'relleno' && E.rellenoK === k}" title="${t}">${i}</button>`).join('')}</div>`;
 }
+/* Barra bajo los pasos en "Cotas, etiquetas y textos" */
+function barraEtiquetas() {
+  const b = (k, txt, tit) => `<button class="sb-b" data-act="tool" data-k="${k}" aria-pressed="${E.tool === k}" title="${tit}">${txt}</button>`;
+  return `<div class="subbar"><span class="subbar-t">Agregar</span>
+    ${b('cota', `${ic('dim', 14)} Cota`, 'Cota: clic en dos puntos')}
+    ${b('texto', `${ic('text', 14)} Texto`, 'Texto suelto')}
+    ${b('guia', `<svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="2.5" cy="11.5" r="1.6" fill="currentColor"/><path d="M2.5 11.5L8 4h9"/></svg> Texto con línea de referencia`, 'Clic en el elemento (una línea, un equipo…) y después donde va el texto')}
+    ${b('norte', `${ic('north', 14)} Norte`, 'Norte')}
+    <span class="sb-sep"></span><span class="subbar-t">Medidas de equipos</span>
+    <button class="sb-b" data-act="medidas-todas" data-k="1" title="Mostrar las medidas de todos los equipos con medida real">Mostrar todas</button><button class="sb-b" data-act="medidas-todas" data-k="0" title="Ocultar las medidas de todos los equipos">Ocultar todas</button></div>`;
+}
 function herramientas() {
   const t = (k, icono, n, extra = '') => `<button class="tool" data-act="tool" data-k="${k}" aria-pressed="${E.tool === k}" title="${n}" ${extra}>${ic(icono, 20)}<span>${n}</span></button>`;
   const porPaso = { escala: t('ref', 'ruler', 'Referencia'), techos: t('roof', 'roof', 'Techo'), elementos: t('zona', 'block', 'Zona'), paneles: '', strings: t('str', 'string', 'Asignar'),
@@ -203,6 +214,17 @@ function avisosNormas(g) {
     g.beginPath(); g.moveTo(x1, y0 - 15); g.lineTo(x1 + 9, y0 + 1); g.lineTo(x1 - 9, y0 + 1); g.closePath(); g.fillStyle = '#FF4D4D'; g.fill();
     g.fillStyle = '#fff'; g.font = "700 11px Arial"; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillText('!', x1, y0 - 2);
   });
+}
+/* Punto sobre el elemento más cercano (canalización, cota, borde de equipo o techo) para anclar una referencia */
+function puntoSobreElemento(q) {
+  const p = E.p, tolP = 10 / E.V.k; let best = tolP, bq = null;
+  const proy = (a, b) => { const vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((q[0] - a[0]) * vx + (q[1] - a[1]) * vy) / L2)); return [a[0] + vx * t, a[1] + vy * t]; };
+  const prueba = (a, b) => { const r = proy(a, b), d = dist(r, q); if (d < best) { best = d; bq = r; } };
+  p.rutas.forEach(r => r.pts.forEach((v, i) => { if (i) prueba(r.pts[i - 1], v); }));
+  p.cotas.forEach(c => prueba(c.a, c.b));
+  p.roofs.forEach(r => r.poly.forEach((v, i) => prueba(r.poly[(i + r.poly.length - 1) % r.poly.length], v)));
+  p.equipos.forEach(e => { const Q = tamEquipoPx(p, e), x0 = e.x - Q.w / 2, x1 = e.x + Q.w / 2, y0 = e.y - Q.h / 2, y1 = e.y + Q.h / 2; [[[x0, y0], [x1, y0]], [[x1, y0], [x1, y1]], [[x1, y1], [x0, y1]], [[x0, y1], [x0, y0]]].forEach(([a, b]) => prueba(a, b)); });
+  return bq;
 }
 function formu() {
   const num = (campo, val, unidad, extra = '') => `<label class="f"><span>${unidad.l}</span><span class="fi"><input class="in" data-campo="${campo}" value="${val ?? ''}" inputmode="decimal" ${extra}><em>${unidad.u}</em></span></label>`;
@@ -315,6 +337,7 @@ function gripEn(q) {
   if (s.t === 'roof') { const r = E.p.roofs.find(x => x.id === s.id); const i = r ? r.poly.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: r.poly, i }; }
   if (s.t === 'ruta') { const r = E.p.rutas.find(x => x.id === s.id); const i = r ? r.pts.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: r.pts, i }; }
   if (s.t === 'fig') { const f = (E.p.figPaneles || []).find(x => x.id === s.id); const i = f ? f.pts.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: f.pts, i }; }
+  if (s.t === 'texto') { const t = E.p.textos.find(x => x.id === s.id); if (t && t.guia && dist(t.guia, q) < d) return { obj: t, k: 'guia' }; }
   if (s.t === 'cota') { const c = E.p.cotas.find(x => x.id === s.id); if (c) { if (dist(c.a, q) < d) return { obj: c, k: 'a' }; if (dist(c.b, q) < d) return { obj: c, k: 'b' }; } }
   // ubicación propuesta y bandeja: cada esquina estira el rectángulo (la esquina opuesta queda fija)
   if (s.t === 'equipo') { const e = E.p.equipos.find(x => x.id === s.id); if (e && rectLibreE(e)) { const Q = tamEquipoPx(E.p, e), w = Q.w / 2, h = Q.h / 2;
@@ -358,6 +381,13 @@ function down(ev) {
   if (E.tool === 'cota') { if (!E.temp) { E.temp = { tipo: 'linea', a: q }; prompt('COTA  Precise el segundo punto:'); } else { antes(); const c = { id: uid('c'), a: E.temp.a, b: q }; p.cotas.push(c); E.temp = null; E.sel = { t: 'cota', id: c.id }; despues();
       if (escala(p)) { log(`COTA  ${fmt(dist(c.a, c.b) * escala(p) / 1000, 2)} m`); prompt('COTA  Precise el primer punto (Esc para terminar):'); }
       else { E.esperando = 'cota'; prompt('COTA  Medida en metros (o un texto; Enter la deja con «?»):'); setTimeout(() => $('#cmdIn')?.focus(), 0); } } dibujarTodo(); return; }
+  if (E.tool === 'guia') {
+    const ancla = puntoSobreElemento(raw) || q;
+    if (!E.temp) { E.temp = { tipo: 'linea', a: ancla }; prompt('REFERENCIA  Clic donde va el texto:'); dibujarTodo(); return; }
+    const s = window.prompt('Texto de la referencia:'); const a = E.temp.a; E.temp = null; prompt('Comando:');
+    if (s) { antes(); const t = { id: uid('x'), p: q, s, h: 250, guia: a }; p.textos.push(t); E.sel = { t: 'texto', id: t.id }; E.tool = 'sel'; despues(); render(); } else dibujarTodo();
+    return;
+  }
   if (E.tool === 'texto') { const s = window.prompt('Texto:'); if (s) { antes(); const t = { id: uid('x'), p: q, s, h: 400 }; p.textos.push(t); E.sel = { t: 'texto', id: t.id }; E.tool = 'sel'; despues(); render(); } return; }
   if (E.tool === 'norte') { antes(); p.norte = { x: q[0], y: q[1], ang: p.norte ? p.norte.ang : 0 }; E.sel = { t: 'norte' }; E.tool = 'sel'; despues(); render(); return; }
   if (E.tool === 'roof') {
@@ -690,7 +720,7 @@ function pista() {
     zona: E.zonaForma === 'circ' ? 'Arrastra desde el centro para un círculo · clic en una zona para editarla' : 'Arrastra para marcar la zona · clic en una zona para editarla',
     str: 'Clic en un panel lo agrega o quita del string activo · arrastra una ventana para varios (Shift quita)',
     equipo: `Clic donde va ${EQUIPOS[E.eqK].n.toLowerCase()}`, ruta: 'Clic en cada punto del recorrido · Enter o doble clic termina',
-    cota: 'Clic en dos puntos para acotar', relleno: 'Clic en un equipo para rellenarlo (si tienes varios elegidos con la ventana, se aplica a todos) · Esc termina', piso: 'Clic a la altura del piso terminado (nivel ±0,00): desde ahí se miden las alturas de las normas', conjunto: 'Clic donde va la esquina superior izquierda del conjunto', figpan: E.figForma === 'poly' ? 'Clic en cada esquina de la figura · Enter o clic en la primera cierra' : 'Clic en las 4 esquinas (arriba-izq, arriba-der, abajo-der, abajo-izq): sirve en perspectiva', texto: 'Clic donde va el texto', norte: 'Clic donde va el norte', pan: 'Arrastra para mover la vista',
+    cota: 'Clic en dos puntos para acotar', guia: 'Clic sobre el elemento al que se refiere (se engancha a la línea más cercana) y después donde va el texto', relleno: 'Clic en un equipo para rellenarlo (si tienes varios elegidos con la ventana, se aplica a todos) · Esc termina', piso: 'Clic a la altura del piso terminado (nivel ±0,00): desde ahí se miden las alturas de las normas', conjunto: 'Clic donde va la esquina superior izquierda del conjunto', figpan: E.figForma === 'poly' ? 'Clic en cada esquina de la figura · Enter o clic en la primera cierra' : 'Clic en las 4 esquinas (arriba-izq, arriba-der, abajo-der, abajo-izq): sirve en perspectiva', texto: 'Clic donde va el texto', norte: 'Clic donde va el norte', pan: 'Arrastra para mover la vista',
     sel: E.step === 'etiquetas' ? 'Clic en una etiqueta, cota o texto para editarla · arrástrala para moverla · Supr la quita' : E.step === 'paneles' ? (techoAct() && techoAct().modo === 'manual' ? 'Clic en un lugar vacío del techo para poner un bloque · clic en un bloque para editarlo' : 'Clic en un techo para elegirlo · clic en un panel lo saca o devuelve') : 'Clic para seleccionar · arrastra para mover · Supr borra'
   }[t] || '';
   h.textContent = txt; h.hidden = !txt;
@@ -912,6 +942,10 @@ function panel() {
       ${grupo('incl', 'Inclinación de los paneles (techos automáticos)', p.roofs.filter(r => r.closed && r.modo !== 'manual' && inclPanelesDe(r)), x => x.etqTxt || `Techo ${p.roofs.indexOf(x) + 1} · ${inclPanelesDe(x)}º`)}
       ${grupo('inclb', 'Inclinación de cada bloque', p.roofs.flatMap(r => (r.bloques || []).filter(b => b.id && (b.incl != null ? b.incl : inclPanelesDe(r))).map(b => ({ id: b.id, etq: b.etq, etqTxt: b.etqTxt, incl: b.incl, _r: r }))), x => x.etqTxt || `Bloque · ${x.incl != null ? x.incl : inclPanelesDe(x._r)}º`)}
       ${!p.equipos.length && !p.rutas.length && !p.strings.length ? '<p class="mut">Esta hoja no tiene equipos, canalizaciones ni strings.</p>' : ''}`);
+    const reales = p.equipos.filter(x => esReal(p, x)), medVis = x => x.verMed === true || (x.verMed !== false && p.verMedidas);
+    h += sec('Medidas de los equipos', reales.length ? `<p class="mut">Las cotas de ancho × alto de los equipos con medida real (cajas, tableros, inversor de frente…). Muéstralas u ocúltalas todas o una por una.</p>
+      <div class="row wrap"><button class="btn sm" data-act="medidas-todas" data-k="1">Mostrar todas</button><button class="btn sm" data-act="medidas-todas" data-k="0">Ocultar todas</button></div>
+      <div class="lista etq-lista">${reales.map(x => `<div class="etq-f"><button class="etq-ojo" data-act="med-ojo" data-id="${x.id}" title="${medVis(x) ? 'Ocultar' : 'Mostrar'} sus medidas">${ic(medVis(x) ? 'eye' : 'eyeoff', 14)}</button><span class="etq-n" style="cursor:default">${esc(x.rotulo || EQUIPOS[x.k]?.n || 'Equipo')}</span></div>`).join('')}</div>` : '<p class="mut">Esta hoja no tiene equipos con medida real.</p>');
     h += sec('Cotas y textos', `<div class="row wrap"><button class="btn sm" data-act="tool" data-k="cota">${ic('dim', 14)} Cota</button><button class="btn sm" data-act="tool" data-k="texto">${ic('text', 14)} Texto</button><button class="btn sm" data-act="tool" data-k="norte">${ic('north', 14)} Norte</button></div>
       ${rango('hoja.tamCotas', Math.round((p.tamCotas || 1) * 100), 30, 300, 'Tamaño del texto de las cotas', ' %')}
       ${p.cotas.length ? `<div class="lista">${p.cotas.map(c => `<button class="li" data-act="sel-obj" data-t="cota" data-id="${c.id}" aria-pressed="${E.sel && E.sel.id === c.id}"><b>Cota</b><span>${esc(textoCota(p, c))}</span></button>`).join('')}</div>` : ''}
@@ -971,7 +1005,7 @@ function propsSel(s, { num, rango, seg }) {
       ${!esReal(p, e) ? `<p class="mut">Equipo de referencia: arrastra sus esquinas para agrandarlo o achicarlo.</p>${e.mw || e.f ? '<button class="btn sm" data-act="eq-tam0">Volver a su tamaño inicial</button>' : ''}` : (() => { const base = medidaEquipo(p, { ...e, mw: 0, mh: 0 }); return `<div class="row"><label class="f mini"><span>Ancho</span><span class="fi"><input class="in" data-campo="eq.mw" value="${e.mw || ''}" placeholder="${fmt(base.w, 0)}" inputmode="numeric"><em>mm</em></span></label>
         <label class="f mini"><span>Alto</span><span class="fi"><input class="in" data-campo="eq.mh" value="${e.mh || ''}" placeholder="${fmt(base.h, 0)}" inputmode="numeric"><em>mm</em></span></label></div>
         <p class="mut">Medida real de frente${rectLibreE(e) ? ' (también arrastrando sus esquinas)' : ''}. Vacío = la del ${e.modelo ? 'modelo' : 'símbolo'} (${fmt(base.w, 0)} × ${fmt(base.h, 0)} mm).</p>
-        <label class="chk"><input type="checkbox" data-campo="eq.verMed" ${p.verMedidas && e.verMed !== false ? 'checked' : ''}> Mostrar sus medidas en el dibujo</label>
+        <label class="chk"><input type="checkbox" data-campo="eq.verMed" ${e.verMed === true || (e.verMed !== false && p.verMedidas) ? 'checked' : ''}> Mostrar sus medidas en el dibujo</label>
         ${escala(p) ? '' : rango('eq.f', Math.round((e.f || 1) * 100), 10, 500, 'Tamaño en el dibujo (sin escala)', ' %')}`; })()}
       ${e.k === 'bat' ? `<div class="f"><span>Módulos de batería</span><span class="row">${stepper('eq.mods', e.mods || 3)} módulos (de frente se apilan)</span></div>` : ''}
       ${['tg', 'tfv'].includes(e.k) ? `<div class="f"><span>Ubicación del tablero</span>${seg('eq.ubic', e.ubic || 'armario', [['armario', 'En armario'], ['intemperie', 'A la intemperie']])}</div>` : ''}
@@ -1008,6 +1042,8 @@ function propsSel(s, { num, rango, seg }) {
         <dl class="dl"><dt>Se suman</dt><dd>${nPanelesFig(f)} paneles</dd></dl>` : ''}
       <p class="mut">Arrastra los cuadros azules para ajustar las esquinas (en perspectiva también).</p>${del}`; }
   if (s.t === 'texto') { const t = p.textos.find(x => x.id === s.id); if (!t) return '';
+    const guiaHtml = t.guia ? `<p class="mut">Tiene línea de referencia: arrastra el punto azul del extremo para moverla.</p><button class="btn sm" data-act="guia-quitar">Quitar la línea de referencia</button>` : '';
+    if (guiaHtml) return `<label class="f"><span>Texto</span><input class="in" data-campo="tx.s" value="${esc(t.s)}"></label>${escala(p) ? num('tx.h', fmt((t.h || 400) / 1000, 2), { l: 'Altura', u: 'm' }) : rango('tx.f', Math.round((t.f || 1) * 100), 20, 600, 'Tamaño', ' %')}${guiaHtml}${del}`;
     return `<label class="f"><span>Texto</span><input class="in" data-campo="tx.s" value="${esc(t.s)}"></label>${escala(p) ? num('tx.h', fmt((t.h || 400) / 1000, 2), { l: 'Altura', u: 'm' }) : rango('tx.f', Math.round((t.f || 1) * 100), 20, 600, 'Tamaño', ' %')}${del}`; }
   if (s.t === 'norte') return `${rango('norte.ang', Math.round(p.norte.ang), 0, 359, 'Giro del norte')}${del}`;
   if (s.t === 'cota') { const c = p.cotas.find(x => x.id === s.id); if (!c) return ''; const sc = escala(p), med = sc ? fmt(dist(c.a, c.b) * sc / 1000, 2) : '';
@@ -1083,6 +1119,9 @@ document.addEventListener('click', ev => {
     case 'piso-quitar': antes(); delete p.suelo; despues(); break;
     case 'config': dialogoConfig(); break;
     case 'relleno': E.rellenoK = k; E.tool = 'relleno'; E.temp = null; render(); pista(); break;
+    case 'guia-quitar': { const t = E.sel && p.textos.find(x => x.id === E.sel.id); if (t) { antes(); delete t.guia; despues(); } break; }
+    case 'medidas-todas': { antes(); const on = b.dataset.k === '1'; p.verMedidas = on; p.equipos.forEach(x => delete x.verMed); despues(); break; }
+    case 'med-ojo': { const e2 = p.equipos.find(x => x.id === b.dataset.id); if (!e2) break; antes(); const visible = e2.verMed === true || (e2.verMed !== false && p.verMedidas); e2.verMed = !visible; despues(); break; }
     case 'etq-sel': E.sel = { t: 'etq', of: b.dataset.of, id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'sel-obj': E.sel = { t: b.dataset.t, id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'etq-ojo': { const ow = listaEtq(b.dataset.of).find(x => x.id === b.dataset.id); if (!ow) break; antes(); const et = (ow.etq ||= {}); et.oculta = !et.oculta; if (!et.oculta && E.sel && E.sel.id === ow.id) E.sel = null; despues(); break; }
@@ -1140,7 +1179,7 @@ function aplicar(campo, v, desdeChange, vivo) {
     else if (k === 'modo') { e.modo = v; delete e.mw; delete e.mh; delete e.f; }
     else if (k === 'mw' || k === 'mh') { if (n > 0) e[k] = Math.round(n); else delete e[k]; }
     else if (k === 'f') e.f = Math.max(.1, +v / 100);
-    else if (k === 'verMed') { if (v) { delete e.verMed; if (!p.verMedidas) { p.verMedidas = true; p.equipos.forEach(x => { if (x !== e) x.verMed = false; }); } } else e.verMed = false; }
+    else if (k === 'verMed') e.verMed = !!v;
     else e[k] = k === 'ang' ? +v : v; }
   else if (pre === 'cota') { const c = s && p.cotas.find(x => x.id === s.id); if (!c) return; const t = String(v).trim(); if (t) c.txt = t; else delete c.txt; }
   else if (pre === 'hoja' && ['verMedidas', 'tamSimb'].includes(k)) { if (k === 'verMedidas') { p.verMedidas = !!v; if (v) p.equipos.forEach(x => delete x.verMed); } else if (k === 'tamSimb') p.tamSimb = Math.max(.2, +v / 100); }

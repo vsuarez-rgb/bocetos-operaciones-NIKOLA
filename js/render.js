@@ -165,11 +165,11 @@ export function dibujar(g, p, V, o) {
   // Equipos (a escala, con rótulo al costado como en los planos)
   if (vis('equipos')) p.equipos.forEach(e => {
     const E = EQUIPOS[e.k] || EQUIPOS.inv, c = T([e.x, e.y]), sel = esSel(o, 'equipo', e.id);
-    const tp = tamEquipoPx(p, e), md = tp.md; let w = tp.w * k, h = tp.h * k; w = Math.max(w, 12 * u); h = Math.max(h, 12 * u);
+    const tp = tamEquipoPx(p, e), md = tp.md; let w = tp.w * k, h = tp.h * k; w = Math.max(w, 2); h = Math.max(h, 2);   // a su tamaño, igual en el editor que en informes y planos
     g.save(); g.translate(c[0], c[1]); g.rotate((e.ang || 0) * Math.PI / 180);
     // Medidas del equipo (ancho × profundidad en mm), como cotas pegadas al símbolo
     const real = esReal(p, e);
-    if (p.verMedidas && e.verMed !== false && real) {
+    if (real && (e.verMed === true || (e.verMed !== false && p.verMedidas))) {
       const col = plot ? '#111' : '#FAB704', off = 9 * u, tk = 3 * u, fs = 9.5 * u;
       g.strokeStyle = col; g.lineWidth = .8 * u; g.beginPath();
       g.moveTo(-w / 2, -h / 2 - off); g.lineTo(w / 2, -h / 2 - off); g.moveTo(-w / 2, -h / 2 - off - tk); g.lineTo(-w / 2, -h / 2 - 2 * u); g.moveTo(w / 2, -h / 2 - off - tk); g.lineTo(w / 2, -h / 2 - 2 * u);
@@ -221,6 +221,12 @@ export function dibujar(g, p, V, o) {
   // Textos (alto en mm reales, como TEXT de AutoCAD)
   if (vis('textos')) p.textos.forEach(tx => {
     const q = T(tx.p), size = Math.max(plot ? 4 : 7, altoTextoPx(p, tx) * k), sel = esSel(o, 'texto', tx.id);
+    if (tx.guia) {                                         // línea de referencia: del elemento al texto, subrayándolo
+      g.font = `400 ${size}px 'Archivo Narrow', 'Arial Narrow', Arial, sans-serif`; const wt = g.measureText(tx.s).width, A = T(tx.guia), izq = A[0] > q[0] + wt / 2;
+      const xb = izq ? q[0] + wt + 3 * u : q[0] - 3 * u, yb = q[1] + 3 * u;
+      g.strokeStyle = plot ? '#222' : (tx.c || '#fff'); g.lineWidth = .9 * u; g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(xb, yb); g.lineTo(izq ? q[0] - 3 * u : q[0] + wt + 3 * u, yb); g.stroke();
+      g.beginPath(); g.arc(A[0], A[1], 2.2 * u, 0, Math.PI * 2); g.fillStyle = plot ? '#222' : (tx.c || '#fff'); g.fill();
+    }
     texto(g, tx.s, q[0], q[1], { size, color: plot ? '#111' : (tx.c || '#fff'), halo: plot ? null : 'rgba(0,0,0,.7)' });
     if (sel) { g.font = `400 ${size}px 'Archivo Narrow', Arial`; const w = g.measureText(tx.s).width; g.strokeStyle = '#FAB704'; g.setLineDash([4, 3]); g.strokeRect(q[0] - 3, q[1] - size, w + 6, size + 5); g.setLineDash([]); grips(g, [q]); }
   });
