@@ -477,3 +477,12 @@ select.fi-ctl { background: #1C2228; border-color: var(--ed-line); cursor: point
 .uni-ed .ue.sel :is(polyline, rect, path, circle, line):not([stroke="transparent"]) { stroke: #1F6FEB !important; }
 .uni-ed .ue.sel text { fill: #1F6FEB !important; }
 .uni-ed .ue:hover :is(polyline, rect, path, circle, line):not([stroke="transparent"]) { stroke-opacity: .7; }
+
+/* ---------- Paso Cotas, etiquetas y textos ---------- */
+.etq-lista { gap: 3px; }
+.etq-f { display: flex; align-items: center; gap: 4px; border: 1px solid var(--ed-line); border-radius: 8px; padding: 2px; }
+.etq-f.on { border-color: var(--nk-amarillo); }
+.etq-ojo { background: none; border: 0; color: var(--ed-mut); padding: 4px 6px; cursor: pointer; display: inline-flex; }
+.etq-ojo:hover { color: var(--nk-amarillo); }
+.etq-n { flex: 1; text-align: left; background: none; border: 0; color: var(--ed-ink); font: 12.5px var(--f-body); padding: 4px 6px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.etq-n:disabled { color: var(--ed-mut); text-decoration: line-through; cursor: default; }

@@ -11,14 +11,14 @@ import { vistaUnilineal, panelUnilineal, accionUnilineal } from './unilineal.js'
 import { nuevoTecho, guardar } from './store.js';
 import { vistaLamina, panelLamina, accionLamina } from './lamina.js';
 import { vistaFicha, panelFicha, accionFicha } from './ficha/ficha.js';
-import { TIPOS_HOJA, TIPOS_PRINCIPAL, tipoPrincipal, nombrePrincipal, nuevaHoja, vistaHoja } from './hojas.js';
+import { TIPOS_HOJA, TIPOS_PRINCIPAL, CLAVES_HOJA, tipoPrincipal, nombrePrincipal, nuevaHoja, vistaHoja } from './hojas.js';
 import { vistaInforme, panelInforme, accionInforme } from './informe/informe.js';
 
 export const PASOS = [
   ['ficha', 'Ficha', 'folder'], ['escala', 'Escala', 'ruler'], ['techos', 'Techos', 'roof'], ['elementos', 'Elementos', 'block'], ['paneles', 'Paneles', 'grid'],
-  ['strings', 'Strings', 'string'], ['equipos', 'Equipos y canalización', 'plug'], ['unilineal', 'Unilineal', 'sheet'], ['informe', 'Informe y planos', 'print']
+  ['strings', 'Strings', 'string'], ['equipos', 'Equipos y canalización', 'plug'], ['etiquetas', 'Cotas, etiquetas y textos', 'text'], ['unilineal', 'Unilineal', 'sheet'], ['informe', 'Informe y planos', 'print']
 ];
-const HERR_DEF = { ficha: 'sel', escala: 'ref', techos: 'roof', elementos: 'zona', paneles: 'sel', strings: 'str', equipos: 'sel', unilineal: 'sel', lamina: 'sel', informe: 'sel' };
+const HERR_DEF = { ficha: 'sel', escala: 'ref', techos: 'roof', elementos: 'zona', paneles: 'sel', strings: 'str', equipos: 'sel', etiquetas: 'sel', unilineal: 'sel', lamina: 'sel', informe: 'sel' };
 
 let E = null;          // estado del editor
 
@@ -30,7 +30,7 @@ let E = null;          // estado del editor
 const ICONO_HOJA = { principal: 'drone', canalizacion: 'pline', equipos: 'inverter', cargador: 'plug', empalme: 'block', otra: 'crop' };
 const hojaActiva = () => E.hojaId ? (E.proyecto.hojas || []).find(h => h.id === E.hojaId) : null;
 const hojaCorta = () => !!E.hojaId || tipoPrincipal(E.proyecto) !== 'techo';      // sin techos ni paneles: foto, dibujo e informe
-const pasosVisibles = () => hojaCorta() ? PASOS.filter(([k]) => ['ficha', 'escala', 'equipos', 'unilineal', 'informe'].includes(k)) : PASOS;
+const pasosVisibles = () => hojaCorta() ? PASOS.filter(([k]) => ['ficha', 'escala', 'equipos', 'etiquetas', 'unilineal', 'informe'].includes(k)) : PASOS;
 const nombrePaso = (k, n) => hojaCorta() && k === 'equipos' ? 'Dibujo' : hojaCorta() && k === 'escala' ? 'Foto y escala' : n;
 let alSalir = null;
 
@@ -138,6 +138,7 @@ function herramientas() {
 function pasoOk(k) {
   const p = E.p, R = E.R || calcular(p);
   if (k === 'informe') return !!(p.informe && p.informe.paginas && p.informe.paginas.length);
+  if (k === 'etiquetas') return !!E.proyecto.etqVisto;
   if (k === 'unilineal') return !!(E.proyecto.uni && Object.keys(E.proyecto.uni).length);
   if (k === 'ficha') return !!(p.ficha && (Object.keys(p.ficha.entradas || {}).length || Object.keys(p.ficha.zonos || {}).length));
   if (k === 'escala') return !!escala(p) || (!!p.img && !!p.sinEscala);
@@ -172,7 +173,7 @@ function dibujarTodo() {
   const p = E.p, s = escala(p);
   const selBloque = E.sel && E.sel.t === 'bloque' ? E.sel : null;
   E.hits = [];
-  dibujar(g, p, E.V, { hits: E.hits, capas: E.capas, sel: E.sel, step: E.step, R: E.R, SI: E.SI, fotoAlpha: E.fotoAlpha, selBloque, selPanels: E.step === 'strings' ? panelesDelActivo() : null, verRef: E.step === 'escala',
+  dibujar(g, p, E.V, { hits: E.hits, rotulos: E.step === 'etiquetas', capas: E.capas, sel: E.sel, step: E.step, R: E.R, SI: E.SI, fotoAlpha: E.fotoAlpha, selBloque, selPanels: E.step === 'strings' ? panelesDelActivo() : null, verRef: E.step === 'escala',
     temp: (g2, T) => temporal(g2, T) });
   if (E.rejilla && s) rejilla(g, W, H, s);
   cursor(g, W, H);
@@ -256,9 +257,12 @@ function gripEn(q) {
   if (s.t === 'ref' && E.p.ref) { if (dist(E.p.ref.a, q) < d) return { obj: E.p.ref, k: 'a' }; if (dist(E.p.ref.b, q) < d) return { obj: E.p.ref, k: 'b' }; }
   return null;
 }
-const duenoEtq = s => s && s.t === 'etq' ? (s.of === 'equipo' ? E.p.equipos : E.p.rutas).find(x => x.id === s.id) : null;
+const listaEtq = of => of === 'equipo' ? E.p.equipos : of === 'string' ? E.p.strings : E.p.rutas;
+const duenoEtq = s => s && s.t === 'etq' ? listaEtq(s.of).find(x => x.id === s.id) : null;
 function etqEn(q) { const sq = aPant(q); return [...(E.hits || [])].reverse().find(h => sq[0] >= h.caja[0] && sq[0] <= h.caja[2] && sq[1] >= h.caja[1] && sq[1] <= h.caja[3]); }
 function objetoEn(q) {
+  if (E.step === 'etiquetas') { const et = etqEn(q); if (et) return { t: 'etq', of: et.of, id: et.id };
+    if (norteEn(q)) return { t: 'norte' }; const tx = textoEn(q); if (tx) return { t: 'texto', id: tx.id }; const ct = cotaEn(q); if (ct) return { t: 'cota', id: ct.id }; return null; }
   const et = etqEn(q); if (et && ((et.of === 'equipo' && E.capas.has('equipos')) || (et.of === 'ruta'))) return { t: 'etq', of: et.of, id: et.id };
   if (E.capas.has('textos') && norteEn(q)) return { t: 'norte' };
   const tx = E.capas.has('textos') && textoEn(q); if (tx) return { t: 'texto', id: tx.id };
@@ -560,7 +564,7 @@ function pista() {
     str: 'Clic en un panel lo agrega o quita del string activo · arrastra una ventana para varios (Shift quita)',
     equipo: `Clic donde va ${EQUIPOS[E.eqK].n.toLowerCase()}`, ruta: 'Clic en cada punto del recorrido · Enter o doble clic termina',
     cota: 'Clic en dos puntos para acotar', figpan: E.figForma === 'poly' ? 'Clic en cada esquina de la figura · Enter o clic en la primera cierra' : 'Clic en las 4 esquinas (arriba-izq, arriba-der, abajo-der, abajo-izq): sirve en perspectiva', texto: 'Clic donde va el texto', norte: 'Clic donde va el norte', pan: 'Arrastra para mover la vista',
-    sel: E.step === 'paneles' ? (techoAct() && techoAct().modo === 'manual' ? 'Clic en un lugar vacío del techo para poner un bloque · clic en un bloque para editarlo' : 'Clic en un techo para elegirlo · clic en un panel lo saca o devuelve') : 'Clic para seleccionar · arrastra para mover · Supr borra'
+    sel: E.step === 'etiquetas' ? 'Clic en una etiqueta, cota o texto para editarla · arrástrala para moverla · Supr la quita' : E.step === 'paneles' ? (techoAct() && techoAct().modo === 'manual' ? 'Clic en un lugar vacío del techo para poner un bloque · clic en un bloque para editarlo' : 'Clic en un techo para elegirlo · clic en un panel lo saca o devuelve') : 'Clic para seleccionar · arrastra para mover · Supr borra'
   }[t] || '';
   h.textContent = txt; h.hidden = !txt;
 }
@@ -572,7 +576,19 @@ function barraHojas() {
   return `<nav class="hojas-bar" aria-label="Hojas de diseño"><span class="hojas-t">Hojas</span>
     ${tab(null, nombrePrincipal(P), tipoPrincipal(P) === 'techo' ? 'principal' : tipoPrincipal(P), !!P.img)}${hs.map(h => tab(h.id, h.nombre, h.tipo, !!h.img)).join('')}
     <button class="hoja-mas" data-act="hoja-nueva" title="Agregar una hoja de diseño: otra foto con su escala y sus dibujos">${ic('plus', 14)}<span>Nueva hoja</span></button>
-    <span class="tb-sp"></span><button class="hoja-ed" data-act="hoja-editar" title="Cambiar el nombre o borrar la hoja activa">Editar hoja</button></nav>`;
+    <span class="tb-sp"></span><button class="hoja-ed" data-act="hoja-renombrar" title="Cambiar el nombre de la hoja activa (también: doble clic en la pestaña)">Cambiar nombre</button><button class="hoja-ed" data-act="hoja-duplicar" title="Hacer una copia de la hoja activa con su foto y sus dibujos">Duplicar hoja</button><button class="hoja-ed" data-act="hoja-editar" title="Tipo, nombre o borrar la hoja activa">Editar hoja</button></nav>`;
+}
+function renombrarHoja() {
+  const h = hojaActiva(), P = E.proyecto, actual = h ? h.nombre : nombrePrincipal(P);
+  const n = (window.prompt('Nombre de la hoja:', actual) || '').trim(); if (!n || n === actual) return;
+  antes(); if (h) h.nombre = n; else P.nombreHojaPrincipal = n; despues(); render();
+}
+function duplicarHoja() {
+  const P = E.proyecto, h = hojaActiva(), src = h || P, tipo = h ? h.tipo : (tipoPrincipal(P) === 'techo' ? 'otra' : tipoPrincipal(P));
+  const copia = nuevaHoja(tipo, `${h ? h.nombre : nombrePrincipal(P)} (copia)`);
+  CLAVES_HOJA.forEach(k => { if (src[k] !== undefined) copia[k] = k === 'img' ? src[k] : clone(src[k]); });
+  antes(); const hs = (P.hojas ||= []), i = h ? hs.indexOf(h) + 1 : 0; hs.splice(i, 0, copia); despues(false);
+  cambiarHoja(copia.id); toast('Hoja duplicada');
 }
 function cambiarHoja(id) {
   id = id || null; if (id === E.hojaId) return;
@@ -699,6 +715,22 @@ function panel() {
           <div class="row"><button class="btn sm" data-act="str-vaciar">Quitar paneles</button><button class="btn sm del" data-act="str-del">${ic('trash', 14)} Borrar</button></div></div>` : ''}</div>`).join('') || '<p class="mut">Sin strings. Crea uno y haz clic en sus paneles, o usa “Armar automático”.</p>'}</div>
       <div class="row"><button class="btn" data-act="str-new">${ic('plus')} Nuevo string</button><button class="btn" data-act="str-auto">Armar automático</button></div>`);
   }
+  if (E.step === 'etiquetas') {
+    const grupo = (of, titulo, xs, nombre) => xs.length ? `<div class="sub">${titulo}</div><div class="lista etq-lista">${xs.map((x, i) => { const oc = x.etq && x.etq.oculta;
+      return `<div class="etq-f${E.sel && E.sel.t === 'etq' && E.sel.id === x.id ? ' on' : ''}"><button class="etq-ojo" data-act="etq-ojo" data-of="${of}" data-id="${x.id}" title="${oc ? 'Mostrar' : 'Quitar'}">${ic(oc ? 'eyeoff' : 'eye', 14)}</button><button class="etq-n" data-act="etq-sel" data-of="${of}" data-id="${x.id}" ${oc ? 'disabled' : ''}>${esc(nombre(x, i))}</button></div>`; }).join('')}</div>` : '';
+    const nEq = x => x.rotulo || EQUIPOS[x.k]?.n || 'Equipo', nRt = x => x.etqTxt || CANAL[x.k]?.corto || 'Canalización', nSt = (x, i) => x.etqTxt || `String ${i + 1}`;
+    E.proyecto.etqVisto = true;
+    h += sec('Etiquetas', `<p class="mut">Se ponen solas en cada equipo, canalización y string; aquí quitas las que no sirven y acomodas las demás. Solo se ven desde este paso (y en el informe y las láminas).</p>
+      ${rango('hoja.tamEtq', Math.round((p.tamEtq || 1) * 100), 30, 300, 'Tamaño de todas las etiquetas', ' %')}
+      ${p.strings.length ? `<label class="chk"><input type="checkbox" data-campo="hoja.encerrar" ${p.encerrarStrings !== false ? 'checked' : ''}> Encerrar los strings (contorno de color)</label>` : ''}
+      <div class="row wrap"><button class="btn sm" data-act="etq-todas" data-k="ver">Mostrar todas</button><button class="btn sm" data-act="etq-todas" data-k="quitar">Quitar todas</button><button class="btn sm" data-act="etq-todas" data-k="lugar">Todas a su lugar</button></div>
+      ${grupo('equipo', 'Equipos', p.equipos, nEq)}${grupo('ruta', 'Canalizaciones', p.rutas, nRt)}${grupo('string', 'Strings', p.strings, nSt)}
+      ${!p.equipos.length && !p.rutas.length && !p.strings.length ? '<p class="mut">Esta hoja no tiene equipos, canalizaciones ni strings.</p>' : ''}`);
+    h += sec('Cotas y textos', `<div class="row wrap"><button class="btn sm" data-act="tool" data-k="cota">${ic('dim', 14)} Cota</button><button class="btn sm" data-act="tool" data-k="texto">${ic('text', 14)} Texto</button><button class="btn sm" data-act="tool" data-k="norte">${ic('north', 14)} Norte</button></div>
+      ${rango('hoja.tamCotas', Math.round((p.tamCotas || 1) * 100), 30, 300, 'Tamaño del texto de las cotas', ' %')}
+      ${p.cotas.length ? `<div class="lista">${p.cotas.map(c => `<button class="li" data-act="sel-obj" data-t="cota" data-id="${c.id}" aria-pressed="${E.sel && E.sel.id === c.id}"><b>Cota</b><span>${esc(textoCota(p, c))}</span></button>`).join('')}</div>` : ''}
+      ${p.textos.length ? `<div class="lista">${p.textos.map(t => `<button class="li" data-act="sel-obj" data-t="texto" data-id="${t.id}" aria-pressed="${E.sel && E.sel.id === t.id}"><b>Texto</b><span>${esc(t.s)}</span></button>`).join('')}</div>` : ''}`);
+  }
   if (E.step === 'equipos') {
     h += sec('6 · Equipos', `
       <div class="grid2">${Object.entries(EQUIPOS).map(([k, Q]) => `<button class="li cmp" data-act="eqK" data-k="${k}" aria-pressed="${E.tool === 'equipo' && E.eqK === k}"><i class="sw" style="border-color:${Q.c}"></i><b>${Q.n}</b><em>${p.equipos.filter(e => e.k === k).length || ''}</em></button>`).join('')}</div>
@@ -759,10 +791,11 @@ function propsSel(s, { num, rango, seg }) {
       ${r.k === 'riel' && !escala(p) ? num('ruta.mManual', r.mManual ?? '', { l: 'Largo real del riel', u: 'm' }) : ''}
       <dl class="dl"><dt>Largo</dt><dd>${escala(p) ? fmt(largoM(p, r.pts), 2) + ' m' : r.mManual ? fmt(r.mManual, 2) + ' m (escrito)' : '— (sin escala)'}</dd><dt>Vértices</dt><dd>${r.pts.length}</dd></dl><p class="mut">Arrastra los cuadros azules para mover vértices.</p>${del}`; }
   if (s.t === 'etq') { const ow = duenoEtq(s); if (!ow) return ''; const et = ow.etq || {};
-    const txt = s.of === 'equipo' ? (ow.rotulo || '') : (ow.etqTxt || ''), ph = s.of === 'equipo' ? EQUIPOS[ow.k]?.n : CANAL[ow.k]?.corto;
+    const txt = s.of === 'equipo' ? (ow.rotulo || '') : (ow.etqTxt || ''), ph = s.of === 'equipo' ? EQUIPOS[ow.k]?.n : s.of === 'string' ? `String ${p.strings.indexOf(ow) + 1}` : CANAL[ow.k]?.corto;
     return `<label class="f"><span>Texto</span><input class="in" data-campo="etq.txt" value="${esc(txt)}" placeholder="${esc(ph || '')}"></label>
       ${rango('etq.tam', Math.round((et.tam || 1) * 100), 40, 400, 'Tamaño', ' %')}
       <label class="chk"><input type="checkbox" data-campo="etq.fijo" ${et.fijo ? 'checked' : ''}> Fija (no se mueve con el mouse)</label>
+      <label class="chk"><input type="checkbox" data-campo="etq.escala" ${et.escala ? 'checked' : ''}> Cambia de tamaño con el zoom (como parte del dibujo)</label>
       <p class="mut">Arrástrala para ponerla donde quieras; la línea guía la sigue.</p>
       <div class="row wrap">${et.dx != null ? '<button class="btn sm" data-act="etq-reset">Volver a su lugar</button>' : ''}<button class="btn sm del" data-act="etq-quitar">${ic('trash', 14)} Quitar etiqueta</button></div>`; }
   if (s.t === 'fig') { const f = (p.figPaneles || []).find(x => x.id === s.id); if (!f) return '';
@@ -833,6 +866,12 @@ document.addEventListener('click', ev => {
     case 'blk-paralelo': { const bl = bloqueSel(), r = techoAct(); if (bl && r) { antes(); bl.ang = anguloBordeCercano(r.poly, [bl.x, bl.y]); despues(); } break; }
     case 'blk-rep': { const r = p.roofs[E.sel.ri], bl = bloqueSel(), s = escala(p); if (!bl || !s) break; antes(); const G = geomTecho(p, r, s), g = geomBloque(p, G, bl); const d = girarV(k === 'der' ? [g.BW + g.gx, 0] : [0, g.BH + g.sep], g.a); r.bloques.push({ ...clone(bl), id: uid('b'), x: bl.x + d[0], y: bl.y + d[1] }); E.sel = { ...E.sel, bi: r.bloques.length - 1 }; despues(); break; }
     case 'borrar': borrarSel(); break;
+    case 'etq-sel': E.sel = { t: 'etq', of: b.dataset.of, id: b.dataset.id }; panel(); dibujarTodo(); break;
+    case 'sel-obj': E.sel = { t: b.dataset.t, id: b.dataset.id }; panel(); dibujarTodo(); break;
+    case 'etq-ojo': { const ow = listaEtq(b.dataset.of).find(x => x.id === b.dataset.id); if (!ow) break; antes(); const et = (ow.etq ||= {}); et.oculta = !et.oculta; if (!et.oculta && E.sel && E.sel.id === ow.id) E.sel = null; despues(); break; }
+    case 'etq-todas': { antes(); const k2 = b.dataset.k; [...p.equipos, ...p.rutas, ...p.strings].forEach(x => { const et = (x.etq ||= {}); if (k2 === 'ver') delete et.oculta; if (k2 === 'quitar') et.oculta = true; if (k2 === 'lugar') { delete et.dx; delete et.dy; } }); E.sel = null; despues(); break; }
+    case 'hoja-renombrar': renombrarHoja(); break;
+    case 'hoja-duplicar': duplicarHoja(); break;
     case 'etq-reset': { const ow = duenoEtq(E.sel); if (ow && ow.etq) { antes(); delete ow.etq.dx; delete ow.etq.dy; despues(); } break; }
     case 'etq-quitar': borrarSel(); break;
     case 'cota-escala': { const c = E.sel && p.cotas.find(x => x.id === E.sel.id), m = c && parseNum(c.txt); if (!(m > 0)) break; antes(); p.ref = { a: [...c.a], b: [...c.b], mm: m * 1000 }; p.sinEscala = false; delete c.txt; log(`Escala desde la cota: 1 px = ${fmt(escala(p), 1)} mm`); despues(); render(); toast('La hoja ya tiene escala: ahora los equipos salen a su tamaño real'); break; }
@@ -878,10 +917,12 @@ function aplicar(campo, v, desdeChange, vivo) {
     else if (k === 'verMed') { if (v) { delete e.verMed; if (!p.verMedidas) { p.verMedidas = true; p.equipos.forEach(x => { if (x !== e) x.verMed = false; }); } } else e.verMed = false; }
     else e[k] = k === 'ang' ? +v : v; }
   else if (pre === 'cota') { const c = s && p.cotas.find(x => x.id === s.id); if (!c) return; const t = String(v).trim(); if (t) c.txt = t; else delete c.txt; }
-  else if (pre === 'hoja') { if (k === 'verMedidas') { p.verMedidas = !!v; if (v) p.equipos.forEach(x => delete x.verMed); } else if (k === 'tamSimb') p.tamSimb = Math.max(.2, +v / 100); }
+  else if (pre === 'hoja' && ['verMedidas', 'tamSimb'].includes(k)) { if (k === 'verMedidas') { p.verMedidas = !!v; if (v) p.equipos.forEach(x => delete x.verMed); } else if (k === 'tamSimb') p.tamSimb = Math.max(.2, +v / 100); }
   else if (pre === 'etq') { const ow = duenoEtq(s); if (!ow) return; const et = (ow.etq ||= {});
     if (k === 'txt') { const t = String(v).trim(); if (s.of === 'equipo') { if (t) ow.rotulo = t; else delete ow.rotulo; } else { if (t) ow.etqTxt = t; else delete ow.etqTxt; } }
-    else if (k === 'tam') et.tam = Math.max(.2, +v / 100); else if (k === 'fijo') et.fijo = !!v; }
+    else if (k === 'tam') et.tam = Math.max(.2, +v / 100); else if (k === 'fijo') et.fijo = !!v; else if (k === 'escala') { if (v) et.escala = true; else delete et.escala; } }
+  else if (pre === 'hoja' && ['tamEtq', 'tamCotas'].includes(k)) { p[k] = Math.max(.2, +v / 100); }
+  else if (pre === 'hoja' && k === 'encerrar') { if (v) delete p.encerrarStrings; else p.encerrarStrings = false; }
   else if (pre === 'ruta' && k === 'etqVer') { const rt = obj.ruta(); if (!rt) return; (rt.etq ||= {}).oculta = !v; }
   else if (pre === 'eq' && k === 'etqVer') { const e = obj.eq(); if (!e) return; (e.etq ||= {}).oculta = !v; }
   else if (pre === 'ruta') { const rt = obj.ruta(); if (!rt) return; if (k === 'mManual') { if (n > 0) rt.mManual = n; else delete rt.mManual; } else rt[k] = v; }
@@ -916,3 +957,5 @@ async function subirFoto(file) {
   await cargarImg(src); ajustarVista(); despues(); render(); ajustarVista(); dibujarTodo();
   if (p.drone) log(`Foto de dron: altura ${fmt(alt, 1)} m · focal ${f35} mm`); else log('La foto no trae altura de vuelo del dron (usa la referencia).');
 }
+/* Doble clic en la pestaña de la hoja activa: cambiarle el nombre */
+document.addEventListener('dblclick', ev => { if (!E) return; const t = ev.target.closest?.('.hoja-tab'); if (!t) return; if ((t.dataset.id || null) === E.hojaId) renombrarHoja(); });

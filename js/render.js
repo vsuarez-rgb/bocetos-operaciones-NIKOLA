@@ -127,13 +127,12 @@ export function dibujar(g, p, V, o) {
     let top = null;
     porTecho.forEach(pts => {
       const h = orientCW(hull(pts)), poly = inflar(h, pad).map(T);
-      path(g, poly, true); g.lineJoin = 'round'; g.lineWidth = 1.6 * u; g.strokeStyle = plot ? (col === '#FFE14D' ? '#C9A800' : col) : col; g.stroke();
+      if (p.encerrarStrings !== false) { path(g, poly, true); g.lineJoin = 'round'; g.lineWidth = 1.6 * u; g.strokeStyle = plot ? (col === '#FFE14D' ? '#C9A800' : col) : col; g.stroke(); }
       const tp = poly.reduce((m, q) => q[1] < m[1] ? q : m, poly[0]); if (!top || tp[1] < top[1]) top = tp;
     });
-    if (top) {
-      const lx = top[0] - 22 * u, ly = top[1] - 26 * u; g.strokeStyle = plot ? '#222' : '#fff'; g.lineWidth = .8 * u;
-      g.beginPath(); g.moveTo(top[0], top[1]); g.lineTo(lx + 2, ly + 3); g.lineTo(lx - 54 * u, ly + 3); g.stroke();
-      texto(g, `String ${i + 1}`, lx - 52 * u, ly, { size: 13 * u, color: plot ? '#111' : '#fff', halo: plot ? null : 'rgba(0,0,0,.75)' });
+    if (top && o.rotulos !== false) {
+      const tf = [(top[0] + V.ox) / k, (top[1] + V.oy) / k];
+      etiqueta(g, o, { p, of: 'string', id: x.st.id, et: x.st.etq, txt: x.st.etqTxt || `String ${i + 1}`, anchorF: tf, attach: () => top, def: [top[0] - 20 * u, top[1] - 23 * u], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#fff' });
     }
   });
 
@@ -146,7 +145,7 @@ export function dibujar(g, p, V, o) {
     if (sel) grips(g, pts);
     // etiqueta propia (se mueve, cambia de tamaño, se fija o se quita)
     if (o.rotulos !== false) { const m = Math.floor((rt.pts.length - 1) / 2), mid = lerp(rt.pts[m], rt.pts[m + 1], .5), a = T(mid);
-      etiqueta(g, o, { of: 'ruta', id: rt.id, et: rt.etq, txt: rt.etqTxt || C.corto, anchorF: mid, attach: () => a, def: [a[0] + 8 * u, a[1] - 10 * u], k, V, u, plot, color: plot ? (C.cPlot || C.c) : C.c }); }
+      etiqueta(g, o, { p, of: 'ruta', id: rt.id, et: rt.etq, txt: rt.etqTxt || C.corto, anchorF: mid, attach: () => a, def: [a[0] + 8 * u, a[1] - 10 * u], k, V, u, plot, color: plot ? (C.cPlot || C.c) : C.c }); }
   });
 
   // Equipos (a escala, con rótulo al costado como en los planos)
@@ -176,7 +175,7 @@ export function dibujar(g, p, V, o) {
       // por defecto: inversor, batería y cargadores rotulan a la izquierda; tableros y medidor a la derecha (así no se tapan)
       const der = ['tg', 'tfv', 'med', 'cdj'].includes(e.k), sg = der ? 1 : -1, ex = c[0] + sg * (w / 2 + 5 * u), ey = c[1] - h / 2 - 5 * u;
       const caja = [c[0] - w / 2 - 5 * u, c[1] - h / 2 - 5 * u, c[0] + w / 2 + 5 * u, c[1] + h / 2 + 5 * u];
-      etiqueta(g, o, { of: 'equipo', id: e.id, et: e.etq, txt: e.rotulo || E.n, anchorF: [e.x, e.y], def: [ex + sg * 4 * u, ey - 12 * u], izqDef: !der, k, V, u, plot, color: plot ? '#111' : '#fff',
+      etiqueta(g, o, { p, of: 'equipo', id: e.id, et: e.etq, txt: e.rotulo || E.n, anchorF: [e.x, e.y], def: [ex + sg * 4 * u, ey - 12 * u], izqDef: !der, k, V, u, plot, color: plot ? '#111' : '#fff',
         attach: L => [L[0] < c[0] ? caja[0] : caja[2], L[1] < c[1] ? caja[1] : caja[3]] });
     }
     if (sel) grips(g, [[c[0] - w / 2, c[1] - h / 2], [c[0] + w / 2, c[1] - h / 2], [c[0] + w / 2, c[1] + h / 2], [c[0] - w / 2, c[1] + h / 2], c]);
@@ -191,7 +190,7 @@ export function dibujar(g, p, V, o) {
       // tics oblicuos estilo arquitectura
       [a, b].forEach(q => { g.beginPath(); g.moveTo(q[0] - 4 * u, q[1] + 4 * u); g.lineTo(q[0] + 4 * u, q[1] - 4 * u); g.stroke(); });
       const m = lerp(a, b, .5); let rot = ang; if (rot > Math.PI / 2 || rot < -Math.PI / 2) rot += Math.PI;
-      g.save(); g.translate(m[0] - nx * 1.2, m[1] - ny * 1.2); g.rotate(rot); texto(g, txt, 0, -2 * u, { size: 11.5 * u, color: plot ? '#111' : col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); g.restore();
+      g.save(); g.translate(m[0] - nx * 1.2, m[1] - ny * 1.2); g.rotate(rot); texto(g, txt, 0, -2 * u, { size: (plot ? 9 : 11.5) * u * (p.tamCotas || 1), color: plot ? '#111' : col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); g.restore();
     };
     if (p.ref && !plot && (o.step === 'escala' || o.verRef)) cota(p.ref.a, p.ref.b, p.ref.mm ? `${fmt(p.ref.mm / 1000, 2)} m · REF` : '? m', '#FAB704', true);
     p.cotas.forEach(ct => { const sel = o.sel && o.sel.t === 'cota' && o.sel.id === ct.id; cota(ct.a, ct.b, textoCota(p, ct), sel ? '#FAB704' : (plot ? '#111' : '#FAB704')); if (sel) grips(g, [T(ct.a), T(ct.b)]); });
@@ -213,9 +212,10 @@ export function dibujar(g, p, V, o) {
 /* Etiqueta de un equipo o una canalización: texto subrayado con línea guía hasta su dueño.
    et = { dx, dy (posición propia, px de la foto, desde el ancla), tam, fijo, oculta }. Sin dx/dy va en su lugar por defecto.
    En el editor deja su caja en o.hits para poder elegirla y arrastrarla. */
-function etiqueta(g, o, { of, id, et = {}, txt, anchorF, def, izqDef, attach, k, V, u, plot, color }) {
+function etiqueta(g, o, { p, of, id, et = {}, txt, anchorF, def, izqDef, attach, k, V, u, plot, color }) {
   et = et || {}; if (et.oculta || !txt) return;
-  const size = 12 * u * (et.tam || 1), Tp = q => [q[0] * k - V.ox, q[1] * k - V.oy];
+  const gen = (p && p.tamEtq) || 1, Tp = q => [q[0] * k - V.ox, q[1] * k - V.oy];
+  const size = et.escala ? Math.max(3, ((p && p.w) || 1000) / 110 * k * (et.tam || 1) * gen) : (plot ? 8 : 11) * u * (et.tam || 1) * gen;
   const L = et.dx != null ? Tp([anchorF[0] + et.dx, anchorF[1] + et.dy]) : def;
   g.font = `400 ${size}px 'Archivo Narrow', 'Arial Narrow', Arial, sans-serif`;
   const wt = g.measureText(txt).width + 4 * u, A = attach(L), izq = et.dx != null ? L[0] < A[0] : !!izqDef;
