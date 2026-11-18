@@ -142,8 +142,11 @@ export function dibujar(g, p, V, o) {
     const C = CANAL[rt.k] || CANAL.ca, pts = rt.pts.map(T), sel = o.sel && o.sel.t === 'ruta' && o.sel.id === rt.id; if (pts.length < 2) return;
     if (!vis(C.riel ? 'rieles' : 'canal')) return;
     if (sel) { path(g, pts); g.lineWidth = 6; g.strokeStyle = 'rgba(250,183,4,.35)'; g.stroke(); }
-    path(g, pts); g.setLineDash(C.dash.map(d => d * u)); g.lineWidth = 1.8 * u; g.strokeStyle = C.c; g.lineJoin = 'round'; g.stroke(); g.setLineDash([]);
+    path(g, pts); g.setLineDash(C.dash.map(d => d * u)); g.lineWidth = 1.8 * u; g.strokeStyle = plot && C.cPlot ? C.cPlot : C.c; g.lineJoin = 'round'; g.stroke(); g.setLineDash([]);
     if (sel) grips(g, pts);
+    // etiqueta propia (se mueve, cambia de tamaño, se fija o se quita)
+    if (o.rotulos !== false) { const m = Math.floor((rt.pts.length - 1) / 2), mid = lerp(rt.pts[m], rt.pts[m + 1], .5), a = T(mid);
+      etiqueta(g, o, { of: 'ruta', id: rt.id, et: rt.etq, txt: rt.etqTxt || C.corto, anchorF: mid, attach: () => a, def: [a[0] + 8 * u, a[1] - 10 * u], k, V, u, plot, color: plot ? (C.cPlot || C.c) : C.c }); }
   });
 
   // Equipos (a escala, con rótulo al costado como en los planos)
@@ -170,10 +173,11 @@ export function dibujar(g, p, V, o) {
     // marco de color y rótulo
     g.lineWidth = 1 * u; g.strokeStyle = plot ? '#00B7D4' : 'rgba(0,229,255,.7)'; g.strokeRect(c[0] - w / 2 - 5 * u, c[1] - h / 2 - 5 * u, w + 10 * u, h + 10 * u);
     if (o.rotulos !== false) {
-      // inversor, batería y cargadores rotulan a la izquierda; tableros y medidor a la derecha (así no se tapan)
+      // por defecto: inversor, batería y cargadores rotulan a la izquierda; tableros y medidor a la derecha (así no se tapan)
       const der = ['tg', 'tfv', 'med', 'cdj'].includes(e.k), sg = der ? 1 : -1, ex = c[0] + sg * (w / 2 + 5 * u), ey = c[1] - h / 2 - 5 * u;
-      const tx = ex + sg * 4 * u, ty = ey - 12 * u; g.beginPath(); g.moveTo(ex, ey); g.lineTo(tx, ty); g.lineTo(tx + sg * 40 * u, ty); g.strokeStyle = plot ? '#222' : '#fff'; g.lineWidth = .8 * u; g.stroke();
-      texto(g, e.rotulo || E.n, tx + sg * 2 * u, ty - 3 * u, { size: 12 * u, color: plot ? '#111' : '#fff', halo: plot ? null : 'rgba(0,0,0,.75)', align: der ? 'left' : 'right' });
+      const caja = [c[0] - w / 2 - 5 * u, c[1] - h / 2 - 5 * u, c[0] + w / 2 + 5 * u, c[1] + h / 2 + 5 * u];
+      etiqueta(g, o, { of: 'equipo', id: e.id, et: e.etq, txt: e.rotulo || E.n, anchorF: [e.x, e.y], def: [ex + sg * 4 * u, ey - 12 * u], izqDef: !der, k, V, u, plot, color: plot ? '#111' : '#fff',
+        attach: L => [L[0] < c[0] ? caja[0] : caja[2], L[1] < c[1] ? caja[1] : caja[3]] });
     }
     if (sel) grips(g, [[c[0] - w / 2, c[1] - h / 2], [c[0] + w / 2, c[1] - h / 2], [c[0] + w / 2, c[1] + h / 2], [c[0] - w / 2, c[1] + h / 2], c]);
   });
@@ -206,6 +210,22 @@ export function dibujar(g, p, V, o) {
   if (o.temp) o.temp(g, T);
 }
 
+/* Etiqueta de un equipo o una canalización: texto subrayado con línea guía hasta su dueño.
+   et = { dx, dy (posición propia, px de la foto, desde el ancla), tam, fijo, oculta }. Sin dx/dy va en su lugar por defecto.
+   En el editor deja su caja en o.hits para poder elegirla y arrastrarla. */
+function etiqueta(g, o, { of, id, et = {}, txt, anchorF, def, izqDef, attach, k, V, u, plot, color }) {
+  et = et || {}; if (et.oculta || !txt) return;
+  const size = 12 * u * (et.tam || 1), Tp = q => [q[0] * k - V.ox, q[1] * k - V.oy];
+  const L = et.dx != null ? Tp([anchorF[0] + et.dx, anchorF[1] + et.dy]) : def;
+  g.font = `400 ${size}px 'Archivo Narrow', 'Arial Narrow', Arial, sans-serif`;
+  const wt = g.measureText(txt).width + 4 * u, A = attach(L), izq = et.dx != null ? L[0] < A[0] : !!izqDef;
+  const x0 = izq ? L[0] - wt : L[0], x1 = izq ? L[0] : L[0] + wt;
+  g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(L[0], L[1]); g.lineTo(izq ? x0 : x1, L[1]); g.strokeStyle = plot ? '#222' : '#fff'; g.lineWidth = .8 * u; g.stroke();
+  texto(g, txt, izq ? x1 - 2 * u : x0 + 2 * u, L[1] - 3 * u, { size, color, halo: plot ? null : 'rgba(0,0,0,.75)', align: izq ? 'right' : 'left' });
+  const caja = [x0 - 2, L[1] - size - 4 * u, x1 + 2, L[1] + 3];
+  if (o.hits) o.hits.push({ t: 'etq', of, id, caja, anchor: anchorF, pos: [(L[0] + V.ox) / k, (L[1] + V.oy) / k] });
+  if (!plot && o.sel && o.sel.t === 'etq' && o.sel.of === of && o.sel.id === id) { g.setLineDash([4, 3]); g.strokeStyle = et.fijo ? '#9DB0BD' : '#FAB704'; g.lineWidth = 1; g.strokeRect(caja[0], caja[1], caja[2] - caja[0], caja[3] - caja[1]); g.setLineDash([]); }
+}
 /* Un panel (o una figura) con el relleno y achurado verde de los paneles */
 export function panelDibujo(g, pts, { plot, u = 1, sel } = {}) {
   if (pts.length < 3) return;

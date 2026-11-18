@@ -45,9 +45,10 @@ export const MODELOS_EQUIPO = k => OTROS_EMAT.filter(x => x.k === k && x.ancho);
 
 /* Tipos de canalización: colores de la simbología de los planos. */
 export const CANAL = {
-  cc: { n: 'Línea corriente continua (CC)', corto: 'CC', c: '#3D6BFF', dash: [10, 6], cond: 'PV1-F 2x6 mm²', ducto: 'EMT 32 / Flex. Met. 32' },
-  ca: { n: 'Línea corriente alterna (CA)', corto: 'CA', c: '#FF3B3B', dash: [], cond: 'RVK 3x8,37 mm²', ducto: 'EMT 32 / Flex. Met. 32' },
-  sub: { n: 'Canalización subterránea', corto: 'Subterránea', c: '#FF8A00', dash: [3, 5], cond: 'RVK 3x8,37 mm²', ducto: 'PVC 32' },
+  cc: { n: 'Línea corriente continua (CC)', corto: 'CC', c: '#3D6BFF', dash: [], cond: 'PV1-F 2x6 mm²', ducto: 'EMT 32 / Flex. Met. 32', dc: true },
+  ca: { n: 'Línea corriente alterna (CA)', corto: 'CA', c: '#FFD21F', cPlot: '#D9A800', dash: [], cond: 'RVK 3x8,37 mm²', ducto: 'EMT 32 / Flex. Met. 32' },
+  subcc: { n: 'Subterránea en CC', corto: 'Subterránea CC', c: '#FF3B3B', dash: [10, 6], cond: 'PV1-F 2x6 mm²', ducto: 'PVC 32', dc: true },
+  sub: { n: 'Subterránea en CA', corto: 'Subterránea CA', c: '#FF3B3B', dash: [], cond: 'RVK 3x8,37 mm²', ducto: 'PVC 32' },
   tie: { n: 'Línea de tierra', corto: 'Tierra', c: '#9DB0BD', dash: [], cond: 'Cu desnudo 16 mm²', ducto: '—' },
   riel: { n: 'Riel (dibujo libre)', corto: 'Riel', c: '#FF9E3D', dash: [], cond: '—', ducto: '—', riel: true }
 };

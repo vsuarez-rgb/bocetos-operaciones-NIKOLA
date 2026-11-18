@@ -171,7 +171,8 @@ function dibujarTodo() {
   g.fillStyle = getComputedStyle(document.body).getPropertyValue('--modelo') || '#1E242B'; g.fillRect(0, 0, W, H);
   const p = E.p, s = escala(p);
   const selBloque = E.sel && E.sel.t === 'bloque' ? E.sel : null;
-  dibujar(g, p, E.V, { capas: E.capas, sel: E.sel, step: E.step, R: E.R, SI: E.SI, fotoAlpha: E.fotoAlpha, selBloque, selPanels: E.step === 'strings' ? panelesDelActivo() : null, verRef: E.step === 'escala',
+  E.hits = [];
+  dibujar(g, p, E.V, { hits: E.hits, capas: E.capas, sel: E.sel, step: E.step, R: E.R, SI: E.SI, fotoAlpha: E.fotoAlpha, selBloque, selPanels: E.step === 'strings' ? panelesDelActivo() : null, verRef: E.step === 'escala',
     temp: (g2, T) => temporal(g2, T) });
   if (E.rejilla && s) rejilla(g, W, H, s);
   cursor(g, W, H);
@@ -255,7 +256,10 @@ function gripEn(q) {
   if (s.t === 'ref' && E.p.ref) { if (dist(E.p.ref.a, q) < d) return { obj: E.p.ref, k: 'a' }; if (dist(E.p.ref.b, q) < d) return { obj: E.p.ref, k: 'b' }; }
   return null;
 }
+const duenoEtq = s => s && s.t === 'etq' ? (s.of === 'equipo' ? E.p.equipos : E.p.rutas).find(x => x.id === s.id) : null;
+function etqEn(q) { const sq = aPant(q); return [...(E.hits || [])].reverse().find(h => sq[0] >= h.caja[0] && sq[0] <= h.caja[2] && sq[1] >= h.caja[1] && sq[1] <= h.caja[3]); }
 function objetoEn(q) {
+  const et = etqEn(q); if (et && ((et.of === 'equipo' && E.capas.has('equipos')) || (et.of === 'ruta'))) return { t: 'etq', of: et.of, id: et.id };
   if (E.capas.has('textos') && norteEn(q)) return { t: 'norte' };
   const tx = E.capas.has('textos') && textoEn(q); if (tx) return { t: 'texto', id: tx.id };
   const ct = E.capas.has('cotas') && cotaEn(q); if (ct) return { t: 'cota', id: ct.id };
@@ -312,7 +316,7 @@ function down(ev) {
   if (E.step === 'paneles') return downPaneles(raw, ev);
   const o = objetoEn(raw);
   E.sel = o; if (o && o.t === 'roof' && E.step === 'equipos') E.sel = null;
-  if (o && ['equipo', 'zona', 'texto', 'norte', 'ruta', 'cota', 'fig'].includes(o.t)) E.D = { kind: 'mover', a: raw, last: raw, first: true };
+  if (o && ['equipo', 'zona', 'texto', 'norte', 'ruta', 'cota', 'fig', 'etq'].includes(o.t)) E.D = { kind: 'mover', a: raw, last: raw, first: true };
   panel(); dibujarTodo();
 }
 function downPaneles(raw, ev) {
@@ -323,8 +327,8 @@ function downPaneles(raw, ev) {
     if (pointInPoly(raw, act.poly)) { const s = escala(p); if (!s) return; antes(); const ang = anguloBordeCercano(act.poly, raw); act.bloques.push({ id: uid('b'), x: raw[0], y: raw[1], f: E.blk.f, c: E.blk.c, ang }); E.sel = { t: 'bloque', ri: p.roofs.indexOf(act), bi: act.bloques.length - 1, rid: act.id }; log(`BLOQUE ${E.blk.f}×${E.blk.c}`); despues(); return; }
   }
   if (act && act.modo !== 'manual' && pointInPoly(raw, act.poly)) { const pn = panelEn(raw); if (pn && pn.rid === act.id) { antes(); act.off = act.off || []; const i = act.off.indexOf(pn.key); i >= 0 ? act.off.splice(i, 1) : act.off.push(pn.key); despues(); return; } }
-  const r = techoEn(raw); E.sel = r ? { t: 'roof', id: r.id } : objetoEn(raw);
-  if (E.sel && ['equipo', 'texto', 'norte', 'cota', 'ruta'].includes(E.sel.t)) E.D = { kind: 'mover', a: raw, last: raw, first: true };
+  const et0 = etqEn(raw), r = techoEn(raw); E.sel = et0 ? { t: 'etq', of: et0.of, id: et0.id } : r ? { t: 'roof', id: r.id } : objetoEn(raw);
+  if (E.sel && ['equipo', 'texto', 'norte', 'cota', 'ruta', 'etq'].includes(E.sel.t)) E.D = { kind: 'mover', a: raw, last: raw, first: true };
   panel(); dibujarTodo();
 }
 function move(ev) {
@@ -381,6 +385,9 @@ function moverSel(dx, dy, D) {
   if (s.t === 'norte') { p.norte.x += dx; p.norte.y += dy; }
   if (s.t === 'cota') { const c = p.cotas.find(x => x.id === s.id); c.a = [c.a[0] + dx, c.a[1] + dy]; c.b = [c.b[0] + dx, c.b[1] + dy]; }
   if (s.t === 'ruta') { const r = p.rutas.find(x => x.id === s.id); r.pts = r.pts.map(v => [v[0] + dx, v[1] + dy]); }
+  if (s.t === 'etq') { const ow = duenoEtq(s); if (!ow) return; const et = (ow.etq ||= {}); if (et.fijo) return;
+    if (et.dx == null) { const h = (E.hits || []).find(x => x.of === s.of && x.id === s.id); if (!h) return; et.dx = h.pos[0] - h.anchor[0]; et.dy = h.pos[1] - h.anchor[1]; }
+    et.dx += dx; et.dy += dy; }
   if (s.t === 'fig') { const f = (p.figPaneles || []).find(x => x.id === s.id); if (f) f.pts = f.pts.map(v => [v[0] + dx, v[1] + dy]); }
   if (s.t === 'bloque') { const b = p.roofs[s.ri].bloques[s.bi]; b.x += dx; b.y += dy; }
 }
@@ -405,7 +412,7 @@ function terminar() {
   if (E.tool === 'figpan' && t) { if (t.pts.length >= 3) cerrarFigura(); else { E.temp = null; dibujarTodo(); } return; }
   if (E.tool === 'roof' && t) { if (t.pts.length >= 3) cerrarTecho(); else { E.temp = null; dibujarTodo(); } return; }
   if (E.tool === 'ruta' && t) {
-    if (t.pts.length >= 2) { antes(); const st = E.p.strings[0]; const r = { id: uid('r'), k: E.rutaK, pts: t.pts, tramo: E.rutaK === 'cc' ? (E.strAct || (st && st.id) || '') : E.rutaK === 'tie' ? '' : 'inv-tg' }; E.p.rutas.push(r); E.sel = { t: 'ruta', id: r.id }; log(`CANALIZACIÓN ${CANAL[r.k].corto}  ${fmt(largoM(E.p, r.pts), 1)} m`); E.temp = null; despues(); }
+    if (t.pts.length >= 2) { antes(); const st = E.p.strings[0]; const r = { id: uid('r'), k: E.rutaK, pts: t.pts, tramo: CANAL[E.rutaK]?.dc ? (E.strAct || (st && st.id) || '') : ['tie', 'riel'].includes(E.rutaK) ? '' : 'inv-tg' }; E.p.rutas.push(r); E.sel = { t: 'ruta', id: r.id }; log(`CANALIZACIÓN ${CANAL[r.k].corto}  ${fmt(largoM(E.p, r.pts), 1)} m`); E.temp = null; despues(); }
     else { E.temp = null; dibujarTodo(); }
     prompt('Comando:'); return;
   }
@@ -525,6 +532,7 @@ function ejecutar(v) {
 }
 function borrarSel() {
   const s = E.sel, p = E.p; if (!s) return toast('No hay nada seleccionado');
+  if (s.t === 'etq') { const ow = duenoEtq(s); if (ow) { antes(); (ow.etq ||= {}).oculta = true; E.sel = null; log('ETIQUETA quitada'); despues(); } return; }
   antes();
   const quitar = (arr, id) => { const i = arr.findIndex(x => x.id === id); if (i >= 0) arr.splice(i, 1); };
   if (s.t === 'roof') { quitar(p.roofs, s.id); }
@@ -711,7 +719,7 @@ function panel() {
     h += sec('Canalización', `
       <div class="lista">${Object.entries(CANAL).map(([k, C]) => `<button class="li" data-act="rutaK" data-k="${k}" aria-pressed="${E.tool === 'ruta' && E.rutaK === k}"><i class="ln" style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i><b>${C.n}</b><em>${fmt(largos.find(x => x[0] === k)[1], 1)} m</em></button>`).join('')}</div>
       <p class="mut">Elige un tipo y haz clic en cada punto del recorrido. Enter o doble clic termina. El largo de cada tramo se ve aquí (no en el dibujo) y pasa a los cuadros de la lámina.</p>
-      ${p.rutas.filter(r => r.k !== 'riel').length ? `<div class="sub">Largo aprox. de cada canalización</div><div class="lista">${p.rutas.filter(r => r.k !== 'riel').map(r => { const C = CANAL[r.k] || CANAL.ca, tr = r.k === 'cc' ? (p.strings.findIndex(st => st.id === r.tramo) + 1 ? `String ${p.strings.findIndex(st => st.id === r.tramo) + 1}` : '') : { 'inv-tg': 'Inversor – TGFV', 'tg-emp': 'TG – Empalme' }[r.tramo] || '';
+      ${p.rutas.filter(r => r.k !== 'riel').length ? `<div class="sub">Largo aprox. de cada canalización</div><div class="lista">${p.rutas.filter(r => r.k !== 'riel').map(r => { const C = CANAL[r.k] || CANAL.ca, tr = CANAL[r.k]?.dc ? (p.strings.findIndex(st => st.id === r.tramo) + 1 ? `String ${p.strings.findIndex(st => st.id === r.tramo) + 1}` : '') : { 'inv-tg': 'Inversor – TGFV', 'tg-emp': 'TG – Empalme' }[r.tramo] || '';
         return `<button class="li" data-act="sel-ruta" data-id="${r.id}" aria-pressed="${E.sel && E.sel.id === r.id}"><i class="ln" style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i><b>${C.corto}${tr ? ' · ' + esc(tr) : ''}</b><em>${s ? fmt(largoM(p, r.pts), 1) + ' m' : '—'}</em></button>`; }).join('')}</div>` : ''}`);
   }
   // Capas (como el administrador de capas)
@@ -724,7 +732,7 @@ const stepper = (campo, val) => `<span class="stp"><button data-act="stp" data-c
 function nombreSel(s) {
   const p = E.p;
   return { roof: () => `Techo ${p.roofs.findIndex(r => r.id === s.id) + 1}`, zona: () => 'Zona', equipo: () => EQUIPOS[(p.equipos.find(e => e.id === s.id) || {}).k]?.n || 'Equipo', ruta: () => 'Canalización',
-    fig: () => 'Paneles dibujados', cota: () => 'Cota', texto: () => 'Texto', norte: () => 'Norte', ref: () => 'Referencia', bloque: () => 'Bloque de paneles' }[s.t]?.() || '';
+    fig: () => 'Paneles dibujados', etq: () => 'Etiqueta', cota: () => 'Cota', texto: () => 'Texto', norte: () => 'Norte', ref: () => 'Referencia', bloque: () => 'Bloque de paneles' }[s.t]?.() || '';
 }
 function propsSel(s, { num, rango, seg }) {
   const p = E.p, del = `<button class="btn sm del" data-act="borrar">${ic('trash', 14)} Borrar</button>`;
@@ -741,13 +749,22 @@ function propsSel(s, { num, rango, seg }) {
         <p class="mut">Medida en planta. Vacío = la del ${e.k === 'inv' || e.modelo ? 'modelo' : 'símbolo'} (${fmt(base.w, 0)} × ${fmt(base.h, 0)} mm).</p>`; })()}
       <label class="chk"><input type="checkbox" data-campo="eq.verMed" ${p.verMedidas && e.verMed !== false ? 'checked' : ''}> Mostrar sus medidas en el dibujo</label>
       ${escala(p) ? '' : rango('eq.f', Math.round((e.f || 1) * 100), 10, 500, 'Tamaño en el dibujo (sin escala)', ' %')}
+      <label class="chk"><input type="checkbox" data-campo="eq.etqVer" ${!(e.etq && e.etq.oculta) ? 'checked' : ''}> Mostrar su etiqueta</label>
       <label class="f"><span>Rótulo</span><input class="in" data-campo="eq.rotulo" value="${esc(e.rotulo || '')}" placeholder="${esc(EQUIPOS[e.k].n)}"></label>${rango('eq.ang', Math.round(e.ang || 0), -180, 180, 'Giro')}${del}`; }
   if (s.t === 'ruta') { const r = p.rutas.find(x => x.id === s.id); if (!r) return '';
-    const tramos = r.k === 'cc' ? p.strings.map((st, i) => [st.id, `String ${i + 1} (${nombreString(st)})`]) : ['tie', 'riel'].includes(r.k) ? [] : [['inv-tg', 'Inversor – TGFV'], ['tg-emp', 'TG – Empalme']];
+    const tramos = CANAL[r.k]?.dc ? p.strings.map((st, i) => [st.id, `String ${i + 1} (${nombreString(st)})`]) : ['tie', 'riel'].includes(r.k) ? [] : [['inv-tg', 'Inversor – TGFV'], ['tg-emp', 'TG – Empalme']];
     return `<label class="f"><span>Tipo</span><select class="in" data-campo="ruta.k">${Object.entries(CANAL).map(([k, C]) => `<option value="${k}" ${r.k === k ? 'selected' : ''}>${C.n}</option>`).join('')}</select></label>
       ${tramos.length ? `<label class="f"><span>Tramo</span><select class="in" data-campo="ruta.tramo"><option value="">—</option>${tramos.map(([k, n]) => `<option value="${k}" ${r.tramo === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>` : ''}
+      <label class="chk"><input type="checkbox" data-campo="ruta.etqVer" ${!(r.etq && r.etq.oculta) ? 'checked' : ''}> Mostrar su etiqueta</label>
       ${r.k === 'riel' && !escala(p) ? num('ruta.mManual', r.mManual ?? '', { l: 'Largo real del riel', u: 'm' }) : ''}
       <dl class="dl"><dt>Largo</dt><dd>${escala(p) ? fmt(largoM(p, r.pts), 2) + ' m' : r.mManual ? fmt(r.mManual, 2) + ' m (escrito)' : '— (sin escala)'}</dd><dt>Vértices</dt><dd>${r.pts.length}</dd></dl><p class="mut">Arrastra los cuadros azules para mover vértices.</p>${del}`; }
+  if (s.t === 'etq') { const ow = duenoEtq(s); if (!ow) return ''; const et = ow.etq || {};
+    const txt = s.of === 'equipo' ? (ow.rotulo || '') : (ow.etqTxt || ''), ph = s.of === 'equipo' ? EQUIPOS[ow.k]?.n : CANAL[ow.k]?.corto;
+    return `<label class="f"><span>Texto</span><input class="in" data-campo="etq.txt" value="${esc(txt)}" placeholder="${esc(ph || '')}"></label>
+      ${rango('etq.tam', Math.round((et.tam || 1) * 100), 40, 400, 'Tamaño', ' %')}
+      <label class="chk"><input type="checkbox" data-campo="etq.fijo" ${et.fijo ? 'checked' : ''}> Fija (no se mueve con el mouse)</label>
+      <p class="mut">Arrástrala para ponerla donde quieras; la línea guía la sigue.</p>
+      <div class="row wrap">${et.dx != null ? '<button class="btn sm" data-act="etq-reset">Volver a su lugar</button>' : ''}<button class="btn sm del" data-act="etq-quitar">${ic('trash', 14)} Quitar etiqueta</button></div>`; }
   if (s.t === 'fig') { const f = (p.figPaneles || []).find(x => x.id === s.id); if (!f) return '';
     return `${f.pts.length === 4 ? seg('fig.tipo', f.tipo, [['grid', 'Cuadrícula'], ['poly', 'Figura entera']]) : ''}
       ${f.tipo === 'grid' ? `<div class="f"><span>Paneles</span><span class="row">${stepper('fig.f', f.f)} filas × ${stepper('fig.c', f.c)} col.</span></div>` : ''}
@@ -816,6 +833,8 @@ document.addEventListener('click', ev => {
     case 'blk-paralelo': { const bl = bloqueSel(), r = techoAct(); if (bl && r) { antes(); bl.ang = anguloBordeCercano(r.poly, [bl.x, bl.y]); despues(); } break; }
     case 'blk-rep': { const r = p.roofs[E.sel.ri], bl = bloqueSel(), s = escala(p); if (!bl || !s) break; antes(); const G = geomTecho(p, r, s), g = geomBloque(p, G, bl); const d = girarV(k === 'der' ? [g.BW + g.gx, 0] : [0, g.BH + g.sep], g.a); r.bloques.push({ ...clone(bl), id: uid('b'), x: bl.x + d[0], y: bl.y + d[1] }); E.sel = { ...E.sel, bi: r.bloques.length - 1 }; despues(); break; }
     case 'borrar': borrarSel(); break;
+    case 'etq-reset': { const ow = duenoEtq(E.sel); if (ow && ow.etq) { antes(); delete ow.etq.dx; delete ow.etq.dy; despues(); } break; }
+    case 'etq-quitar': borrarSel(); break;
     case 'cota-escala': { const c = E.sel && p.cotas.find(x => x.id === E.sel.id), m = c && parseNum(c.txt); if (!(m > 0)) break; antes(); p.ref = { a: [...c.a], b: [...c.b], mm: m * 1000 }; p.sinEscala = false; delete c.txt; log(`Escala desde la cota: 1 px = ${fmt(escala(p), 1)} mm`); despues(); render(); toast('La hoja ya tiene escala: ahora los equipos salen a su tamaño real'); break; }
     case 'str-new': antes(); nuevoString(); E.tool = 'str'; despues(); render(); break;
     case 'str-act': E.strAct = b.dataset.id; E.tool = 'str'; panel(); dibujarTodo(); break;
@@ -853,12 +872,18 @@ function aplicar(campo, v, desdeChange, vivo) {
   else if (pre === 'b') { const bl = bloqueSel(); if (!bl) return; if (k === 'sep') bl.sep = (n ?? 2) * 10; else if (['f', 'c', 'ang', 'incl'].includes(k)) bl[k] = +v; else bl[k] = v; }
   else if (pre === 'zona') { const z = obj.zona(); if (!z) return; z[k] = k === 'ang' ? +v : v; }
   else if (pre === 'eq') { const e = obj.eq(); if (!e) return;
-    if (k === 'mw' || k === 'mh') { if (n > 0) e[k] = Math.round(n); else delete e[k]; }
+    if (k === 'etqVer') { (e.etq ||= {}).oculta = !v; }
+    else if (k === 'mw' || k === 'mh') { if (n > 0) e[k] = Math.round(n); else delete e[k]; }
     else if (k === 'f') e.f = Math.max(.1, +v / 100);
     else if (k === 'verMed') { if (v) { delete e.verMed; if (!p.verMedidas) { p.verMedidas = true; p.equipos.forEach(x => { if (x !== e) x.verMed = false; }); } } else e.verMed = false; }
     else e[k] = k === 'ang' ? +v : v; }
   else if (pre === 'cota') { const c = s && p.cotas.find(x => x.id === s.id); if (!c) return; const t = String(v).trim(); if (t) c.txt = t; else delete c.txt; }
   else if (pre === 'hoja') { if (k === 'verMedidas') { p.verMedidas = !!v; if (v) p.equipos.forEach(x => delete x.verMed); } else if (k === 'tamSimb') p.tamSimb = Math.max(.2, +v / 100); }
+  else if (pre === 'etq') { const ow = duenoEtq(s); if (!ow) return; const et = (ow.etq ||= {});
+    if (k === 'txt') { const t = String(v).trim(); if (s.of === 'equipo') { if (t) ow.rotulo = t; else delete ow.rotulo; } else { if (t) ow.etqTxt = t; else delete ow.etqTxt; } }
+    else if (k === 'tam') et.tam = Math.max(.2, +v / 100); else if (k === 'fijo') et.fijo = !!v; }
+  else if (pre === 'ruta' && k === 'etqVer') { const rt = obj.ruta(); if (!rt) return; (rt.etq ||= {}).oculta = !v; }
+  else if (pre === 'eq' && k === 'etqVer') { const e = obj.eq(); if (!e) return; (e.etq ||= {}).oculta = !v; }
   else if (pre === 'ruta') { const rt = obj.ruta(); if (!rt) return; if (k === 'mManual') { if (n > 0) rt.mManual = n; else delete rt.mManual; } else rt[k] = v; }
   else if (pre === 'fig') { const f = (p.figPaneles || []).find(x => s && x.id === s.id); if (!f) return; if (k === 'tipo') f.tipo = v; else f[k] = Math.max(1, Math.round(+v || 1)); }
   else if (pre === 'riel') { const tgt = k.startsWith('b') ? bloqueSel() : r; if (!tgt) return; const kk = k.replace(/^b/, '').toLowerCase(); tgt.rieles ||= {}; if (kk === 'modo') { if (v === 'hereda') delete tgt.rieles; else tgt.rieles.modo = v; } else { if (n > 0) tgt.rieles.d = n * 10; else delete tgt.rieles.d; } }

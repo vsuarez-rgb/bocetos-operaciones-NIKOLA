@@ -205,7 +205,7 @@ export function calcStrings(p, R = calcular(p)) {
     const P = panelDe(p, roof), n = pans.length;
     const mezcla = new Set(pans.map(k => panelDe(p, p.roofs.find(r => r.id === R.porKey.get(k).rid)).id)).size > 1;
     const voc = n * P.voc, vmp = n * P.vmp, vocFrio = voc * (1 + (P.coefVoc / 100) * (T_MIN - 25)), pw = n * P.wp;
-    const largoAuto = largoTramo(p, r => r.k === 'cc' && (r.tramo === st.id));
+    const largoAuto = largoTramo(p, r => (r.k === 'cc' || r.k === 'subcc') && (r.tramo === st.id));
     const largo = st.largo != null ? st.largo : Math.round(largoAuto);
     const seccion = st.seccion || 6;
     const dv = RHO_CC * largo * P.imp / seccion, dvp = vmp ? dv / vmp * 100 : 0;

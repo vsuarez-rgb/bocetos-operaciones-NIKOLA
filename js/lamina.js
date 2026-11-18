@@ -252,13 +252,14 @@ function simbologia(x, y, w, h) {
     [`<path d="M-4 0h8" stroke="#22B" stroke-width=".5"/>`, 'BARRA'],
     [tierraP(0, -2), 'TIERRA DE PROTECCIÓN'],
     [tierra(0, -3), 'TIERRA DE SERVICIO'],
-    [`<path d="M-4 0h8" stroke="#3D6BFF" stroke-width=".5" stroke-dasharray="1.6 1"/>`, 'LÍNEA CORRIENTE CONTINUA'],
-    [`<path d="M-4 0h8" stroke="#D11" stroke-width=".5"/>`, 'LÍNEA CORRIENTE ALTERNA'],
-    [`<path d="M-4 0h8" stroke="#FF8A00" stroke-width=".5" stroke-dasharray=".6 .9"/>`, 'CANALIZACIÓN SUBTERRÁNEA'],
+    [`<path d="M-4 0h8" stroke="#3D6BFF" stroke-width=".5"/>`, 'LÍNEA CORRIENTE CONTINUA'],
+    [`<path d="M-4 0h8" stroke="#D9A800" stroke-width=".5"/>`, 'LÍNEA CORRIENTE ALTERNA'],
+    [`<path d="M-4 0h8" stroke="#E02020" stroke-width=".5" stroke-dasharray="1.6 1"/>`, 'SUBTERRÁNEA EN CC'],
+    [`<path d="M-4 0h8" stroke="#E02020" stroke-width=".5"/>`, 'SUBTERRÁNEA EN CA'],
     [`<rect x="-3" y="-3" width="6" height="6" fill="#C8F3F7" stroke="#0AA" stroke-width=".3"/>`, 'MEDIDOR'],
     [breaker(0, 0, '#1A8F3C'), 'INTERRUPTOR AUTOMÁTICO']
   ];
-  it.forEach(([g, n], i) => { const col = i % 2, fila = Math.floor(i / 2), X = x + 8 + col * w / 2, Y = y + 12 + fila * ((h - 14) / 5); s += `<g transform="translate(${X} ${Y})">${g}</g>` + T(X + 7, Y + .8, n, 1.7); });
+  it.forEach(([g, n], i) => { const col = i % 2, fila = Math.floor(i / 2), X = x + 8 + col * w / 2, Y = y + 12 + fila * ((h - 14) / Math.ceil(it.length / 2)); s += `<g transform="translate(${X} ${Y})">${g}</g>` + T(X + 7, Y + .8, n, 1.7); });
   return s;
 }
 function notas(p, D, x, y, w) {
