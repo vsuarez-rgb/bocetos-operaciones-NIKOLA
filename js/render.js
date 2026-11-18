@@ -4,7 +4,7 @@
    (modo plot: fondo blanco, colores de impresión).
    ========================================================================== */
 import { ZONAS, EQUIPOS, CANAL, COLORES_STRING } from './catalogo.js';
-import { zonaPoly, escala, largoM, tamEquipoPx, altoTextoPx, vistaEq } from './geom.js';
+import { zonaPoly, escala, largoM, tamEquipoPx, altoTextoPx, vistaEq, inclPanelesDe } from './geom.js';
 import { hull, centroid, lerp, dist, fmt } from './util.js';
 
 const imgs = new Map();
@@ -64,9 +64,12 @@ export function dibujar(g, p, V, o) {
       const c = T(centroid(r.poly)); texto(g, `TECHO ${i + 1}`, c[0], c[1], { size: 12 * u, color: act ? '#FAB704' : '#fff', halo: 'rgba(0,0,0,.7)', align: 'center', base: 'middle', bold: true });
     }
     // Inclinación (como "15º" en los planos), junto al vértice de más a la izquierda
-    if (r.closed && r.incl && (plot || o.step !== 'escala')) {
+    // Inclinación junto al vértice de más a la izquierda: la del techo mientras se dibuja; después, la de los paneles
+    // (en manual, cada bloque muestra la suya junto a él)
+    const iv = ['techos', 'elementos'].includes(o.step) ? (r.incl || 0) : r.modo === 'manual' ? null : inclPanelesDe(r);
+    if (r.closed && iv && (plot || o.step !== 'escala')) {
       const v = r.poly.reduce((m, q) => q[0] < m[0] ? q : m, r.poly[0]), q = T(v);
-      texto(g, `${r.incl}º`, q[0] - 6 * u, q[1] - 4 * u, { size: 13 * u, color: plot ? '#111' : '#fff', halo: plot ? null : 'rgba(0,0,0,.7)', align: 'right' });
+      texto(g, `${iv}º`, q[0] - 6 * u, q[1] - 4 * u, { size: 13 * u, color: plot ? '#111' : '#fff', halo: plot ? null : 'rgba(0,0,0,.7)', align: 'right' });
     }
   });
 
@@ -103,6 +106,11 @@ export function dibujar(g, p, V, o) {
         const r = Math.min(lado * .28, 9 * u); g.beginPath(); g.arc(c[0], c[1], r, 0, 7); g.fillStyle = plot ? '#fff' : 'rgba(10,20,28,.85)'; g.fill(); g.lineWidth = .9 * u; g.strokeStyle = plot ? '#222' : colorString(p, si.st); g.stroke();
         texto(g, si.etq, c[0], c[1] + .5, { size: r * 1.05, color: plot ? '#111' : '#fff', align: 'center', base: 'middle' });
       }
+    });
+    if (R.bloques && (plot || ['paneles', 'strings', 'equipos', 'etiquetas'].includes(o.step))) R.bloques.forEach(B => {
+      const r = p.roofs[B.ri], bl = r && (r.bloques || [])[B.bi]; if (!bl) return; const iv = bl.incl != null ? bl.incl : inclPanelesDe(r); if (!iv) return;
+      const q = B.q.map(T), v = q.reduce((m, x) => x[0] + x[1] < m[0] + m[1] ? x : m, q[0]);
+      texto(g, `${iv}º`, v[0] - 4 * u, v[1] - 4 * u, { size: 12 * u, color: plot ? '#111' : '#FAB704', halo: plot ? null : 'rgba(0,0,0,.75)', align: 'right' });
     });
     if (!plot && o.step === 'paneles' && o.selBloque) { const B = R.bloques.find(b => b.ri === o.selBloque.ri && b.bi === o.selBloque.bi); if (B) { path(g, B.q.map(T), true); g.setLineDash([6, 4]); g.lineWidth = 1.6; g.strokeStyle = '#FAB704'; g.stroke(); g.setLineDash([]); grips(g, B.q.map(T)); } }
   }

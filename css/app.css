@@ -486,3 +486,10 @@ select.fi-ctl { background: #1C2228; border-color: var(--ed-line); cursor: point
 .etq-ojo:hover { color: var(--nk-amarillo); }
 .etq-n { flex: 1; text-align: left; background: none; border: 0; color: var(--ed-ink); font: 12.5px var(--f-body); padding: 4px 6px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .etq-n:disabled { color: var(--ed-mut); text-decoration: line-through; cursor: default; }
+
+/* ---------- Ventana junto al bloque de paneles ---------- */
+.pop-bl { position: absolute; z-index: 8; width: 270px; max-height: calc(100% - 16px); overflow-y: auto; background: var(--ed-bar); color: var(--ed-ink); border: 1px solid var(--nk-amarillo); border-radius: 12px; box-shadow: 0 12px 34px rgba(0,0,0,.5); font-size: 12.5px; }
+.pop-bl-t { position: sticky; top: 0; display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--ed-bar2, #1C2228); border-bottom: 1px solid var(--ed-line); }
+.pop-bl-t b { font: 700 13px var(--f-disp); color: var(--nk-amarillo); } .pop-bl-t span { color: var(--ed-mut); flex: 1; }
+.pop-bl-t button { background: none; border: 0; color: var(--ed-mut); cursor: pointer; display: inline-flex; padding: 3px; } .pop-bl-t button:hover { color: var(--ed-ink); }
+.pop-bl-b { padding: 10px; display: flex; flex-direction: column; gap: 8px; }

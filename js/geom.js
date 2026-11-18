@@ -59,21 +59,27 @@ export function zonaPoly(e) {
 
 /* Medidas de un techo en su sistema girado (donde los paneles quedan derechos). La foto cenital
    "aplasta" el techo inclinado: en el sentido de la pendiente un panel se ve × cos(incl). */
+/* El techo y los paneles pueden tener inclinaciones distintas:
+     r.incl     · inclinación del techo (área real, retiro al borde)
+     r.inclPan  · inclinación de los paneles (estructura); vacía = sobrepuestos al techo (misma inclinación)
+   La foto cenital "aplasta" lo inclinado: un largo L en el sentido de la pendiente se ve L·cos(incl). */
+export const inclPanelesDe = r => r.inclPan != null ? r.inclPan : (r.incl || 0);
 export function geomTecho(p, r, s) {
-  const P = panelDe(p, r), a = (r.ang || 0) * Math.PI / 180, c = centroid(r.poly), cs = Math.cos((r.incl || 0) * Math.PI / 180);
-  const vert = ['abajo', 'arriba'].includes(bajaDe(r));
-  const fx = vert ? s : s / cs, fy = vert ? s / cs : s;
+  const P = panelDe(p, r), a = (r.ang || 0) * Math.PI / 180, c = centroid(r.poly), rad = Math.PI / 180;
+  const vert = ['abajo', 'arriba'].includes(bajaDe(r)), csT = Math.cos((r.incl || 0) * rad), inclPan = r.inclPan ?? null, csP = inclPan != null ? Math.cos(inclPan * rad) : csT;
+  const fxT = vert ? s : s / csT, fyT = vert ? s / csT : s, fx = vert ? s : s / csP, fy = vert ? s / csP : s;
   const o = r.orient || 'v', wmm = o === 'v' ? P.w : P.h, hmm = o === 'v' ? P.h : P.w;
-  return { P, a, c, s, fx, fy, o, wmm, hmm, baja: bajaDe(r), pw: wmm / fx, ph: hmm / fy, gx: GAP_COL / fx };
+  return { P, a, c, s, fx, fy, fxT, fyT, inclPan, vert, o, wmm, hmm, baja: bajaDe(r), pw: wmm / fx, ph: hmm / fy, gx: GAP_COL / fx };
 }
 /* Sombra entre filas inclinadas: d = b·sen(γ+β)/sen γ − b·cos β (redondeado al cm). */
 export function sombraMm(b, beta, gamma) { const B = beta * Math.PI / 180, G = gamma * Math.PI / 180; return Math.ceil((b * Math.sin(G + B) / Math.sin(G) - b * Math.cos(B)) / 10) * 10; }
 export function geomBloque(p, G, b) {
   const o = b.orient || G.o, otra = o !== G.o, wB = otra ? G.hmm : G.wmm, hB = otra ? G.wmm : G.hmm;
-  const propia = b.incl != null, vert = ['abajo', 'arriba'].includes(b.baja || G.baja);
+  // inclinación del bloque: la suya, o la de los paneles del techo; sin ninguna, sobrepuesto al techo
+  const inc = b.incl != null ? b.incl : G.inclPan, propia = inc != null, vert = ['abajo', 'arriba'].includes(b.baja || G.baja);
   let fx = G.fx, fy = G.fy;
-  if (propia) { const cs = Math.cos(b.incl * Math.PI / 180); fx = vert ? G.s : G.s / cs; fy = vert ? G.s / cs : G.s; }
-  const sombra = propia && b.incl > 0 && b.sombra !== false ? sombraMm(vert ? hB : wB, b.incl, p.solMin ?? SOL_MIN) : null;
+  if (propia) { const cs = Math.cos(inc * Math.PI / 180); fx = vert ? G.s : G.s / cs; fy = vert ? G.s / cs : G.s; }
+  const sombra = propia && inc > 0 && b.sombra !== false ? sombraMm(vert ? hB : wB, inc, p.solMin ?? SOL_MIN) : null;
   const pw = wB / fx, ph = hB / fy;
   const sep = (sombra != null && vert ? sombra : (b.sep ?? GAP_FILA)) / (propia ? G.s : fy);
   const gx = (sombra != null && !vert ? sombra : GAP_COL) / (propia ? G.s : fx);
@@ -88,9 +94,9 @@ export function calcular(p) {
   const bloquean = p.zonas.filter(z => (ZONAS[z.k] || ZONAS.obs).bloquea).map(zonaPoly);
   p.roofs.forEach((r, ri) => {
     if (!r.closed || r.poly.length < 3) return;
-    const G = geomTecho(p, r, s), { a, c, fx, fy, pw, ph, gx, P } = G, ret = r.setback ?? 400, sx = ret / fx, sy = ret / fy;
+    const G = geomTecho(p, r, s), { a, c, fx, fy, pw, ph, gx, P } = G, ret = r.setback ?? 400, sx = ret / G.fxT, sy = ret / G.fyT;
     out.porTecho[ri].wp = P.wp;
-    out.porTecho[ri].area = polyArea(r.poly.map(q => rotP(q, c, -a))) * fx * fy / 1e6;
+    out.porTecho[ri].area = polyArea(r.poly.map(q => rotP(q, c, -a))) * G.fxT * G.fyT / 1e6;
     const off = new Set(r.off || []);
     if (r.modo === 'manual') {
       const rpx = ret / s, nb = r.poly.length;
@@ -118,7 +124,10 @@ export function calcular(p) {
     const poly = r.poly.map(q => rotP(q, c, -a)), obs = bloquean.map(z => z.map(q => rotP(q, c, -a)));
     const xs = poly.map(q => q[0]), ys = poly.map(q => q[1]);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-    const sep = (r.sepFila ?? GAP_FILA) / fy;
+    // paneles en estructura (más inclinados que el techo): separación de filas por sombra, si no se escribió una mayor
+    const sombraA = G.inclPan != null && G.inclPan > (r.incl || 0) && G.vert && r.sombraAuto !== false ? sombraMm(G.hmm, G.inclPan, p.solMin ?? SOL_MIN) : null;
+    const sep = (sombraA != null ? Math.max(sombraA, r.sepFila ?? 0) : (r.sepFila ?? GAP_FILA)) / G.fyT;
+    out.porTecho[ri].sombra = sombraA;
     const valid = (x, y) => {
       const X0 = x - sx, Y0 = y - sy, X1 = x + pw + sx, Y1 = y + ph + sy, cx = (X0 + X1) / 2, cy = (Y0 + Y1) / 2;
       for (const pt of [[X0, Y0], [X1, Y0], [X0, Y1], [X1, Y1], [cx, Y0], [cx, Y1], [X0, cy], [X1, cy]]) if (!pointInPoly(pt, poly)) return false;
