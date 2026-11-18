@@ -5,7 +5,7 @@
    ========================================================================== */
 import { $, $$, esc, fmt, parseNum, uid, clone, dist, lerp, rotP, centroid, pointInPoly, distSeg, edgeAngle, anguloBordeCercano, ic, toast, descargar } from './util.js';
 import { PANELES, INVERSORES, ZONAS, EQUIPOS, CANAL, CAPAS, ESTADOS, COLORES_STRING, GAP_FILA, MODELOS_EQUIPO } from './catalogo.js';
-import { nPanelesFig, inclPanelesDe, vistaEq, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo, tamEquipoPx, altoTextoPx } from './geom.js';
+import { esReal, simboloCuadrado, nPanelesFig, inclPanelesDe, vistaEq, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo, tamEquipoPx, altoTextoPx } from './geom.js';
 import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota } from './render.js';
 import { vistaUnilineal, panelUnilineal, accionUnilineal } from './unilineal.js';
 import { CONJUNTOS_INCLUIDOS, insertarConjunto, conjuntoDeHoja } from './conjuntos.js';
@@ -286,7 +286,7 @@ function equipoEn(q) { return [...E.p.equipos].reverse().find(e => { const Q = t
 const rutaEn = q => [...E.p.rutas].reverse().find(r => r.pts.some((v, i) => i && distSeg(q, r.pts[i - 1], v) < tol()));
 const cotaEn = q => E.p.cotas.find(c => distSeg(q, c.a, c.b) < tol());
 function textoEn(q) { return E.p.textos.find(t => { const h = Math.max(altoTextoPx(E.p, t), 7 / E.V.k); return q[0] >= t.p[0] - 3 / E.V.k && q[0] <= t.p[0] + t.s.length * h * .55 && q[1] <= t.p[1] + 3 / E.V.k && q[1] >= t.p[1] - h; }); }
-const rectLibre = k => !EQUIPOS[k]?.real || k === 'bpc';   // de referencia (y la bandeja, para su largo): se estiran desde sus esquinas
+const rectLibreE = e => !esReal(E.p, e) || e.k === 'bpc';   // de referencia (y la bandeja, para su largo): se estiran desde sus esquinas
 const figEn = q => [...(E.p.figPaneles || [])].reverse().find(f => f.pts.length >= 3 && pointInPoly(q, f.pts));
 const norteEn = q => E.p.norte && dist(q, [E.p.norte.x, E.p.norte.y]) < 36 / E.V.k;
 function bloqueEn(q) { const B = E.R.bloques.find(b => pointInPoly(q, b.q)); return B ? { ...B, rid: E.p.roofs[B.ri].id } : null; }
@@ -297,12 +297,12 @@ function gripEn(q) {
   if (s.t === 'fig') { const f = (E.p.figPaneles || []).find(x => x.id === s.id); const i = f ? f.pts.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: f.pts, i }; }
   if (s.t === 'cota') { const c = E.p.cotas.find(x => x.id === s.id); if (c) { if (dist(c.a, q) < d) return { obj: c, k: 'a' }; if (dist(c.b, q) < d) return { obj: c, k: 'b' }; } }
   // ubicación propuesta y bandeja: cada esquina estira el rectángulo (la esquina opuesta queda fija)
-  if (s.t === 'equipo') { const e = E.p.equipos.find(x => x.id === s.id); if (e && rectLibre(e.k)) { const Q = tamEquipoPx(E.p, e), w = Q.w / 2, h = Q.h / 2;
+  if (s.t === 'equipo') { const e = E.p.equipos.find(x => x.id === s.id); if (e && rectLibreE(e)) { const Q = tamEquipoPx(E.p, e), w = Q.w / 2, h = Q.h / 2;
     const i = [[-1, -1], [1, -1], [1, 1], [-1, 1]].findIndex(([sx, sy]) => dist([e.x + sx * w, e.y + sy * h], q) < d);
     if (i >= 0) { const [sx, sy] = [[-1, -1], [1, -1], [1, 1], [-1, 1]][i], a = (e.ang || 0) * Math.PI / 180, R = v => [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)];
       const o = R([-sx * w, -sy * h]); return { rect: e, fijo: [e.x + o[0], e.y + o[1]], a, mmPx: Q.md.w / Q.w }; } } }
   // sin escala, las esquinas de un equipo lo agrandan o achican
-  if (s.t === 'equipo' && !escala(E.p)) { const e = E.p.equipos.find(x => x.id === s.id); if (e && !rectLibre(e.k)) { const Q = tamEquipoPx(E.p, e), w = Math.max(Q.w, 12 / E.V.k) / 2, h = Math.max(Q.h, 12 / E.V.k) / 2;
+  if (s.t === 'equipo' && !escala(E.p)) { const e = E.p.equipos.find(x => x.id === s.id); if (e && !rectLibreE(e)) { const Q = tamEquipoPx(E.p, e), w = Math.max(Q.w, 12 / E.V.k) / 2, h = Math.max(Q.h, 12 / E.V.k) / 2;
     if ([[-w, -h], [w, -h], [w, h], [-w, h]].some(v => dist([e.x + v[0], e.y + v[1]], q) < d)) return { eq: e, d0: Math.max(dist([e.x, e.y], q), 1e-6), f0: e.f || 1 }; } }
   if (s.t === 'ref' && E.p.ref) { if (dist(E.p.ref.a, q) < d) return { obj: E.p.ref, k: 'a' }; if (dist(E.p.ref.b, q) < d) return { obj: E.p.ref, k: 'b' }; }
   return null;
@@ -360,7 +360,7 @@ function down(ev) {
   if (E.tool === 'conjunto') { const cj = [...CONJUNTOS_INCLUIDOS, ...(E.conjuntos || [])].find(x => x.id === E.conjunto); if (!cj) return; antes();
     if (cj.vista && !p.equipos.length) p.vistaEquipos = cj.vista;
     const r = insertarConjunto(p, cj, q); E.sel = r.equipos[0] ? { t: 'equipo', id: r.equipos[0].id } : null; E.tool = 'sel'; log(`CONJUNTO  ${cj.nombre}`); despues(); render(); return; }
-  if (E.tool === 'equipo') { antes(); const e = { id: uid('e'), k: E.eqK, x: q[0], y: q[1], ang: 0 }; if (E.eqK === 'cp' || E.eqK === 'libre') e.etq = { oculta: true }; if (E.eqK === 'libre') e.txt = 'EQUIPO'; p.equipos.push(e); E.sel = { t: 'equipo', id: e.id }; log(`EQUIPO  ${EQUIPOS[E.eqK].n}`); despues(); return; }
+  if (E.tool === 'equipo') { antes(); const e = { id: uid('e'), k: E.eqK, x: q[0], y: q[1], ang: 0, modo: EQUIPOS[E.eqK]?.soloReal ? 'real' : EQUIPOS[E.eqK]?.soloRef ? 'ref' : E.eqModo || 'ref' }; if (E.eqK === 'cp' || E.eqK === 'libre') e.etq = { oculta: true }; if (E.eqK === 'libre') e.txt = 'EQUIPO'; p.equipos.push(e); E.sel = { t: 'equipo', id: e.id }; log(`EQUIPO  ${EQUIPOS[E.eqK].n}`); despues(); return; }
   if (E.tool === 'zona') { const z = zonaEn(raw); if (z) { E.sel = { t: 'zona', id: z.id }; E.D = { kind: 'mover', a: raw, last: raw, first: true }; panel(); dibujarTodo(); return; } E.D = { kind: 'nuevaZona', a: raw, b: raw }; return; }
   if (E.tool === 'str') {
     const pn = panelEn(raw);
@@ -397,7 +397,10 @@ function move(ev) {
     if (D.kind === 'pan') { E.V.ox = D.o[0] - (sp[0] - D.s[0]); E.V.oy = D.o[1] - (sp[1] - D.s[1]); }
     else if (D.kind === 'grip' && D.gr.rect) {             // estirar el rectángulo: medidas nuevas en mm y centro entre las dos esquinas
       const g2 = D.gr, e = g2.rect, v = [q[0] - g2.fijo[0], q[1] - g2.fijo[1]], ca = Math.cos(-g2.a), sa = Math.sin(-g2.a), l = [v[0] * ca - v[1] * sa, v[0] * sa + v[1] * ca];
-      e.mw = Math.max(20, Math.round(Math.abs(l[0]) * g2.mmPx)); e.mh = Math.max(20, Math.round(Math.abs(l[1]) * g2.mmPx)); e.x = g2.fijo[0] + v[0] / 2; e.y = g2.fijo[1] + v[1] / 2; }
+      if (simboloCuadrado(E.p, e)) {                          // símbolo: cuadrado, el lado mayor manda
+        const lado = Math.max(Math.abs(l[0]), Math.abs(l[1])), l2 = [Math.sign(l[0] || 1) * lado, Math.sign(l[1] || 1) * lado], c2 = Math.cos(g2.a), s2 = Math.sin(g2.a), w2 = [l2[0] * c2 - l2[1] * s2, l2[0] * s2 + l2[1] * c2];
+        e.mw = e.mh = Math.max(40, Math.round(lado * g2.mmPx)); e.x = g2.fijo[0] + w2[0] / 2; e.y = g2.fijo[1] + w2[1] / 2;
+      } else { e.mw = Math.max(20, Math.round(Math.abs(l[0]) * g2.mmPx)); e.mh = Math.max(20, Math.round(Math.abs(l[1]) * g2.mmPx)); e.x = g2.fijo[0] + v[0] / 2; e.y = g2.fijo[1] + v[1] / 2; } }
     else if (D.kind === 'grip' && D.gr.eq) { const e = D.gr.eq; e.f = Math.max(.1, Math.min(20, Math.round(D.gr.f0 * dist([e.x, e.y], q) / D.gr.d0 * 100) / 100)); }
     else if (D.kind === 'grip') { const qq = cursorFoto(); if (D.gr.arr) D.gr.arr[D.gr.i] = qq; else D.gr.obj[D.gr.k] = qq; recalcular(); }
     else if (D.kind === 'mover' || D.kind === 'moverBloque') {
@@ -812,15 +815,14 @@ function panel() {
       ${p.textos.length ? `<div class="lista">${p.textos.map(t => `<button class="li" data-act="sel-obj" data-t="texto" data-id="${t.id}" aria-pressed="${E.sel && E.sel.id === t.id}"><b>Texto</b><span>${esc(t.s)}</span></button>`).join('')}</div>` : ''}`);
   }
   if (E.step === 'equipos') {
-    const vista = vistaEq(p), mis = E.conjuntos || [];
-    h += sec('Vista de los equipos', `${seg('hoja.vista', vista, [['planta', 'Planta (desde arriba)'], ['elevacion', 'De frente (zona de equipos)']])}
-      <p class="mut">${vista === 'elevacion' ? 'Equipos dibujados de frente, como en los planos de AutoCAD (ancho × alto).' : 'Equipos vistos desde arriba, como en la planta del techo (ancho × profundidad).'}</p>`, true);
-    if (vista === 'elevacion') h += sec('Conjuntos para empezar', `<p class="mut">Equipos y canalizaciones ya armados: elige uno, haz clic en la foto y después mueve o cambia lo que haga falta.</p>
+    const mis = E.conjuntos || [];
+    h += sec('Conjuntos para empezar', `<p class="mut">Equipos con medida real y canalizaciones ya armados (como la zona de equipos de los planos): elige uno, haz clic en la foto y después mueve o cambia lo que haga falta.</p>
       <div class="lista">${[...CONJUNTOS_INCLUIDOS, ...mis].map(cj => `<div class="row cj-f"><button class="li" data-act="conj" data-k="${cj.id}" aria-pressed="${E.tool === 'conjunto' && E.conjunto === cj.id}" title="${esc(cj.detalle || '')}"><b>${esc(cj.nombre)}</b><span>${esc(cj.detalle || '')}</span></button>${cj.id.startsWith('cj-') ? '' : `<button class="btn sm del" data-act="conj-del" data-k="${cj.id}" title="Borrar este conjunto">${ic('trash', 14)}</button>`}</div>`).join('')}</div>
       <button class="btn sm" data-act="conj-guardar" ${p.equipos.length ? '' : 'disabled'}>${ic('save', 14)} Guardar los equipos de esta hoja como conjunto</button>`);
     h += sec('Equipos', `
-${[['De referencia', 'Bloques que muestran dónde va cada equipo: se agrandan o achican desde sus esquinas.', ([, Q]) => !Q.real], ['Con medida real', 'Cajas y bandejas a su medida (modelos del catálogo).', ([, Q]) => Q.real]].map(([t, ayuda, filtro]) => `<div class="sub">${t}</div><p class="mut">${ayuda}</p>
-      <div class="grid2">${Object.entries(EQUIPOS).filter(filtro).map(([k, Q]) => `<button class="li cmp" data-act="eqK" data-k="${k}" aria-pressed="${E.tool === 'equipo' && E.eqK === k}"><i class="sw" style="border-color:${Q.c}"></i><b>${Q.n}</b><em>${p.equipos.filter(e => e.k === k).length || ''}</em></button>`).join('')}</div>`).join('')}
+${[['ref', 'De referencia (símbolos)', 'Solo el símbolo: muestra dónde va cada equipo y se agranda o achica desde sus esquinas.', ([, Q]) => !Q.soloReal],
+        ['real', 'Con medida real (de frente)', 'Dibujados de frente con el ancho × alto real de su modelo, como en los planos de AutoCAD.', ([, Q]) => !Q.soloRef]].map(([m, t, ayuda, filtro]) => `<div class="sub">${t}</div><p class="mut">${ayuda}</p>
+      <div class="grid2">${Object.entries(EQUIPOS).filter(filtro).map(([k, Q]) => `<button class="li cmp" data-act="eqK" data-k="${k}" data-m="${m}" aria-pressed="${E.tool === 'equipo' && E.eqK === k && (E.eqModo || 'ref') === m}"><i class="sw" style="border-color:${Q.c}"></i><b>${Q.n}</b><em>${p.equipos.filter(e => e.k === k && esReal(p, e) === (m === 'real')).length || ''}</em></button>`).join('')}</div>`).join('')}
       <label class="f"><span>Cantidad de inversores</span><input class="in" data-campo="cantInv" value="${p.cantInv || 1}" inputmode="numeric"></label>
       <label class="chk"><input type="checkbox" data-campo="hoja.verMedidas" ${p.verMedidas ? 'checked' : ''}> Mostrar las medidas de los equipos con medida real (mm)</label>
       ${s ? '' : `${rango('hoja.tamSimb', Math.round((p.tamSimb || 1) * 100), 20, 400, 'Tamaño de los equipos y textos', ' %')}<p class="mut">Esta hoja no tiene escala: los equipos salen con un tamaño aproximado. Agrándalos o achícalos aquí (todos) o uno por uno arrastrando las esquinas del equipo seleccionado.</p>`}`);
@@ -856,9 +858,10 @@ function propsSel(s, { num, rango, seg }) {
       ${e.k === 'inv' ? `<dl class="dl"><dt>Modelo</dt><dd>${esc(inversorDe(p).modelo)}</dd></dl><p class="mut">El modelo se elige en el paso Strings.</p>` : MODELOS_EQUIPO(e.k).length ? `<label class="f"><span>Modelo</span><select class="in" data-campo="eq.modelo"><option value="">Genérico</option>${MODELOS_EQUIPO(e.k).map(x => `<option value="${esc(x.sku || x.item)}" ${e.modelo === (x.sku || x.item) ? 'selected' : ''}>${esc(x.item)}</option>`).join('')}</select></label>` : ''}
       ${e.k === 'libre' ? `<label class="f"><span>Texto adentro</span><textarea class="in" rows="2" data-campo="eq.txt" placeholder="Escribe lo que es (Enter = otra línea)">${esc(e.txt || '')}</textarea></label>
         <div class="f"><span>Color</span><div class="colores">${['#FFFFFF', '#FFE14D', '#FF3DFF', '#00E5FF', '#52C892', '#FF2B2B', '#3D6BFF', '#FF8A00'].map(c => `<button data-act="set" data-campo="eq.color" data-v="${c}" aria-pressed="${(e.color || '#FFFFFF') === c}" style="--c:${c}" title="${c}"></button>`).join('')}</div></div>` : ''}
-      ${!EQUIPOS[e.k]?.real ? `<p class="mut">Equipo de referencia: arrastra sus esquinas para agrandarlo o achicarlo.</p>${e.mw || e.f ? '<button class="btn sm" data-act="eq-tam0">Volver a su tamaño inicial</button>' : ''}` : (() => { const base = medidaEquipo(p, { ...e, mw: 0, mh: 0 }); return `<div class="row"><label class="f mini"><span>Ancho</span><span class="fi"><input class="in" data-campo="eq.mw" value="${e.mw || ''}" placeholder="${fmt(base.w, 0)}" inputmode="numeric"><em>mm</em></span></label>
-        <label class="f mini"><span>${vistaEq(p) === 'elevacion' ? 'Alto' : 'Profundidad'}</span><span class="fi"><input class="in" data-campo="eq.mh" value="${e.mh || ''}" placeholder="${fmt(base.h, 0)}" inputmode="numeric"><em>mm</em></span></label></div>
-        <p class="mut">Medida real ${vistaEq(p) === 'elevacion' ? 'de frente' : 'en planta'}${rectLibre(e.k) ? ' (también arrastrando sus esquinas)' : ''}. Vacío = la del ${e.modelo ? 'modelo' : 'símbolo'} (${fmt(base.w, 0)} × ${fmt(base.h, 0)} mm).</p>
+      ${!EQUIPOS[e.k]?.soloReal && !EQUIPOS[e.k]?.soloRef ? seg('eq.modo', esReal(p, e) ? 'real' : 'ref', [['ref', 'Símbolo de referencia'], ['real', 'Medida real (de frente)']]) : ''}
+      ${!esReal(p, e) ? `<p class="mut">Equipo de referencia: arrastra sus esquinas para agrandarlo o achicarlo.</p>${e.mw || e.f ? '<button class="btn sm" data-act="eq-tam0">Volver a su tamaño inicial</button>' : ''}` : (() => { const base = medidaEquipo(p, { ...e, mw: 0, mh: 0 }); return `<div class="row"><label class="f mini"><span>Ancho</span><span class="fi"><input class="in" data-campo="eq.mw" value="${e.mw || ''}" placeholder="${fmt(base.w, 0)}" inputmode="numeric"><em>mm</em></span></label>
+        <label class="f mini"><span>Alto</span><span class="fi"><input class="in" data-campo="eq.mh" value="${e.mh || ''}" placeholder="${fmt(base.h, 0)}" inputmode="numeric"><em>mm</em></span></label></div>
+        <p class="mut">Medida real de frente${rectLibreE(e) ? ' (también arrastrando sus esquinas)' : ''}. Vacío = la del ${e.modelo ? 'modelo' : 'símbolo'} (${fmt(base.w, 0)} × ${fmt(base.h, 0)} mm).</p>
         <label class="chk"><input type="checkbox" data-campo="eq.verMed" ${p.verMedidas && e.verMed !== false ? 'checked' : ''}> Mostrar sus medidas en el dibujo</label>
         ${escala(p) ? '' : rango('eq.f', Math.round((e.f || 1) * 100), 10, 500, 'Tamaño en el dibujo (sin escala)', ' %')}`; })()}
       ${e.k === 'bat' ? `<div class="f"><span>Módulos de batería</span><span class="row">${stepper('eq.mods', e.mods || 3)} módulos (de frente se apilan)</span></div>` : ''}
@@ -942,7 +945,7 @@ document.addEventListener('click', ev => {
     case 'sel-roof': E.sel = { t: 'roof', id: b.dataset.id }; panel(); dibujarTodo(); pista(); break;
     case 'cerrar-techo': cerrarTecho(); break;
     case 'zonaK': E.zonaK = k; E.tool = 'zona'; panel(); pista(); render(); break;
-    case 'eqK': E.eqK = k; E.tool = 'equipo'; render(); pista(); break;
+    case 'eqK': E.eqModo = b.dataset.m || E.eqModo; E.eqK = k; E.tool = 'equipo'; render(); pista(); break;
     case 'rutaK': E.rutaK = k; E.tool = 'ruta'; E.temp = null; render(); pista(); break;
     case 'usar-dron': { const g = droneGSD(p); if (!g) break; antes(); const L = 300; p.ref = { a: [p.w / 2 - L / 2, p.h - 40], b: [p.w / 2 + L / 2, p.h - 40], mm: g * L }; despues(); render(); break; }
     case 'alinear': { const r = techoAct(); if (r) { antes(); r.ang = edgeAngle(r.poly); despues(); } break; }
@@ -1014,6 +1017,7 @@ function aplicar(campo, v, desdeChange, vivo) {
     if (k === 'etqVer') { (e.etq ||= {}).oculta = !v; }
     else if (k === 'txt') { const t = String(v).trim(); if (t) e.txt = t; else delete e.txt; }
     else if (k === 'color') e.color = v;
+    else if (k === 'modo') { e.modo = v; delete e.mw; delete e.mh; delete e.f; }
     else if (k === 'mw' || k === 'mh') { if (n > 0) e[k] = Math.round(n); else delete e[k]; }
     else if (k === 'f') e.f = Math.max(.1, +v / 100);
     else if (k === 'verMed') { if (v) { delete e.verMed; if (!p.verMedidas) { p.verMedidas = true; p.equipos.forEach(x => { if (x !== e) x.verMed = false; }); } } else e.verMed = false; }

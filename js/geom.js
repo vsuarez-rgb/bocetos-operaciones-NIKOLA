@@ -21,9 +21,13 @@ export const escalaSimbolos = p => escala(p) || (p.w ? 6000 / p.w : 10);
 /* Vista de los equipos en la hoja: 'planta' (desde arriba: ancho × profundidad) o 'elevacion' (de frente,
    como en la zona de equipos: ancho × alto). Las hojas "Zona de equipos" van de frente si no se eligió otra. */
 export const vistaEq = p => p.vistaEquipos || (p.tipoHojaPrincipal === 'equipos' && !p._esHoja ? 'elevacion' : 'planta');
+/* Modo del equipo: el elegido; si no tiene, los de hojas de frente (zona de equipos) son reales y el resto símbolos */
+export const esReal = (p, e) => { const Q = EQUIPOS[e.k] || {}; return Q.soloReal ? true : Q.soloRef ? false : e.modo ? e.modo === 'real' : vistaEq(p) === 'elevacion'; };
+export const simboloCuadrado = (p, e) => !esReal(p, e) && !['marca', 'libre'].includes(e.k);
 export function medidaEquipo(p, e) {
+  if (simboloCuadrado(p, e)) { const lado = e.mw > 0 ? e.mw : e.k === 'sm' ? 150 : 300; return { w: lado, h: lado, modelo: null, simbolo: true }; }
   if (e.mw > 0 && e.mh > 0) return { w: e.mw, h: e.mh, modelo: null, propia: true };      // medida escrita a mano (p. ej. la caja de derivación real)
-  const frente = vistaEq(p) === 'elevacion', Q = EQUIPOS[e.k] || EQUIPOS.inv;
+  const frente = esReal(p, e) || vistaEq(p) === 'elevacion', Q = EQUIPOS[e.k] || EQUIPOS.inv;   // los reales van de frente: ancho × alto
   if (e.k === 'inv') { const I = inversorDe(p); return { w: I.ancho || Q.w, h: frente ? (I.alto || Q.a) : (I.prof || Q.h), modelo: I.modelo }; }
   const M = e.modelo && OTROS_EMAT.find(x => (x.sku || x.item) === e.modelo);
   if (e.k === 'bat') { const mods = Math.max(1, e.mods || 3), wB = (M && M.ancho) || Q.w; return { w: wB, h: frente ? 240 + mods * ((M && M.alto) || Q.a) : ((M && M.prof) || Q.h), modelo: M ? M.modelo : null, mods }; }

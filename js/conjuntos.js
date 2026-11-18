@@ -43,7 +43,7 @@ export const CONJUNTOS_INCLUIDOS = [
 export function insertarConjunto(p, cj, q) {
   const kpx = 1 / escalaSimbolos(p) * (escala(p) ? 1 : (p.tamSimb || 1));
   const P = v => [q[0] + v[0] * kpx, q[1] + v[1] * kpx];
-  const eqs = cj.equipos.map(e => { const [x, y] = P([e.x, e.y]); const n = { id: uid('e'), k: e.k, x, y, ang: e.ang || 0 }; if (e.mods) n.mods = e.mods; if (e.rotulo) n.rotulo = e.rotulo; if (e.modelo) n.modelo = e.modelo; if (e.mw) { n.mw = e.mw; n.mh = e.mh; } if (SIN_ETQ.has(e.k)) n.etq = { oculta: true }; return n; });
+  const eqs = cj.equipos.map(e => { const [x, y] = P([e.x, e.y]); const n = { id: uid('e'), k: e.k, x, y, ang: e.ang || 0, modo: e.modo || 'real' }; if (e.mods) n.mods = e.mods; if (e.rotulo) n.rotulo = e.rotulo; if (e.modelo) n.modelo = e.modelo; if (e.mw) { n.mw = e.mw; n.mh = e.mh; } if (SIN_ETQ.has(e.k)) n.etq = { oculta: true }; return n; });
   const rts = (cj.rutas || []).map(r => ({ id: uid('r'), k: r.k, pts: r.pts.map(P), tramo: r.k === 'cc' || r.k === 'subcc' ? '' : ['tie', 'riel'].includes(r.k) ? '' : 'inv-tg', etq: { oculta: true } }));
   p.equipos.push(...eqs); p.rutas.push(...rts);
   return { equipos: eqs, rutas: rts };

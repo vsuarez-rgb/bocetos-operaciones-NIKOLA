@@ -4,7 +4,7 @@
    (modo plot: fondo blanco, colores de impresión).
    ========================================================================== */
 import { ZONAS, EQUIPOS, CANAL, COLORES_STRING } from './catalogo.js';
-import { zonaPoly, escala, largoM, tamEquipoPx, altoTextoPx, vistaEq, inclPanelesDe } from './geom.js';
+import { zonaPoly, escala, largoM, tamEquipoPx, altoTextoPx, esReal, inclPanelesDe } from './geom.js';
 import { hull, centroid, lerp, dist, fmt } from './util.js';
 
 const imgs = new Map();
@@ -166,7 +166,8 @@ export function dibujar(g, p, V, o) {
     const tp = tamEquipoPx(p, e), md = tp.md; let w = tp.w * k, h = tp.h * k; w = Math.max(w, 12 * u); h = Math.max(h, 12 * u);
     g.save(); g.translate(c[0], c[1]); g.rotate((e.ang || 0) * Math.PI / 180);
     // Medidas del equipo (ancho × profundidad en mm), como cotas pegadas al símbolo
-    if (p.verMedidas && e.verMed !== false && E.real) {
+    const real = esReal(p, e);
+    if (p.verMedidas && e.verMed !== false && real) {
       const col = plot ? '#111' : '#FAB704', off = 9 * u, tk = 3 * u, fs = 9.5 * u;
       g.strokeStyle = col; g.lineWidth = .8 * u; g.beginPath();
       g.moveTo(-w / 2, -h / 2 - off); g.lineTo(w / 2, -h / 2 - off); g.moveTo(-w / 2, -h / 2 - off - tk); g.lineTo(-w / 2, -h / 2 - 2 * u); g.moveTo(w / 2, -h / 2 - off - tk); g.lineTo(w / 2, -h / 2 - 2 * u);
@@ -176,12 +177,11 @@ export function dibujar(g, p, V, o) {
       texto(g, `${fmt(md.w, 0)}`, 0, -h / 2 - off - 2 * u, { size: fs, color: col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' });
       g.save(); g.translate(w / 2 + off + 2 * u, 0); g.rotate(Math.PI / 2); texto(g, `${fmt(md.h, 0)}`, 0, 0, { size: fs, color: col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); g.restore();
     }
-    const frente = vistaEq(p) === 'elevacion';
+    const frente = real;
     if (frente) equipoFrente(g, e, E, md, w, h, plot, u);
     else equipoPlanta(g, e, E, w, h, plot, u);
     g.restore();
     // marco de color y rótulo
-    if (!frente && !SIN_MARCO.has(e.k)) { g.lineWidth = 1 * u; g.strokeStyle = plot ? '#00B7D4' : 'rgba(0,229,255,.7)'; g.strokeRect(c[0] - w / 2 - 5 * u, c[1] - h / 2 - 5 * u, w + 10 * u, h + 10 * u); }
     if (o.rotulos !== false) {
       // por defecto: inversor, batería y cargadores rotulan a la izquierda; tableros y medidor a la derecha (así no se tapan)
       const der = ['tg', 'tfv', 'med', 'cdj'].includes(e.k), sg = der ? 1 : -1, ex = c[0] + sg * (w / 2 + 5 * u), ey = c[1] - h / 2 - 5 * u;
@@ -342,10 +342,29 @@ export function equipoFrente(g, e, E, md, w, h, plot, u) {
     default: caja(); if (E.l) texto(g, E.l, 0, 0, { size: Math.min(h * .4, 11 * u), color: col, align: 'center', base: 'middle', bold: true });
   }
 }
+/* Símbolo de un equipo de referencia en planta: un cuadrado de lado a con su dibujo, sin rectángulo alrededor */
+function simboloPlanta(g, e, E, a, col, plot, u) {
+  const x = -a / 2, y = -a / 2, lw = 1.3 * u;
+  g.fillStyle = plot ? 'rgba(255,255,255,.85)' : 'rgba(10,20,28,.55)'; g.fillRect(x, y, a, a);
+  g.strokeStyle = col; g.lineWidth = lw; g.strokeRect(x, y, a, a);
+  if (e.k === 'inv') {
+    g.beginPath(); g.moveTo(x, y + a); g.lineTo(x + a, y); g.stroke();
+    g.beginPath(); g.moveTo(x + a * .12, y + a * .3); g.quadraticCurveTo(x + a * .22, y + a * .08, x + a * .32, y + a * .3); g.quadraticCurveTo(x + a * .42, y + a * .52, x + a * .52, y + a * .3); g.stroke();
+    g.beginPath(); g.moveTo(x + a * .55, y + a * .72); g.lineTo(x + a * .88, y + a * .72); g.moveTo(x + a * .55, y + a * .84); g.lineTo(x + a * .88, y + a * .84); g.stroke();
+  } else if (e.k === 'bat' || e.k === 'dcdc') {
+    const bw = a * .62, bh = a * .34; g.strokeRect(-bw / 2, -bh / 2, bw, bh); g.fillStyle = col; g.fillRect(bw / 2, -bh * .2, bw * .07, bh * .4);
+    g.beginPath(); for (let i = 1; i < 4; i++) { const xx = -bw / 2 + bw * i / 4; g.moveTo(xx, -bh * .3); g.lineTo(xx, bh * .3); } g.stroke();
+    if (e.k === 'dcdc') texto(g, 'DC/DC', 0, a * .33, { size: a * .14, color: col, align: 'center', base: 'middle', bold: true });
+  } else if (e.k === 'sg') logoHuawei(g, 0, -a * .06, a * .3, col, lw * .8);
+  else if (e.k === 'ev') { g.beginPath(); g.arc(0, 0, a * .3, 0, Math.PI * 2); g.stroke(); texto(g, 'EV', 0, 0, { size: a * .26, color: col, align: 'center', base: 'middle', bold: true }); }
+  else if (e.k === 'med') { g.beginPath(); g.arc(0, 0, a * .3, 0, Math.PI * 2); g.stroke(); texto(g, 'M', 0, 0, { size: a * .32, color: col, align: 'center', base: 'middle', bold: true }); }
+  else texto(g, E.l || '', 0, .5, { size: a * (String(E.l || '').length > 2 ? .26 : .34), color: col, align: 'center', base: 'middle', bold: true });
+}
 export function equipoPlanta(g, e, E, w, h, plot, u) {
   const col = plot && E.c === '#FFFFFF' ? '#222' : plot && E.c === '#FFE14D' ? '#C9A800' : E.c;
   if (e.k === 'marca') { g.lineWidth = 2.6 * u; g.strokeStyle = plot ? '#E00000' : '#FF2B2B'; g.strokeRect(-w / 2, -h / 2, w, h); return; }
   if (e.k === 'libre') { equipoLibre(g, e, w, h, plot, u, plot ? '#fff' : 'rgba(10,20,28,.6)'); return; }
+  return simboloPlanta(g, e, E, Math.min(w, h), col, plot, u);   // de referencia: solo el símbolo
   g.fillStyle = plot ? '#fff' : 'rgba(10,20,28,.8)'; g.fillRect(-w / 2, -h / 2, w, h);
   g.lineWidth = 1.4 * u; g.strokeStyle = col; g.strokeRect(-w / 2, -h / 2, w, h);
   if (e.k === 'inv') {                                             // símbolo del inversor (~ / =) en un cuadrado al centro, sin estirarlo
