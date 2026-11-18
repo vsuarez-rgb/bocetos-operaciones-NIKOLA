@@ -146,7 +146,9 @@ function barraLineas() {
     <span class="sb-sep"></span>
     <button class="sb-b" data-act="rutaK" data-k="otra" aria-pressed="${act('otra')}" title="Una línea cualquiera con el color que elijas"><i style="border-top:3px ${E.lineaDash ? 'dashed' : 'solid'} ${E.lineaColor}"></i>Otra línea</button>
     <span class="colores sb-cols">${COLORES_LINEA.map(c => `<button data-act="linea-color" data-v="${c}" aria-pressed="${E.lineaColor === c}" style="--c:${c}" title="${c}"></button>`).join('')}</span>
-    <button class="sb-b" data-act="linea-dash" aria-pressed="${!!E.lineaDash}" title="Línea segmentada">- - -</button></div>`;
+    <button class="sb-b" data-act="linea-dash" aria-pressed="${!!E.lineaDash}" title="Línea segmentada">- - -</button>
+    <span class="sb-sep"></span><span class="subbar-t">Rellenar</span>
+    ${[['solido', 'Pintar el área con su color (tarro de pintura)', '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 11l7-7 8 8-7 7z" fill="currentColor" fill-opacity=".35"/><path d="M11 4L8.5 1.5"/><path d="M20 15c0 1.5 1 2.5 1 3.5a1.5 1.5 0 0 1-3 0c0-1 1-2 2-3.5z" fill="currentColor"/></svg>'], ['diag', 'Achurado diagonal (sombreado, como el Hatch de AutoCAD)', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 9.5l8-8M1.5 14.5l13-13M6.5 14.5l8-8"/></svg>'], ['cruz', 'Achurado cruzado', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 9.5l8-8M1.5 14.5l13-13M6.5 14.5l8-8M1.5 6.5l8 8M1.5 1.5l13 13M6.5 1.5l8 8"/></svg>'], ['horiz', 'Achurado horizontal', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 5h13M1.5 8h13M1.5 11h13"/></svg>'], ['quitar', 'Quitar el relleno o el achurado', '✕']].map(([k, t, i]) => `<button class="sb-b sb-ico" data-act="relleno" data-k="${k}" aria-pressed="${E.tool === 'relleno' && E.rellenoK === k}" title="${t}">${i}</button>`).join('')}</div>`;
 }
 function herramientas() {
   const t = (k, icono, n, extra = '') => `<button class="tool" data-act="tool" data-k="${k}" aria-pressed="${E.tool === k}" title="${n}" ${extra}>${ic(icono, 20)}<span>${n}</span></button>`;
@@ -373,6 +375,11 @@ function down(ev) {
     if (!E.temp) { E.temp = { tipo: 'poly', pts: [q], col: CANAL[E.rutaK].libre ? E.lineaColor : CANAL[E.rutaK].c, dash: CANAL[E.rutaK].libre ? (E.lineaDash ? [10, 6] : []) : CANAL[E.rutaK].dash }; prompt(`${CANAL[E.rutaK].corto}  Precise el siguiente punto (Enter o doble clic termina):`); }
     else E.temp.pts.push(q);
     dibujarTodo(); return;
+  }
+  if (E.tool === 'relleno') {
+    const eq = equipoEn(raw); if (!eq) { toast('Haz clic sobre un equipo (o una caja, tablero, ubicación propuesta…)'); return; }
+    const objetivo = E.sel && E.sel.t === 'multi' && enMulti({ t: 'equipo', id: eq.id }) ? E.sel.items.filter(x => x.t === 'equipo').map(x => p.equipos.find(y => y.id === x.id)).filter(Boolean) : [eq];
+    antes(); objetivo.forEach(x => { if (E.rellenoK === 'quitar') delete x.relleno; else x.relleno = E.rellenoK; }); despues(); return;
   }
   if (E.tool === 'piso') { antes(); p.suelo = q[1]; E.tool = 'sel'; log('NIVEL DE PISO marcado'); despues(); render(); return; }
   if (E.tool === 'conjunto') { const cj = [...CONJUNTOS_INCLUIDOS, ...(E.conjuntos || [])].find(x => x.id === E.conjunto); if (!cj) return; antes();
@@ -682,7 +689,7 @@ function pista() {
     zona: E.zonaForma === 'circ' ? 'Arrastra desde el centro para un círculo · clic en una zona para editarla' : 'Arrastra para marcar la zona · clic en una zona para editarla',
     str: 'Clic en un panel lo agrega o quita del string activo · arrastra una ventana para varios (Shift quita)',
     equipo: `Clic donde va ${EQUIPOS[E.eqK].n.toLowerCase()}`, ruta: 'Clic en cada punto del recorrido · Enter o doble clic termina',
-    cota: 'Clic en dos puntos para acotar', piso: 'Clic a la altura del piso terminado (nivel ±0,00): desde ahí se miden las alturas de las normas', conjunto: 'Clic donde va la esquina superior izquierda del conjunto', figpan: E.figForma === 'poly' ? 'Clic en cada esquina de la figura · Enter o clic en la primera cierra' : 'Clic en las 4 esquinas (arriba-izq, arriba-der, abajo-der, abajo-izq): sirve en perspectiva', texto: 'Clic donde va el texto', norte: 'Clic donde va el norte', pan: 'Arrastra para mover la vista',
+    cota: 'Clic en dos puntos para acotar', relleno: 'Clic en un equipo para rellenarlo (si tienes varios elegidos con la ventana, se aplica a todos) · Esc termina', piso: 'Clic a la altura del piso terminado (nivel ±0,00): desde ahí se miden las alturas de las normas', conjunto: 'Clic donde va la esquina superior izquierda del conjunto', figpan: E.figForma === 'poly' ? 'Clic en cada esquina de la figura · Enter o clic en la primera cierra' : 'Clic en las 4 esquinas (arriba-izq, arriba-der, abajo-der, abajo-izq): sirve en perspectiva', texto: 'Clic donde va el texto', norte: 'Clic donde va el norte', pan: 'Arrastra para mover la vista',
     sel: E.step === 'etiquetas' ? 'Clic en una etiqueta, cota o texto para editarla · arrástrala para moverla · Supr la quita' : E.step === 'paneles' ? (techoAct() && techoAct().modo === 'manual' ? 'Clic en un lugar vacío del techo para poner un bloque · clic en un bloque para editarlo' : 'Clic en un techo para elegirlo · clic en un panel lo saca o devuelve') : 'Clic para seleccionar · arrastra para mover · Supr borra'
   }[t] || '';
   h.textContent = txt; h.hidden = !txt;
@@ -965,6 +972,7 @@ function propsSel(s, { num, rango, seg }) {
         ${escala(p) ? '' : rango('eq.f', Math.round((e.f || 1) * 100), 10, 500, 'Tamaño en el dibujo (sin escala)', ' %')}`; })()}
       ${e.k === 'bat' ? `<div class="f"><span>Módulos de batería</span><span class="row">${stepper('eq.mods', e.mods || 3)} módulos (de frente se apilan)</span></div>` : ''}
       ${['tg', 'tfv'].includes(e.k) ? `<div class="f"><span>Ubicación del tablero</span>${seg('eq.ubic', e.ubic || 'armario', [['armario', 'En armario'], ['intemperie', 'A la intemperie']])}</div>` : ''}
+      <div class="f"><span>Relleno</span>${seg('eq.relleno', e.relleno || '', [['', 'Sin'], ['solido', 'Pintado'], ['diag', '/ / /'], ['cruz', 'x x x'], ['horiz', '≡']])}</div>
       <label class="chk"><input type="checkbox" data-campo="eq.etqVer" ${!(e.etq && e.etq.oculta) ? 'checked' : ''}> Mostrar su etiqueta</label>
       <label class="f"><span>Rótulo</span><input class="in" data-campo="eq.rotulo" value="${esc(e.rotulo || '')}" placeholder="${esc(EQUIPOS[e.k].n)}"></label>${rango('eq.ang', Math.round(e.ang || 0), -180, 180, 'Giro')}${del}`; }
   if (s.t === 'ruta') { const r = p.rutas.find(x => x.id === s.id); if (!r) return '';
@@ -1071,6 +1079,7 @@ document.addEventListener('click', ev => {
     case 'linea-dash': E.lineaDash = !E.lineaDash; E.rutaK = 'otra'; E.tool = 'ruta'; E.temp = null; render(); pista(); break;
     case 'piso-quitar': antes(); delete p.suelo; despues(); break;
     case 'config': dialogoConfig(); break;
+    case 'relleno': E.rellenoK = k; E.tool = 'relleno'; E.temp = null; render(); pista(); break;
     case 'etq-sel': E.sel = { t: 'etq', of: b.dataset.of, id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'sel-obj': E.sel = { t: b.dataset.t, id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'etq-ojo': { const ow = listaEtq(b.dataset.of).find(x => x.id === b.dataset.id); if (!ow) break; antes(); const et = (ow.etq ||= {}); et.oculta = !et.oculta; if (!et.oculta && E.sel && E.sel.id === ow.id) E.sel = null; despues(); break; }
@@ -1124,6 +1133,7 @@ function aplicar(campo, v, desdeChange, vivo) {
     if (k === 'etqVer') { (e.etq ||= {}).oculta = !v; }
     else if (k === 'txt') { const t = String(v).trim(); if (t) e.txt = t; else delete e.txt; }
     else if (k === 'color') e.color = v;
+    else if (k === 'relleno') { if (v) e.relleno = v; else delete e.relleno; }
     else if (k === 'modo') { e.modo = v; delete e.mw; delete e.mh; delete e.f; }
     else if (k === 'mw' || k === 'mh') { if (n > 0) e[k] = Math.round(n); else delete e[k]; }
     else if (k === 'f') e.f = Math.max(.1, +v / 100);

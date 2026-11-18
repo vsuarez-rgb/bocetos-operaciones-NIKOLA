@@ -532,3 +532,5 @@ select.fi-ctl { background: #1C2228; border-color: var(--ed-line); cursor: point
 .norma.ok { border-color: var(--ed-line); background: none; color: var(--ed-mut); }
 .norma input { margin-top: 2px; }
 .sb-b i.sb-cp { width: 12px; height: 12px; border: 2px solid #00E5FF; background: rgba(0,229,255,.32); border-radius: 2px; }
+
+.sb-ico { padding: 4px 7px; } .sb-ico svg { display: block; }

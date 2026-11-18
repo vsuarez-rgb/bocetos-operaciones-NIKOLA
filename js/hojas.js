@@ -22,7 +22,8 @@ export function vistaHoja(pr, id) {
   const hoja = t => (t.hojas || []).find(x => x.id === id);
   return new Proxy(pr, {
     get(t, k) { const h = hoja(t); if (h && k === '_esHoja') return true; if (h && k === 'vistaEquipos') return h.vistaEquipos || (h.tipo === 'equipos' ? 'elevacion' : 'planta'); return h && CLAVES_HOJA.includes(k) ? h[k] : t[k]; },
-    set(t, k, v) { const h = hoja(t); if (h && CLAVES_HOJA.includes(k)) h[k] = v; else t[k] = v; return true; }
+    set(t, k, v) { const h = hoja(t); if (h && CLAVES_HOJA.includes(k)) h[k] = v; else t[k] = v; return true; },
+    deleteProperty(t, k) { const h = hoja(t); if (h && CLAVES_HOJA.includes(k)) delete h[k]; else delete t[k]; return true; }
   });
 }
 /* Todas las hojas del proyecto, la principal primero: [{ id (null = principal), nombre, tipo }] */

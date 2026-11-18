@@ -180,6 +180,9 @@ export function dibujar(g, p, V, o) {
     const frente = real;
     if (frente) equipoFrente(g, e, E, md, w, h, plot, u);
     else equipoPlanta(g, e, E, w, h, plot, u);
+    if (e.relleno) { const sq = !frente && !['marca', 'libre'].includes(e.k), aw = sq ? Math.min(w, h) : w, ah = sq ? Math.min(w, h) : h;
+      let col = e.k === 'libre' ? (e.color || '#FFFFFF') : e.k === 'marca' ? '#FF2B2B' : E.c; if (plot && col === '#FFFFFF') col = '#222'; if (plot && col === '#FFE14D') col = '#C9A800';
+      rellenoArea(g, e.relleno, aw, ah, col, u); }
     g.restore();
     // marco de color y rótulo
     if (o.rotulos !== false) {
@@ -226,6 +229,20 @@ export function dibujar(g, p, V, o) {
   if (o.temp) o.temp(g, T);
 }
 
+/* Relleno de un área (centrada en 0,0): 'solido' = pintada con su color más transparente;
+   'diag' / 'cruz' / 'horiz' = achurado (sombreado, como el Hatch de AutoCAD) */
+export const RELLENOS = { solido: 'Pintar (tarro)', diag: 'Achurado diagonal', cruz: 'Achurado cruzado', horiz: 'Achurado horizontal' };
+export function rellenoArea(g, tipo, w, h, col, u = 1) {
+  g.save(); g.beginPath(); g.rect(-w / 2, -h / 2, w, h); g.clip();
+  if (tipo === 'solido') { g.globalAlpha = .3; g.fillStyle = col; g.fillRect(-w / 2, -h / 2, w, h); g.restore(); return; }
+  g.strokeStyle = col; g.globalAlpha = .75; g.lineWidth = .8 * u;
+  const paso = Math.max(4 * u, Math.min(w, h) / 8, 3), L = w + h;
+  g.beginPath();
+  if (tipo === 'diag' || tipo === 'cruz') for (let t = -L; t <= L; t += paso) { g.moveTo(-w / 2 + t, h / 2); g.lineTo(-w / 2 + t + h, -h / 2); }
+  if (tipo === 'cruz') for (let t = -L; t <= L; t += paso) { g.moveTo(-w / 2 + t, -h / 2); g.lineTo(-w / 2 + t + h, h / 2); }
+  if (tipo === 'horiz') for (let y = -h / 2 + paso / 2; y < h / 2; y += paso) { g.moveTo(-w / 2, y); g.lineTo(w / 2, y); }
+  g.stroke(); g.restore();
+}
 /* Etiqueta de un equipo o una canalización: texto subrayado con línea guía hasta su dueño.
    et = { dx, dy (posición propia, px de la foto, desde el ancla), tam, fijo, oculta }. Sin dx/dy va en su lugar por defecto.
    En el editor deja su caja en o.hits para poder elegirla y arrastrarla. */
@@ -346,7 +363,7 @@ export function equipoFrente(g, e, E, md, w, h, plot, u) {
     case 'marca': g.lineWidth = 2.6 * u; g.strokeStyle = plot ? '#E00000' : '#FF2B2B'; g.strokeRect(-w / 2, -h / 2, w, h); break;
     case 'bpc': g.fillStyle = relleno; g.fillRect(-w / 2, -h / 2, w, h); g.strokeRect(-w / 2, -h / 2, w, h); break;
     case 'cp': g.fillStyle = plot ? 'rgba(0,183,212,.22)' : 'rgba(0,229,255,.32)'; g.fillRect(-w / 2, -h / 2, w, h); g.strokeRect(-w / 2, -h / 2, w, h); break;   // caja de paso: área celeste
-    case 'cdj': g.fillStyle = relleno; g.fillRect(-w / 2, -h / 2, w, h); g.strokeRect(-w / 2, -h / 2, w, h); break;
+    case 'cdj': g.fillStyle = plot ? 'rgba(192,0,192,.18)' : 'rgba(255,61,255,.28)'; g.fillRect(-w / 2, -h / 2, w, h); g.strokeRect(-w / 2, -h / 2, w, h); break;
     default: caja(); if (E.l) texto(g, E.l, 0, 0, { size: Math.min(h * .4, 11 * u), color: col, align: 'center', base: 'middle', bold: true });
   }
 }
