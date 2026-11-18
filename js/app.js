@@ -70,7 +70,7 @@ function card(p) {
   return `<article class="card"><button class="card-img" data-l="abrir" data-id="${p.id}" aria-label="Abrir ${esc(p.codigo)}"><canvas data-mini="${p.id}" width="480" height="300"></canvas></button>
     <div class="card-b"><div class="card-t"><b>${esc(p.codigo || 'Sin código')}</b><span class="pill e-${p.estado}">${ESTADOS[p.estado] || p.estado}</span></div>
       <div class="card-c">${esc(p.cliente || 'Sin cliente')}</div><div class="mut sm">${esc([p.direccion, p.comuna].filter(Boolean).join(', ') || 'Sin dirección')}</div>
-      <div class="card-k"><span><b>${R.n}</b> paneles</span><span><b>${fmt(R.kwp, 2)}</b> kWp</span><span><b>${p.strings.length}</b> strings</span></div>
+      <div class="card-k"><span><b>${R.n}</b> paneles</span><span><b>${fmt(R.kwp, 2)}</b> kWp</span><span><b>${p.strings.length}</b> strings</span>${p.hojas?.length ? `<span><b>${p.hojas.length + 1}</b> hojas</span>` : ""}</div>
       <div class="card-a"><button class="btn sm pri" data-l="abrir" data-id="${p.id}">Abrir</button><button class="btn sm" data-l="duplicar" data-id="${p.id}" title="Duplicar">${ic('copy', 15)}</button><button class="btn sm del" data-l="borrar" data-id="${p.id}" title="Borrar">${ic('trash', 15)}</button></div></div></article>`;
 }
 async function miniatura(p) {

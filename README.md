@@ -9,6 +9,7 @@ Es un sitio **estático**: HTML, CSS y JavaScript sin compilación. No hay que i
 | Paso | Qué se hace |
 |---|---|
 | 0 · Ficha | El Excel "Campos Autocad" dentro de la app: los 344 campos por sección, calculados con las fórmulas de la plantilla. Todo se puede editar: los campos calculados se reemplazan a mano y se vuelve al cálculo con ↺. Avisos del Excel junto al campo, listas desplegables (comunas según la región, modelos según la marca…), búsqueda y filtros (por completar, escritos a mano, con aviso). Los instaladores se cargan en el navegador (no se publican). |
+| Hojas de diseño | Cada proyecto tiene varias hojas, una por imagen (pestañas abajo, como Modelo / Presentación en AutoCAD): la principal es el techo (foto de dron, paneles y strings) y se agregan otras —recorrido de canalización, zona de equipos, cargador, empalme— cada una con su foto, su escala y sus dibujos (equipos, canalización, cotas, textos). |
 | 1 · Escala | Se sube la foto de dron y se traza una medida conocida. Si la foto trae altura de vuelo (EXIF/XMP del dron), se compara con la escala. |
 | 2 · Techos | Cada agua se dibuja como polilínea. Se puede escribir el largo de cada lado en metros (en la dirección del cursor). |
 | 3 · Elementos | Obstáculos, zonas no utilizables, objetos que se retiran y pasillos. |

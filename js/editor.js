@@ -18,17 +18,41 @@ export const PASOS = [
 const HERR_DEF = { ficha: 'sel', escala: 'ref', techos: 'roof', elementos: 'zona', paneles: 'sel', strings: 'str', equipos: 'sel', lamina: 'sel' };
 
 let E = null;          // estado del editor
+
+/* ---------- Hojas de diseño: una por imagen ----------
+   La hoja principal (techo, foto de dron) son los datos de siempre del proyecto.
+   Las demás (canalización, zona de equipos, cargador…) viven en p.hojas, cada una con
+   su foto, escala y dibujos. El editor trabaja con E.p = "la hoja activa vista como
+   proyecto": las herramientas no cambian; lo que es de la hoja va a la hoja. */
+export const CLAVES_HOJA = ['img', 'w', 'h', 'ref', 'drone', 'roofs', 'zonas', 'strings', 'equipos', 'rutas', 'cotas', 'textos', 'norte', 'sinElementos'];
+export const TIPOS_HOJA = { canalizacion: 'Recorrido de canalización', equipos: 'Zona de equipos', cargador: 'Cargador', empalme: 'Empalme y medidor', otra: 'Otra' };
+const ICONO_HOJA = { principal: 'drone', canalizacion: 'pline', equipos: 'inverter', cargador: 'plug', empalme: 'block', otra: 'crop' };
+export function nuevaHoja(tipo = 'otra', nombre) {
+  return { id: uid('h'), tipo, nombre: nombre || TIPOS_HOJA[tipo] || 'Hoja', img: null, w: 0, h: 0, ref: null, drone: null, roofs: [], zonas: [], strings: [], equipos: [], rutas: [], cotas: [], textos: [], norte: null };
+}
+export function vistaHoja(pr, id) {
+  if (!id) return pr;
+  const hoja = t => (t.hojas || []).find(x => x.id === id);
+  return new Proxy(pr, {
+    get(t, k) { const h = hoja(t); return h && CLAVES_HOJA.includes(k) ? h[k] : t[k]; },
+    set(t, k, v) { const h = hoja(t); if (h && CLAVES_HOJA.includes(k)) h[k] = v; else t[k] = v; return true; }
+  });
+}
+const hojaActiva = () => E.hojaId ? (E.proyecto.hojas || []).find(h => h.id === E.hojaId) : null;
+const pasosVisibles = () => E.hojaId ? PASOS.filter(([k]) => ['ficha', 'escala', 'equipos', 'lamina'].includes(k)) : PASOS;
+const nombrePaso = (k, n) => E.hojaId && k === 'equipos' ? 'Dibujo' : n;
 let alSalir = null;
 
 export function abrirEditor(p, volver) {
   alSalir = volver;
-  E = { p, step: p._paso || (p.ref ? (p.roofs.some(r => r.closed) ? 'paneles' : 'techos') : 'escala'), tool: null, sel: null, V: null, temp: null, D: null,
+  const hojaId = p._hoja && (p.hojas || []).some(h => h.id === p._hoja) ? p._hoja : null;
+  E = { proyecto: p, hojaId, p: vistaHoja(p, hojaId), step: p._paso || (p.ref ? (p.roofs.some(r => r.closed) ? 'paneles' : 'techos') : 'escala'), tool: null, sel: null, V: null, temp: null, D: null,
     orto: false, refent: true, rejilla: false, capas: new Set(CAPAS.map(c => c.id)), bloqueadas: new Set(), hist: [], fut: [], cmdLog: [],
     zonaK: 'obs', zonaForma: 'rect', eqK: 'inv', rutaK: 'cc', blk: { f: 2, c: 4 }, strAct: p.strings[0]?.id || null, selPanels: new Set(), mouse: null, snap: null,
     fotoAlpha: .85, guardado: true, R: null, SI: null };
   E.tool = HERR_DEF[E.step];
   render();
-  cargarImg(p.img).then(() => { ajustarVista(); dibujarTodo(); });
+  cargarImg(E.p.img).then(() => { ajustarVista(); dibujarTodo(); });
   window.addEventListener('keydown', teclas);
   window.addEventListener('resize', onResize);
 }
@@ -37,26 +61,31 @@ const esPagina = () => E && (E.step === 'lamina' || E.step === 'ficha');   // pa
 const onResize = () => { if (E && !esPagina()) { dibujarTodo(); } };
 
 /* ---------- Cambios, deshacer y guardado automático ---------- */
-const snap = () => JSON.stringify({ ...E.p, img: undefined });
+const snap = () => JSON.stringify(E.proyecto, (k, v) => k === 'img' ? undefined : v);
 function antes() { E.hist.push(snap()); if (E.hist.length > 80) E.hist.shift(); E.fut = []; }
 function despues(redibujarPanel = true) { E.guardado = false; recalcular(); if (redibujarPanel) panel(); dibujarTodo(); estadoGuardado(); programarGuardado(); }
-function restaurar(json) { const img = E.p.img; Object.keys(E.p).forEach(k => delete E.p[k]); Object.assign(E.p, JSON.parse(json), { img }); E.sel = null; E.selPanels.clear(); despues(); render(); }
+function restaurar(json) {
+  const P = E.proyecto, imgs = { _: P.img }; (P.hojas || []).forEach(h => { imgs[h.id] = h.img; });
+  Object.keys(P).forEach(k => delete P[k]); Object.assign(P, JSON.parse(json), { img: imgs._ });
+  (P.hojas || []).forEach(h => { if (h.id in imgs) h.img = imgs[h.id]; });
+  if (E.hojaId && !(P.hojas || []).some(h => h.id === E.hojaId)) E.hojaId = null;
+  E.p = vistaHoja(P, E.hojaId); E.sel = null; E.selPanels.clear(); despues(); render(); }
 function deshacer() { if (!E.hist.length) return toast('Nada que deshacer'); E.fut.push(snap()); restaurar(E.hist.pop()); log('DESHACER'); }
 function rehacer() { if (!E.fut.length) return toast('Nada que rehacer'); E.hist.push(snap()); restaurar(E.fut.pop()); log('REHACER'); }
 let tGuardar = null;
 function programarGuardado() { clearTimeout(tGuardar); tGuardar = setTimeout(guardarYa, 1200); }
 async function guardarYa() {
   clearTimeout(tGuardar); if (!E) return;
-  try { E.p._paso = E.step; await guardar(E.p); E.guardado = true; } catch (e) { toast('No se pudo guardar en este navegador: ' + e.message); }
+  try { E.proyecto._paso = E.step; E.proyecto._hoja = E.hojaId; await guardar(E.proyecto); E.guardado = true; } catch (e) { toast('No se pudo guardar en este navegador: ' + e.message); }
   estadoGuardado();
 }
 function estadoGuardado() { const el = $('#guardEstado'); if (el) { el.textContent = E.guardado ? 'Guardado' : 'Guardando…'; el.classList.toggle('pend', !E.guardado); } }
-function recalcular() { E.R = calcular(E.p); E.SI = calcStrings(E.p, E.R); }
+function recalcular() { const base = esPagina() ? E.proyecto : E.p; E.R = calcular(base); E.SI = calcStrings(base, E.R); E.RP = E.hojaId ? calcular(E.proyecto) : E.R; }   // RP: totales del proyecto (hoja principal)
 
 /* ---------- Estructura de la pantalla ---------- */
 function render() {
   recalcular();
-  const p = E.p, R = E.R;
+  const p = E.p, R = E.RP || E.R;
   document.body.className = 'modo-editor';
   $('#app').innerHTML = `
   <header class="ed-top">
@@ -65,13 +94,13 @@ function render() {
     <div class="ed-title"><b>${esc(p.codigo || 'Sin código')}</b><span>${esc(p.cliente || 'Proyecto sin nombre')}</span></div>
     <select class="tb-sel" data-campo="estado" aria-label="Estado">${Object.entries(ESTADOS).map(([k, n]) => `<option value="${k}" ${p.estado === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
     <div class="tb-sp"></div>
-    <div class="ed-kpi"><span><b id="kN">${R.n}</b> paneles</span><span><b id="kK">${fmt(R.kwp, 2)}</b> kWp</span><span><b id="kS">${p.strings.length}</b> strings</span></div>
+    <div class="ed-kpi"><span><b id="kN">${R.n}</b> paneles</span><span><b id="kK">${fmt(R.kwp, 2)}</b> kWp</span><span><b id="kS">${E.proyecto.strings.length}</b> strings</span></div>
     <button class="tb-btn" data-act="undo" title="Deshacer (Ctrl+Z)">${ic('undo')}</button>
     <button class="tb-btn" data-act="redo" title="Rehacer (Ctrl+Y)">${ic('redo')}</button>
     <span id="guardEstado" class="guard">Guardado</span>
     <button class="tb-btn" data-act="exportar" title="Exportar proyecto (.json)">${ic('download')}</button>
   </header>
-  <nav class="ribbon" aria-label="Pasos">${PASOS.map(([k, n, i], idx) => `<button class="paso ${pasoOk(k) ? 'ok' : ''}" data-act="paso" data-k="${k}" aria-pressed="${E.step === k}"><i>${pasoOk(k) ? ic('check', 13) : idx + 1}</i>${ic(i, 16)}<span>${n}</span></button>`).join('')}</nav>
+  <nav class="ribbon" aria-label="Pasos">${pasosVisibles().map(([k, n, i], idx) => `<button class="paso ${pasoOk(k) ? 'ok' : ''}" data-act="paso" data-k="${k}" aria-pressed="${E.step === k}"><i>${pasoOk(k) ? ic('check', 13) : idx + 1}</i>${ic(i, 16)}<span>${nombrePaso(k, n)}</span></button>`).join('')}</nav>
   <div class="ed-body ${esPagina() ? 'es-lamina' : ''}">
     ${esPagina() ? '' : `<aside class="tools" aria-label="Herramientas">${herramientas()}</aside>`}
     <main class="model" id="model">
@@ -82,6 +111,7 @@ function render() {
     </main>
     <aside class="props" id="props"></aside>
   </div>
+  ${esPagina() ? '' : barraHojas()}
   ${esPagina() ? '' : `<footer class="cmd">
     <div class="cmd-log" id="cmdLog">${E.cmdLog.slice(-3).map(l => `<div>${esc(l)}</div>`).join('')}</div>
     <label class="cmd-in"><span id="cmdPrompt">Comando:</span><input id="cmdIn" autocomplete="off" spellcheck="false" placeholder="Escribe un comando (AYUDA) o una distancia en metros"></label>
@@ -96,8 +126,8 @@ function render() {
     <label class="st-foto">Foto <input type="range" min="0" max="100" value="${Math.round(E.fotoAlpha * 100)}" data-campo="_fotoAlpha" aria-label="Opacidad de la foto"></label>
   </div>`}`;
   panel();
-  if (E.step === 'lamina') { vistaLamina($('#laminaWrap'), E.p, E.R, E.SI); return; }
-  if (E.step === 'ficha') { vistaFicha($('#fichaWrap'), E.p, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, panel: () => panel() }); return; }
+  if (E.step === 'lamina') { vistaLamina($('#laminaWrap'), E.proyecto, E.R, E.SI); return; }
+  if (E.step === 'ficha') { vistaFicha($('#fichaWrap'), E.proyecto, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, panel: () => panel() }); return; }
   const cv = $('#cv');
   cv.addEventListener('pointerdown', down); cv.addEventListener('pointermove', move); cv.addEventListener('pointerup', up);
   cv.addEventListener('wheel', wheel, { passive: false }); cv.addEventListener('dblclick', dbl);
@@ -120,7 +150,7 @@ function pasoOk(k) {
   if (k === 'elementos') return p.zonas.length > 0 || !!p.sinElementos;
   if (k === 'paneles') return R.n > 0;
   if (k === 'strings') { const S = E.SI || calcStrings(p, R); return p.strings.length > 0 && !S.sinString && S.lista.every(x => x.ok); }
-  if (k === 'equipos') return p.equipos.some(e => e.k === 'inv') && p.rutas.length > 0;
+  if (k === 'equipos') return E.hojaId ? (p.rutas.length + p.equipos.length + p.cotas.length + p.textos.length) > 0 : p.equipos.some(e => e.k === 'inv') && p.rutas.length > 0;
   if (k === 'lamina') return !!(p.lamina.jefe && p.lamina.ingeniero && p.codigo);
 }
 function log(t) { E.cmdLog.push(t); const el = $('#cmdLog'); if (el) el.innerHTML = E.cmdLog.slice(-3).map(l => `<div>${esc(l)}</div>`).join(''); }
@@ -150,7 +180,7 @@ function dibujarTodo() {
     temp: (g2, T) => temporal(g2, T) });
   if (E.rejilla && s) rejilla(g, W, H, s);
   cursor(g, W, H);
-  const n = $('#kN'); if (n) { n.textContent = E.R.n; $('#kK').textContent = fmt(E.R.kwp, 2); $('#kS').textContent = p.strings.length; }
+  const n = $('#kN'); if (n) { const RP = E.RP || E.R; n.textContent = RP.n; $('#kK').textContent = fmt(RP.kwp, 2); $('#kS').textContent = E.proyecto.strings.length; }   // totales del proyecto, en cualquier hoja
 }
 function panelesDelActivo() { const st = E.p.strings.find(x => x.id === E.strAct); return new Set(st ? st.panels : []); }
 function rejilla(g, W, H, s) {
@@ -503,11 +533,56 @@ function pista() {
   h.textContent = txt; h.hidden = !txt;
 }
 
+/* ---------- Hojas de diseño: pestañas, cambiar, crear, editar ---------- */
+function barraHojas() {
+  const P = E.proyecto, hs = P.hojas || [];
+  const tab = (id, nombre, tipo, foto) => `<button class="hoja-tab" data-act="hoja" data-id="${id || ''}" aria-pressed="${(id || null) === E.hojaId}" title="${esc(nombre)}${foto ? '' : ' · sin foto'}">${ic(ICONO_HOJA[tipo] || 'crop', 14)}<span>${esc(nombre)}</span>${foto ? '' : '<em class="sin-foto" aria-hidden="true"></em>'}</button>`;
+  return `<nav class="hojas-bar" aria-label="Hojas de diseño"><span class="hojas-t">Hojas</span>
+    ${tab(null, P.nombreHojaPrincipal || 'Techo (dron)', 'principal', !!P.img)}${hs.map(h => tab(h.id, h.nombre, h.tipo, !!h.img)).join('')}
+    <button class="hoja-mas" data-act="hoja-nueva" title="Agregar una hoja de diseño: otra foto con su escala y sus dibujos">${ic('plus', 14)}<span>Nueva hoja</span></button>
+    <span class="tb-sp"></span><button class="hoja-ed" data-act="hoja-editar" title="Cambiar el nombre o borrar la hoja activa">Editar hoja</button></nav>`;
+}
+function cambiarHoja(id) {
+  id = id || null; if (id === E.hojaId) return;
+  E.hojaId = id; E.p = vistaHoja(E.proyecto, id);
+  E.sel = null; E.temp = null; E.D = null; E.selPanels.clear(); E.V = null; E.strAct = E.p.strings[0]?.id || null;
+  if (!pasosVisibles().some(([k]) => k === E.step)) E.step = E.p.img ? 'equipos' : 'escala';
+  if (id && !['ficha', 'lamina'].includes(E.step) && !E.p.img) E.step = 'escala';
+  E.tool = HERR_DEF[E.step];
+  render(); pista(); programarGuardado();
+  cargarImg(E.p.img).then(() => { if (!E) return; ajustarVista(); dibujarTodo(); });
+}
+function dialogoHoja(h) {
+  const nueva = !h, principal = h === 'principal', P = E.proyecto;
+  const tipoAct = nueva ? 'canalizacion' : principal ? null : h.tipo;
+  const nombre = nueva ? TIPOS_HOJA.canalizacion : principal ? (P.nombreHojaPrincipal || 'Techo (dron)') : h.nombre;
+  const d = document.createElement('dialog'); d.className = 'dlg';
+  d.innerHTML = `<form method="dialog"><h2>${nueva ? 'Nueva hoja de diseño' : 'Hoja de diseño'}</h2>
+    <p class="mut">${nueva ? 'Cada hoja tiene su propia foto, escala y dibujos: el recorrido de la canalización, la zona de equipos, el cargador… Después eliges en el informe cuáles mostrar.' : principal ? 'La hoja principal es la del techo (foto de dron, paneles y strings). No se puede borrar.' : ''}</p>
+    ${principal ? '' : `<div class="f"><span>Tipo</span><div class="hoja-tipos">${Object.entries(TIPOS_HOJA).map(([k, n]) => `<label><input type="radio" name="tipo" value="${k}" ${k === tipoAct ? 'checked' : ''}><span>${ic(ICONO_HOJA[k], 15)} ${n}</span></label>`).join('')}</div></div>`}
+    <label class="f"><span>Nombre</span><input class="in" name="nombre" value="${esc(nombre)}" required maxlength="60"></label>
+    <div class="row end">${!nueva && !principal ? '<button class="btn del" value="borrar" formnovalidate>Borrar hoja</button><span class="tb-sp"></span>' : ''}<button class="btn" value="cancel" formnovalidate>Cancelar</button><button class="btn pri" value="ok">${nueva ? 'Crear hoja' : 'Guardar'}</button></div></form>`;
+  document.body.appendChild(d); d.showModal();
+  const nom = d.querySelector('[name=nombre]'); let tocado = false; nom.addEventListener('input', () => { tocado = true; });
+  d.querySelectorAll('[name=tipo]').forEach(r => r.addEventListener('change', () => { if (nueva && !tocado) nom.value = TIPOS_HOJA[r.value]; }));
+  d.addEventListener('close', () => {
+    const v = d.returnValue, fd = new FormData(d.querySelector('form')), n = String(fd.get('nombre') || '').trim();
+    if (v === 'ok' && n) {
+      antes();
+      if (nueva) { const hh = nuevaHoja(fd.get('tipo') || 'otra', n); (P.hojas ||= []).push(hh); despues(false); cambiarHoja(hh.id); toast('Sube la foto de esta hoja y traza su escala'); }
+      else if (principal) { P.nombreHojaPrincipal = n; despues(); render(); }
+      else { h.nombre = n; h.tipo = fd.get('tipo') || h.tipo; despues(); render(); }
+    }
+    if (v === 'borrar' && confirm(`¿Borrar la hoja "${h.nombre}" con su foto y sus dibujos?`)) { antes(); P.hojas = P.hojas.filter(x => x.id !== h.id); E.hojaId = '__borrada__'; cambiarHoja(null); despues(); }
+    d.remove();
+  });
+}
+
 /* ---------- Panel derecho ---------- */
 function panel() {
   const el = $('#props'); if (!el || !E) return;
-  if (E.step === 'ficha') { el.innerHTML = panelFicha(E.p); return; }
-  if (E.step === 'lamina') { el.innerHTML = panelLamina(E.p, E.R, E.SI, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, rerender: () => panel() }); return; }
+  if (E.step === 'ficha') { el.innerHTML = panelFicha(E.proyecto); return; }
+  if (E.step === 'lamina') { el.innerHTML = panelLamina(E.proyecto, E.R, E.SI, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, rerender: () => panel() }); return; }
   const p = E.p, R = E.R, s = escala(p);
   let h = '';
   const sec = (titulo, cuerpo, abierto = true) => `<details class="pp" ${abierto ? 'open' : ''}><summary>${titulo}</summary><div class="pp-b">${cuerpo}</div></details>`;
@@ -532,7 +607,7 @@ function panel() {
         ${dif != null ? `<div class="aviso ${dif <= 8 ? 'ok' : 'warn'}">${ic(dif <= 8 ? 'check' : 'alert', 16)}<span>${dif <= 8 ? `Referencia y dron coinciden (diferencia ${fmt(dif, 0)} %).` : `Referencia y dron difieren ${fmt(dif, 0)} %. Revisa la medida o la altura del techo.`}</span></div>` : ''}
         ${!s && gsd ? `<button class="btn" data-act="usar-dron">Usar la escala del dron</button>` : ''}`
       : `<p class="mut">Sube la foto original del dron (sin pasar por WhatsApp) para leer la altura de vuelo y validar la escala.</p>`}
-      <label class="btn pri">${ic('upload')} ${p.img ? 'Cambiar foto de dron' : 'Subir foto de dron'}<input type="file" accept="image/*" data-act="foto" hidden></label>`);
+      <label class="btn pri">${ic('upload')} ${p.img ? 'Cambiar foto' : 'Subir foto'}${E.hojaId ? '' : ' de dron'}<input type="file" accept="image/*" data-act="foto" hidden></label>`);
   }
   if (E.step === 'techos') {
     h += sec('2 · Techos', `
@@ -642,13 +717,16 @@ document.addEventListener('click', ev => {
   if (!E) return; const b = ev.target.closest('[data-act]'); if (!b || b.tagName === 'INPUT') return;
   const a = b.dataset.act, k = b.dataset.k, p = E.p;
   if (E.step === 'ficha' && accionFicha(a, b)) return;
-  if (E.step === 'lamina' && accionLamina(a, b, E.p, () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, () => panel())) return;
+  if (E.step === 'lamina' && accionLamina(a, b, E.proyecto, () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, () => panel())) return;
   switch (a) {
     case 'salir': guardarYa().then(() => { cerrarEditor(); alSalir && alSalir(); }); break;
     case 'paso': irPaso(k); break;
-    case 'siguiente': { const i = PASOS.findIndex(x => x[0] === E.step); if (PASOS[i + 1]) irPaso(PASOS[i + 1][0]); break; }
+    case 'siguiente': { const V = pasosVisibles(), i = V.findIndex(x => x[0] === E.step); if (V[i + 1]) irPaso(V[i + 1][0]); break; }
+    case 'hoja': cambiarHoja(b.dataset.id || null); break;
+    case 'hoja-nueva': dialogoHoja(); break;
+    case 'hoja-editar': dialogoHoja(hojaActiva() || 'principal'); break;
     case 'undo': deshacer(); break; case 'redo': rehacer(); break;
-    case 'exportar': descargar(`${(p.codigo || 'proyecto').replace(/\s+/g, '_')}.nikola.json`, JSON.stringify(p), 'application/json'); break;
+    case 'exportar': descargar(`${(p.codigo || 'proyecto').replace(/\s+/g, '_')}.nikola.json`, JSON.stringify(E.proyecto), 'application/json'); break;
     case 'tool': E.tool = k; E.temp = null; E.D = null; if (k === 'cota') prompt('COTA  Precise el primer punto:'); else prompt('Comando:'); render(); pista(); break;
     case 'zin': { const [W, H] = tam(); zoom(1.25, W / 2, H / 2); break; }
     case 'zout': { const [W, H] = tam(); zoom(.8, W / 2, H / 2); break; }
