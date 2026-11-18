@@ -152,7 +152,8 @@ export function dibujar(g, p, V, o) {
     const C = CANAL[rt.k] || CANAL.ca, pts = rt.pts.map(T), sel = o.sel && o.sel.t === 'ruta' && o.sel.id === rt.id; if (pts.length < 2) return;
     if (!vis(C.riel ? 'rieles' : 'canal')) return;
     if (sel) { path(g, pts); g.lineWidth = 6; g.strokeStyle = 'rgba(250,183,4,.35)'; g.stroke(); }
-    path(g, pts); g.setLineDash(C.dash.map(d => d * u)); g.lineWidth = 1.8 * u; g.strokeStyle = plot && C.cPlot ? C.cPlot : C.c; g.lineJoin = 'round'; g.stroke(); g.setLineDash([]);
+    const colR = C.libre ? (rt.color || C.c) : C.c, dashR = C.libre ? (rt.dash ? [10, 6] : []) : C.dash;
+    path(g, pts); g.setLineDash(dashR.map(d => d * u)); g.lineWidth = 1.8 * u; g.strokeStyle = plot && C.libre && colR === '#FFFFFF' ? '#222' : plot && C.cPlot ? C.cPlot : colR; g.lineJoin = 'round'; g.stroke(); g.setLineDash([]);
     if (sel) grips(g, pts);
     // etiqueta propia (se mueve, cambia de tamaño, se fija o se quita)
     if (o.rotulos !== false) { const m = Math.floor((rt.pts.length - 1) / 2), mid = lerp(rt.pts[m], rt.pts[m + 1], .5), a = T(mid);

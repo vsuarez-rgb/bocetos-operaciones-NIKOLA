@@ -498,3 +498,13 @@ select.fi-ctl { background: #1C2228; border-color: var(--ed-line); cursor: point
 .colores { display: flex; flex-wrap: wrap; gap: 5px; }
 .colores button { width: 24px; height: 24px; border-radius: 6px; border: 2px solid var(--ed-line); background: var(--c); cursor: pointer; padding: 0; }
 .colores button[aria-pressed="true"] { border-color: var(--nk-amarillo); box-shadow: 0 0 0 2px rgba(250,183,4,.35); }
+
+/* ---------- Barra bajo los pasos (Equipos y canalización) ---------- */
+.ribbon-wrap { display: flex; flex-direction: column; min-width: 0; }
+.subbar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 5px 10px; background: var(--ed-bar2, #1C2228); border-bottom: 1px solid var(--ed-line); font-size: 12px; }
+.subbar-t { color: var(--ed-mut); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 11px; margin-right: 4px; }
+.sb-b { display: inline-flex; align-items: center; gap: 6px; background: var(--ed-bar); border: 1px solid var(--ed-line); color: var(--ed-ink); border-radius: 7px; padding: 4px 9px; font: 12px var(--f-body); cursor: pointer; }
+.sb-b i { width: 18px; display: inline-block; }
+.sb-b:hover { border-color: var(--ed-mut); } .sb-b[aria-pressed="true"] { border-color: var(--nk-amarillo); color: var(--nk-amarillo); }
+.sb-sep { width: 1px; height: 20px; background: var(--ed-line); margin: 0 4px; }
+.sb-cols button { width: 20px; height: 20px; }

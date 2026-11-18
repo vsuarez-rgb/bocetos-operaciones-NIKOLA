@@ -56,6 +56,7 @@ export const CANAL = {
   subcc: { n: 'Subterránea en CC', corto: 'Subterránea CC', c: '#FF3B3B', dash: [10, 6], cond: 'PV1-F 2x6 mm²', ducto: 'PVC 32', dc: true },
   sub: { n: 'Subterránea en CA', corto: 'Subterránea CA', c: '#FF3B3B', dash: [], cond: 'RVK 3x8,37 mm²', ducto: 'PVC 32' },
   tie: { n: 'Línea de tierra', corto: 'Tierra', c: '#9DB0BD', dash: [], cond: 'Cu desnudo 16 mm²', ducto: '—' },
+  otra: { n: 'Otra línea (color a elección)', corto: 'Línea', c: '#FFFFFF', dash: [], cond: '—', ducto: '—', libre: true },
   riel: { n: 'Riel (dibujo libre)', corto: 'Riel', c: '#FF9E3D', dash: [], cond: '—', ducto: '—', riel: true }
 };
 

@@ -41,7 +41,7 @@ export function abrirEditor(p, volver) {
   const hojaId = p._hoja && (p.hojas || []).some(h => h.id === p._hoja) ? p._hoja : null;
   E = { proyecto: p, hojaId, p: vistaHoja(p, hojaId), step: (p._paso === 'lamina' ? 'informe' : p._paso) || (p.ref ? (p.roofs.some(r => r.closed) ? 'paneles' : 'techos') : 'escala'), tool: null, sel: null, V: null, temp: null, D: null,
     orto: false, refent: true, rejilla: false, capas: new Set(CAPAS.map(c => c.id)), bloqueadas: new Set(), hist: [], fut: [], cmdLog: [],
-    zonaK: 'obs', zonaForma: 'rect', figForma: 'grid', figFC: { f: 2, c: 5 }, eqK: 'inv', rutaK: 'cc', blk: { f: 2, c: 4 }, strAct: p.strings[0]?.id || null, selPanels: new Set(), mouse: null, snap: null,
+    zonaK: 'obs', zonaForma: 'rect', lineaColor: '#FFFFFF', lineaDash: false, figForma: 'grid', figFC: { f: 2, c: 5 }, eqK: 'inv', rutaK: 'cc', blk: { f: 2, c: 4 }, strAct: p.strings[0]?.id || null, selPanels: new Set(), mouse: null, snap: null,
     fotoAlpha: .85, guardado: true, R: null, SI: null, abiertas: new Map() };
   E.tool = HERR_DEF[E.step];
   leerAjuste('conjuntosEquipos').then(x => { if (E) { E.conjuntos = x || []; if (E.step === 'equipos') panel(); } });
@@ -94,7 +94,7 @@ function render() {
     <span id="guardEstado" class="guard">Guardado</span>
     <button class="tb-btn" data-act="exportar" title="Exportar proyecto (.json)">${ic('download')}</button>
   </header>
-  <nav class="ribbon" aria-label="Pasos">${pasosVisibles().map(([k, n, i], idx) => `<button class="paso ${pasoOk(k) ? 'ok' : ''}" data-act="paso" data-k="${k}" aria-pressed="${E.step === k}"><i>${pasoOk(k) ? ic('check', 13) : idx + 1}</i>${ic(i, 16)}<span>${nombrePaso(k, n)}</span></button>`).join('')}</nav>
+  <div class="ribbon-wrap"><nav class="ribbon" aria-label="Pasos">${pasosVisibles().map(([k, n, i], idx) => `<button class="paso ${pasoOk(k) ? 'ok' : ''}" data-act="paso" data-k="${k}" aria-pressed="${E.step === k}"><i>${pasoOk(k) ? ic('check', 13) : idx + 1}</i>${ic(i, 16)}<span>${nombrePaso(k, n)}</span></button>`).join('')}</nav>${E.step === 'equipos' ? barraLineas() : ''}</div>
   <div class="ed-body ${esPagina() ? 'es-lamina' : ''}">
     ${esPagina() ? '' : `<aside class="tools" aria-label="Herramientas">${herramientas()}</aside>`}
     <main class="model" id="model">
@@ -131,6 +131,17 @@ function render() {
   cv.addEventListener('pointerleave', () => { E.mouse = null; dibujarTodo(); });
   $('#cmdIn').addEventListener('keydown', cmdKey);
   if (!E.V) ajustarVista(); dibujarTodo(); pista();
+}
+/* Barra bajo los pasos (Equipos y canalización): tipos de canalización y una línea de color a elección */
+const COLORES_LINEA = ['#FFFFFF', '#FFD21F', '#3D6BFF', '#FF3B3B', '#2FD06B', '#FF3DFF', '#00E5FF', '#FF8A00', '#9DB0BD'];
+function barraLineas() {
+  const act = k => E.tool === 'ruta' && E.rutaK === k;
+  return `<div class="subbar"><span class="subbar-t">Trazar</span>
+    ${Object.entries(CANAL).filter(([k, C]) => !C.riel && !C.libre).map(([k, C]) => `<button class="sb-b" data-act="rutaK" data-k="${k}" aria-pressed="${act(k)}" title="${esc(C.n)}"><i style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i>${esc(C.corto)}</button>`).join('')}
+    <span class="sb-sep"></span>
+    <button class="sb-b" data-act="rutaK" data-k="otra" aria-pressed="${act('otra')}" title="Una línea cualquiera con el color que elijas"><i style="border-top:3px ${E.lineaDash ? 'dashed' : 'solid'} ${E.lineaColor}"></i>Otra línea</button>
+    <span class="colores sb-cols">${COLORES_LINEA.map(c => `<button data-act="linea-color" data-v="${c}" aria-pressed="${E.lineaColor === c}" style="--c:${c}" title="${c}"></button>`).join('')}</span>
+    <button class="sb-b" data-act="linea-dash" aria-pressed="${!!E.lineaDash}" title="Línea segmentada">- - -</button></div>`;
 }
 function herramientas() {
   const t = (k, icono, n, extra = '') => `<button class="tool" data-act="tool" data-k="${k}" aria-pressed="${E.tool === k}" title="${n}" ${extra}>${ic(icono, 20)}<span>${n}</span></button>`;
@@ -342,7 +353,7 @@ function down(ev) {
     dibujarTodo(); return;
   }
   if (E.tool === 'ruta') {
-    if (!E.temp) { E.temp = { tipo: 'poly', pts: [q], col: CANAL[E.rutaK].c, dash: CANAL[E.rutaK].dash }; prompt(`${CANAL[E.rutaK].corto}  Precise el siguiente punto (Enter o doble clic termina):`); }
+    if (!E.temp) { E.temp = { tipo: 'poly', pts: [q], col: CANAL[E.rutaK].libre ? E.lineaColor : CANAL[E.rutaK].c, dash: CANAL[E.rutaK].libre ? (E.lineaDash ? [10, 6] : []) : CANAL[E.rutaK].dash }; prompt(`${CANAL[E.rutaK].corto}  Precise el siguiente punto (Enter o doble clic termina):`); }
     else E.temp.pts.push(q);
     dibujarTodo(); return;
   }
@@ -461,7 +472,7 @@ function terminar() {
   if (E.tool === 'figpan' && t) { if (t.pts.length >= 3) cerrarFigura(); else { E.temp = null; dibujarTodo(); } return; }
   if (E.tool === 'roof' && t) { if (t.pts.length >= 3) cerrarTecho(); else { E.temp = null; dibujarTodo(); } return; }
   if (E.tool === 'ruta' && t) {
-    if (t.pts.length >= 2) { antes(); const st = E.p.strings[0]; const r = { id: uid('r'), k: E.rutaK, pts: t.pts, tramo: CANAL[E.rutaK]?.dc ? (E.strAct || (st && st.id) || '') : ['tie', 'riel'].includes(E.rutaK) ? '' : 'inv-tg' }; E.p.rutas.push(r); E.sel = { t: 'ruta', id: r.id }; log(`CANALIZACIÓN ${CANAL[r.k].corto}  ${fmt(largoM(E.p, r.pts), 1)} m`); E.temp = null; despues(); }
+    if (t.pts.length >= 2) { antes(); const st = E.p.strings[0]; const r = { id: uid('r'), k: E.rutaK, pts: t.pts, ...(CANAL[E.rutaK].libre ? { color: E.lineaColor, ...(E.lineaDash ? { dash: true } : {}), etq: { oculta: true } } : {}), tramo: CANAL[E.rutaK]?.dc ? (E.strAct || (st && st.id) || '') : ['tie', 'riel', 'otra'].includes(E.rutaK) ? '' : 'inv-tg' }; E.p.rutas.push(r); E.sel = { t: 'ruta', id: r.id }; log(`CANALIZACIÓN ${CANAL[r.k].corto}  ${fmt(largoM(E.p, r.pts), 1)} m`); E.temp = null; despues(); }
     else { E.temp = null; dibujarTodo(); }
     prompt('Comando:'); return;
   }
@@ -815,9 +826,9 @@ ${[['De referencia', 'Bloques que muestran dónde va cada equipo: se agrandan o 
       ${s ? '' : `${rango('hoja.tamSimb', Math.round((p.tamSimb || 1) * 100), 20, 400, 'Tamaño de los equipos y textos', ' %')}<p class="mut">Esta hoja no tiene escala: los equipos salen con un tamaño aproximado. Agrándalos o achícalos aquí (todos) o uno por uno arrastrando las esquinas del equipo seleccionado.</p>`}`);
     const largos = Object.keys(CANAL).map(k => [k, p.rutas.filter(r => r.k === k).reduce((t, r) => t + largoM(p, r.pts), 0)]);
     h += sec('Canalización', `
-      <div class="lista">${Object.entries(CANAL).filter(([k]) => k !== 'riel').map(([k, C]) => `<button class="li" data-act="rutaK" data-k="${k}" aria-pressed="${E.tool === 'ruta' && E.rutaK === k}"><i class="ln" style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i><b>${C.n}</b><em>${fmt(largos.find(x => x[0] === k)[1], 1)} m</em></button>`).join('')}</div>
+      <div class="lista">${Object.entries(CANAL).filter(([k]) => k !== 'riel' && k !== 'otra').map(([k, C]) => `<button class="li" data-act="rutaK" data-k="${k}" aria-pressed="${E.tool === 'ruta' && E.rutaK === k}"><i class="ln" style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i><b>${C.n}</b><em>${fmt(largos.find(x => x[0] === k)[1], 1)} m</em></button>`).join('')}</div>
       <p class="mut">Elige un tipo y haz clic en cada punto del recorrido. Enter o doble clic termina. El largo de cada tramo se ve aquí (no en el dibujo) y pasa a los cuadros de la lámina.</p>
-      ${p.rutas.filter(r => r.k !== 'riel').length ? `<div class="sub">Largo aprox. de cada canalización</div><div class="lista">${p.rutas.filter(r => r.k !== 'riel').map(r => { const C = CANAL[r.k] || CANAL.ca, tr = CANAL[r.k]?.dc ? (p.strings.findIndex(st => st.id === r.tramo) + 1 ? `String ${p.strings.findIndex(st => st.id === r.tramo) + 1}` : '') : { 'inv-tg': 'Inversor – TGFV', 'tg-emp': 'TG – Empalme' }[r.tramo] || '';
+      ${p.rutas.filter(r => r.k !== 'riel' && r.k !== 'otra').length ? `<div class="sub">Largo aprox. de cada canalización</div><div class="lista">${p.rutas.filter(r => r.k !== 'riel' && r.k !== 'otra').map(r => { const C = CANAL[r.k] || CANAL.ca, tr = CANAL[r.k]?.dc ? (p.strings.findIndex(st => st.id === r.tramo) + 1 ? `String ${p.strings.findIndex(st => st.id === r.tramo) + 1}` : '') : { 'inv-tg': 'Inversor – TGFV', 'tg-emp': 'TG – Empalme' }[r.tramo] || '';
         return `<button class="li" data-act="sel-ruta" data-id="${r.id}" aria-pressed="${E.sel && E.sel.id === r.id}"><i class="ln" style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i><b>${C.corto}${tr ? ' · ' + esc(tr) : ''}</b><em>${s ? fmt(largoM(p, r.pts), 1) + ' m' : '—'}</em></button>`; }).join('')}</div>` : ''}`);
   }
   // Capas (como el administrador de capas)
@@ -830,7 +841,7 @@ const largoRuta = (p, r) => escala(p) ? largoM(p, r.pts) : (r.mManual || 0);
 const stepper = (campo, val) => `<span class="stp"><button data-act="stp" data-campo="${campo}" data-d="-1">−</button><b>${val}</b><button data-act="stp" data-campo="${campo}" data-d="1">+</button></span>`;
 function nombreSel(s) {
   const p = E.p;
-  return { roof: () => `Techo ${p.roofs.findIndex(r => r.id === s.id) + 1}`, zona: () => 'Zona', equipo: () => EQUIPOS[(p.equipos.find(e => e.id === s.id) || {}).k]?.n || 'Equipo', ruta: () => 'Canalización',
+  return { roof: () => `Techo ${p.roofs.findIndex(r => r.id === s.id) + 1}`, zona: () => 'Zona', equipo: () => EQUIPOS[(p.equipos.find(e => e.id === s.id) || {}).k]?.n || 'Equipo', ruta: () => CANAL[(p.rutas.find(x => x.id === s.id) || {}).k]?.libre ? 'Línea' : 'Canalización',
     fig: () => 'Paneles dibujados', etq: () => 'Etiqueta', cota: () => 'Cota', texto: () => 'Texto', norte: () => 'Norte', ref: () => 'Referencia', bloque: () => 'Bloque de paneles' }[s.t]?.() || '';
 }
 function propsSel(s, { num, rango, seg }) {
@@ -854,9 +865,11 @@ function propsSel(s, { num, rango, seg }) {
       <label class="chk"><input type="checkbox" data-campo="eq.etqVer" ${!(e.etq && e.etq.oculta) ? 'checked' : ''}> Mostrar su etiqueta</label>
       <label class="f"><span>Rótulo</span><input class="in" data-campo="eq.rotulo" value="${esc(e.rotulo || '')}" placeholder="${esc(EQUIPOS[e.k].n)}"></label>${rango('eq.ang', Math.round(e.ang || 0), -180, 180, 'Giro')}${del}`; }
   if (s.t === 'ruta') { const r = p.rutas.find(x => x.id === s.id); if (!r) return '';
-    const tramos = CANAL[r.k]?.dc ? p.strings.map((st, i) => [st.id, `String ${i + 1} (${nombreString(st)})`]) : ['tie', 'riel'].includes(r.k) ? [] : [['inv-tg', 'Inversor – TGFV'], ['tg-emp', 'TG – Empalme']];
+    const tramos = CANAL[r.k]?.dc ? p.strings.map((st, i) => [st.id, `String ${i + 1} (${nombreString(st)})`]) : ['tie', 'riel', 'otra'].includes(r.k) ? [] : [['inv-tg', 'Inversor – TGFV'], ['tg-emp', 'TG – Empalme']];
     return `<label class="f"><span>Tipo</span><select class="in" data-campo="ruta.k">${Object.entries(CANAL).map(([k, C]) => `<option value="${k}" ${r.k === k ? 'selected' : ''}>${C.n}</option>`).join('')}</select></label>
       ${tramos.length ? `<label class="f"><span>Tramo</span><select class="in" data-campo="ruta.tramo"><option value="">—</option>${tramos.map(([k, n]) => `<option value="${k}" ${r.tramo === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>` : ''}
+      ${CANAL[r.k]?.libre ? `<div class="f"><span>Color</span><div class="colores">${COLORES_LINEA.map(c => `<button data-act="set" data-campo="ruta.color" data-v="${c}" aria-pressed="${(r.color || '#FFFFFF') === c}" style="--c:${c}"></button>`).join('')}</div></div>
+        <label class="chk"><input type="checkbox" data-campo="ruta.dash" ${r.dash ? 'checked' : ''}> Segmentada</label>` : ''}
       <label class="chk"><input type="checkbox" data-campo="ruta.etqVer" ${!(r.etq && r.etq.oculta) ? 'checked' : ''}> Mostrar su etiqueta</label>
       ${r.k === 'riel' && !escala(p) ? num('ruta.mManual', r.mManual ?? '', { l: 'Largo real del riel', u: 'm' }) : ''}
       <dl class="dl"><dt>Largo</dt><dd>${escala(p) ? fmt(largoM(p, r.pts), 2) + ' m' : r.mManual ? fmt(r.mManual, 2) + ' m (escrito)' : '— (sin escala)'}</dd><dt>Vértices</dt><dd>${r.pts.length}</dd></dl><p class="mut">Arrastra los cuadros azules para mover vértices.</p>${del}`; }
@@ -947,6 +960,8 @@ document.addEventListener('click', ev => {
     case 'conj': E.conjunto = k; E.tool = 'conjunto'; E.temp = null; render(); pista(); break;
     case 'conj-del': { const cj = (E.conjuntos || []).find(x => x.id === k); if (cj && confirm(`¿Borrar el conjunto «${cj.nombre}»?`)) { E.conjuntos = E.conjuntos.filter(x => x !== cj); guardarAjuste('conjuntosEquipos', E.conjuntos); panel(); } break; }
     case 'conj-guardar': { const n = (window.prompt('Nombre del conjunto (queda guardado en este navegador para otros proyectos):', 'Mi zona de equipos') || '').trim(); if (!n) break; const cj = conjuntoDeHoja(p, n); if (!cj) break; E.conjuntos = [...(E.conjuntos || []), cj]; guardarAjuste('conjuntosEquipos', E.conjuntos); toast(`Conjunto «${n}» guardado`); panel(); break; }
+    case 'linea-color': E.lineaColor = b.dataset.v; E.rutaK = 'otra'; E.tool = 'ruta'; E.temp = null; render(); pista(); break;
+    case 'linea-dash': E.lineaDash = !E.lineaDash; E.rutaK = 'otra'; E.tool = 'ruta'; E.temp = null; render(); pista(); break;
     case 'etq-sel': E.sel = { t: 'etq', of: b.dataset.of, id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'sel-obj': E.sel = { t: b.dataset.t, id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'etq-ojo': { const ow = listaEtq(b.dataset.of).find(x => x.id === b.dataset.id); if (!ow) break; antes(); const et = (ow.etq ||= {}); et.oculta = !et.oculta; if (!et.oculta && E.sel && E.sel.id === ow.id) E.sel = null; despues(); break; }
@@ -1013,6 +1028,7 @@ function aplicar(campo, v, desdeChange, vivo) {
   else if (pre === 'hoja' && k === 'encerrar') { if (v) delete p.encerrarStrings; else p.encerrarStrings = false; }
   else if (pre === 'ruta' && k === 'etqVer') { const rt = obj.ruta(); if (!rt) return; (rt.etq ||= {}).oculta = !v; }
   else if (pre === 'eq' && k === 'etqVer') { const e = obj.eq(); if (!e) return; (e.etq ||= {}).oculta = !v; }
+  else if (pre === 'ruta' && k === 'dash') { const rt = obj.ruta(); if (!rt) return; if (v) rt.dash = true; else delete rt.dash; }
   else if (pre === 'ruta') { const rt = obj.ruta(); if (!rt) return; if (k === 'mManual') { if (n > 0) rt.mManual = n; else delete rt.mManual; } else rt[k] = v; }
   else if (pre === 'fig') { const f = (p.figPaneles || []).find(x => s && x.id === s.id); if (!f) return;
     if (k === 'tipo') f.tipo = v; else if (k === 'contar') { if (v) f.contar = true; else delete f.contar; } else if (k === 'panel') f.panel = v;
