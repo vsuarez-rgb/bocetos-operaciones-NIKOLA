@@ -5,17 +5,17 @@
    ========================================================================== */
 import { $, $$, esc, fmt, parseNum, uid, clone, dist, lerp, rotP, centroid, pointInPoly, distSeg, edgeAngle, anguloBordeCercano, ic, toast, descargar } from './util.js';
 import { PANELES, INVERSORES, ZONAS, EQUIPOS, CANAL, CAPAS, ESTADOS, COLORES_STRING, GAP_FILA, MODELOS_EQUIPO } from './catalogo.js';
-import { escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo } from './geom.js';
+import { escalaSimbolos, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo } from './geom.js';
 import { dibujar, cargarImg, imgDe, colorString, dibujarNorte } from './render.js';
 import { nuevoTecho, guardar } from './store.js';
 import { vistaLamina, panelLamina, accionLamina } from './lamina.js';
 import { vistaFicha, panelFicha, accionFicha } from './ficha/ficha.js';
-import { TIPOS_HOJA, nuevaHoja, vistaHoja } from './hojas.js';
+import { TIPOS_HOJA, TIPOS_PRINCIPAL, tipoPrincipal, nombrePrincipal, nuevaHoja, vistaHoja } from './hojas.js';
 import { vistaInforme, panelInforme, accionInforme } from './informe/informe.js';
 
 export const PASOS = [
   ['ficha', 'Ficha', 'folder'], ['escala', 'Escala', 'ruler'], ['techos', 'Techos', 'roof'], ['elementos', 'Elementos', 'block'], ['paneles', 'Paneles', 'grid'],
-  ['strings', 'Strings', 'string'], ['equipos', 'Equipos y canalización', 'plug'], ['lamina', 'Lámina', 'sheet'], ['informe', 'Informe', 'print']
+  ['strings', 'Strings', 'string'], ['equipos', 'Equipos y canalización', 'plug'], ['informe', 'Informe y planos', 'print']
 ];
 const HERR_DEF = { ficha: 'sel', escala: 'ref', techos: 'roof', elementos: 'zona', paneles: 'sel', strings: 'str', equipos: 'sel', lamina: 'sel', informe: 'sel' };
 
@@ -28,14 +28,15 @@ let E = null;          // estado del editor
    proyecto": las herramientas no cambian; lo que es de la hoja va a la hoja. */
 const ICONO_HOJA = { principal: 'drone', canalizacion: 'pline', equipos: 'inverter', cargador: 'plug', empalme: 'block', otra: 'crop' };
 const hojaActiva = () => E.hojaId ? (E.proyecto.hojas || []).find(h => h.id === E.hojaId) : null;
-const pasosVisibles = () => E.hojaId ? PASOS.filter(([k]) => ['ficha', 'escala', 'equipos', 'lamina', 'informe'].includes(k)) : PASOS;
-const nombrePaso = (k, n) => E.hojaId && k === 'equipos' ? 'Dibujo' : n;
+const hojaCorta = () => !!E.hojaId || tipoPrincipal(E.proyecto) !== 'techo';      // sin techos ni paneles: foto, dibujo e informe
+const pasosVisibles = () => hojaCorta() ? PASOS.filter(([k]) => ['ficha', 'escala', 'equipos', 'informe'].includes(k)) : PASOS;
+const nombrePaso = (k, n) => hojaCorta() && k === 'equipos' ? 'Dibujo' : hojaCorta() && k === 'escala' ? 'Foto y escala' : n;
 let alSalir = null;
 
 export function abrirEditor(p, volver) {
   alSalir = volver;
   const hojaId = p._hoja && (p.hojas || []).some(h => h.id === p._hoja) ? p._hoja : null;
-  E = { proyecto: p, hojaId, p: vistaHoja(p, hojaId), step: p._paso || (p.ref ? (p.roofs.some(r => r.closed) ? 'paneles' : 'techos') : 'escala'), tool: null, sel: null, V: null, temp: null, D: null,
+  E = { proyecto: p, hojaId, p: vistaHoja(p, hojaId), step: (p._paso === 'lamina' ? 'informe' : p._paso) || (p.ref ? (p.roofs.some(r => r.closed) ? 'paneles' : 'techos') : 'escala'), tool: null, sel: null, V: null, temp: null, D: null,
     orto: false, refent: true, rejilla: false, capas: new Set(CAPAS.map(c => c.id)), bloqueadas: new Set(), hist: [], fut: [], cmdLog: [],
     zonaK: 'obs', zonaForma: 'rect', eqK: 'inv', rutaK: 'cc', blk: { f: 2, c: 4 }, strAct: p.strings[0]?.id || null, selPanels: new Set(), mouse: null, snap: null,
     fotoAlpha: .85, guardado: true, R: null, SI: null };
@@ -136,7 +137,7 @@ function pasoOk(k) {
   const p = E.p, R = E.R || calcular(p);
   if (k === 'informe') return !!(p.informe && p.informe.paginas && p.informe.paginas.length);
   if (k === 'ficha') return !!(p.ficha && (Object.keys(p.ficha.entradas || {}).length || Object.keys(p.ficha.zonos || {}).length));
-  if (k === 'escala') return !!escala(p);
+  if (k === 'escala') return !!escala(p) || (!!p.img && !!p.sinEscala);
   if (k === 'techos') return p.roofs.some(r => r.closed);
   if (k === 'elementos') return p.zonas.length > 0 || !!p.sinElementos;
   if (k === 'paneles') return R.n > 0;
@@ -231,7 +232,7 @@ const techoAct = () => { const s = E.sel; const id = s && (s.t === 'roof' ? s.id
 const techoEn = q => [...E.p.roofs].reverse().find(r => r.closed && pointInPoly(q, r.poly));
 const panelEn = q => E.R.panels.find(pn => pointInPoly(q, pn.q));
 const zonaEn = q => [...E.p.zonas].reverse().find(z => pointInPoly(q, zonaPoly(z)));
-function equipoEn(q) { const s = escala(E.p); return [...E.p.equipos].reverse().find(e => { const Q = medidaEquipo(E.p, e); const w = Math.max(s ? Q.w / s : 0, 14 / E.V.k), h = Math.max(s ? Q.h / s : 0, 14 / E.V.k); return Math.abs(q[0] - e.x) <= w / 2 + tol() && Math.abs(q[1] - e.y) <= h / 2 + tol(); }); }
+function equipoEn(q) { const s = escalaSimbolos(E.p); return [...E.p.equipos].reverse().find(e => { const Q = medidaEquipo(E.p, e); const w = Math.max(s ? Q.w / s : 0, 14 / E.V.k), h = Math.max(s ? Q.h / s : 0, 14 / E.V.k); return Math.abs(q[0] - e.x) <= w / 2 + tol() && Math.abs(q[1] - e.y) <= h / 2 + tol(); }); }
 const rutaEn = q => [...E.p.rutas].reverse().find(r => r.pts.some((v, i) => i && distSeg(q, r.pts[i - 1], v) < tol()));
 const cotaEn = q => E.p.cotas.find(c => distSeg(q, c.a, c.b) < tol());
 function textoEn(q) { const s = escala(E.p); return E.p.textos.find(t => { const h = s ? (t.h || 400) / s : 14 / E.V.k; return q[0] >= t.p[0] - 3 / E.V.k && q[0] <= t.p[0] + t.s.length * h * .55 && q[1] <= t.p[1] + 3 / E.V.k && q[1] >= t.p[1] - h; }); }
@@ -529,7 +530,7 @@ function barraHojas() {
   const P = E.proyecto, hs = P.hojas || [];
   const tab = (id, nombre, tipo, foto) => `<button class="hoja-tab" data-act="hoja" data-id="${id || ''}" aria-pressed="${(id || null) === E.hojaId}" title="${esc(nombre)}${foto ? '' : ' · sin foto'}">${ic(ICONO_HOJA[tipo] || 'crop', 14)}<span>${esc(nombre)}</span>${foto ? '' : '<em class="sin-foto" aria-hidden="true"></em>'}</button>`;
   return `<nav class="hojas-bar" aria-label="Hojas de diseño"><span class="hojas-t">Hojas</span>
-    ${tab(null, P.nombreHojaPrincipal || 'Techo (dron)', 'principal', !!P.img)}${hs.map(h => tab(h.id, h.nombre, h.tipo, !!h.img)).join('')}
+    ${tab(null, nombrePrincipal(P), tipoPrincipal(P) === 'techo' ? 'principal' : tipoPrincipal(P), !!P.img)}${hs.map(h => tab(h.id, h.nombre, h.tipo, !!h.img)).join('')}
     <button class="hoja-mas" data-act="hoja-nueva" title="Agregar una hoja de diseño: otra foto con su escala y sus dibujos">${ic('plus', 14)}<span>Nueva hoja</span></button>
     <span class="tb-sp"></span><button class="hoja-ed" data-act="hoja-editar" title="Cambiar el nombre o borrar la hoja activa">Editar hoja</button></nav>`;
 }
@@ -545,23 +546,24 @@ function cambiarHoja(id) {
 }
 function dialogoHoja(h) {
   const nueva = !h, principal = h === 'principal', P = E.proyecto;
-  const tipoAct = nueva ? 'canalizacion' : principal ? null : h.tipo;
-  const nombre = nueva ? TIPOS_HOJA.canalizacion : principal ? (P.nombreHojaPrincipal || 'Techo (dron)') : h.nombre;
+  const tipoAct = nueva ? 'canalizacion' : principal ? tipoPrincipal(P) : h.tipo;
+  const nombre = nueva ? TIPOS_HOJA.canalizacion : principal ? nombrePrincipal(P) : h.nombre;
+  const TIPOS = principal ? TIPOS_PRINCIPAL : TIPOS_HOJA;
   const d = document.createElement('dialog'); d.className = 'dlg';
   d.innerHTML = `<form method="dialog"><h2>${nueva ? 'Nueva hoja de diseño' : 'Hoja de diseño'}</h2>
-    <p class="mut">${nueva ? 'Cada hoja tiene su propia foto, escala y dibujos: el recorrido de la canalización, la zona de equipos, el cargador… Después eliges en el informe cuáles mostrar.' : principal ? 'La hoja principal es la del techo (foto de dron, paneles y strings). No se puede borrar.' : ''}</p>
-    ${principal ? '' : `<div class="f"><span>Tipo</span><div class="hoja-tipos">${Object.entries(TIPOS_HOJA).map(([k, n]) => `<label><input type="radio" name="tipo" value="${k}" ${k === tipoAct ? 'checked' : ''}><span>${ic(ICONO_HOJA[k], 15)} ${n}</span></label>`).join('')}</div></div>`}
+    <p class="mut">${nueva ? 'Cada hoja tiene su propia foto, escala y dibujos: el recorrido de la canalización, la zona de equipos, el cargador… Después eliges en el informe cuáles mostrar.' : principal ? 'La hoja principal es la primera foto del proyecto: el techo con paneles (foto de dron) en un proyecto fotovoltaico, o por ejemplo el cargador en un proyecto EXT. No se puede borrar.' : ''}</p>
+    ${`<div class="f"><span>Tipo</span><div class="hoja-tipos">${Object.entries(TIPOS).map(([k, n]) => `<label><input type="radio" name="tipo" value="${k}" ${k === tipoAct ? 'checked' : ''}><span>${ic(ICONO_HOJA[k], 15)} ${n}</span></label>`).join('')}</div></div>`}
     <label class="f"><span>Nombre</span><input class="in" name="nombre" value="${esc(nombre)}" required maxlength="60"></label>
     <div class="row end">${!nueva && !principal ? '<button class="btn del" value="borrar" formnovalidate>Borrar hoja</button><span class="tb-sp"></span>' : ''}<button class="btn" value="cancel" formnovalidate>Cancelar</button><button class="btn pri" value="ok">${nueva ? 'Crear hoja' : 'Guardar'}</button></div></form>`;
   document.body.appendChild(d); d.showModal();
   const nom = d.querySelector('[name=nombre]'); let tocado = false; nom.addEventListener('input', () => { tocado = true; });
-  d.querySelectorAll('[name=tipo]').forEach(r => r.addEventListener('change', () => { if (nueva && !tocado) nom.value = TIPOS_HOJA[r.value]; }));
+  d.querySelectorAll('[name=tipo]').forEach(r => r.addEventListener('change', () => { if ((nueva || principal) && !tocado) nom.value = r.value === 'techo' ? 'Techo (dron)' : TIPOS[r.value]; }));
   d.addEventListener('close', () => {
     const v = d.returnValue, fd = new FormData(d.querySelector('form')), n = String(fd.get('nombre') || '').trim();
     if (v === 'ok' && n) {
       antes();
       if (nueva) { const hh = nuevaHoja(fd.get('tipo') || 'otra', n); (P.hojas ||= []).push(hh); despues(false); cambiarHoja(hh.id); toast('Sube la foto de esta hoja y traza su escala'); }
-      else if (principal) { P.nombreHojaPrincipal = n; despues(); render(); }
+      else if (principal) { P.nombreHojaPrincipal = n; P.tipoHojaPrincipal = fd.get('tipo') || 'techo'; if (!pasosVisibles().some(([k]) => k === E.step)) { E.step = 'escala'; E.tool = HERR_DEF.escala; } despues(); render(); }
       else { h.nombre = n; h.tipo = fd.get('tipo') || h.tipo; despues(); render(); }
     }
     if (v === 'borrar' && confirm(`¿Borrar la hoja "${h.nombre}" con su foto y sus dibujos?`)) { antes(); P.hojas = P.hojas.filter(x => x.id !== h.id); E.hojaId = '__borrada__'; cambiarHoja(null); despues(); }
@@ -588,8 +590,9 @@ function panel() {
 
   if (E.step === 'escala') {
     const gsd = droneGSD(p), dif = s && gsd ? Math.abs(gsd - s) / s * 100 : null;
-    h += sec('1 · Escala de la foto', `
-      <p class="mut">Traza una línea sobre algo que mediste en terreno y escribe su largo. Todo el diseño se mide con esa escala.</p>
+    h += sec(hojaCorta() ? 'Foto y escala' : '1 · Escala de la foto', `
+      <p class="mut">Traza una línea sobre algo que mediste en terreno y escribe su largo: con eso se miden distancias y los equipos quedan a su tamaño real. ${hojaCorta() ? 'Es opcional: sin referencia igual puedes dibujar equipos, canalización y textos (los equipos salen con un tamaño aproximado).' : ''}</p>
+      ${!s ? `<label class="chk"><input type="checkbox" data-campo="_sinEscala" ${p.sinEscala ? 'checked' : ''}> Esta hoja no necesita escala</label>` : ''}
       <dl class="dl"><dt>Referencia</dt><dd>${p.ref && p.ref.mm ? fmt(p.ref.mm / 1000, 2) + ' m' : p.ref ? 'Falta el largo' : 'Sin trazar'}</dd><dt>Escala</dt><dd>${s ? `1 px = ${fmt(s, 1)} mm` : '—'}</dd></dl>
       ${p.ref ? num('ref.mm', p.ref.mm ? fmt(p.ref.mm / 1000, 2) : '', { l: 'Largo real', u: 'm' }) : ''}
       <button class="btn" data-act="tool" data-k="ref">${ic('ruler')} ${p.ref ? 'Trazar de nuevo' : 'Trazar referencia'}</button>
@@ -599,7 +602,7 @@ function panel() {
         ${dif != null ? `<div class="aviso ${dif <= 8 ? 'ok' : 'warn'}">${ic(dif <= 8 ? 'check' : 'alert', 16)}<span>${dif <= 8 ? `Referencia y dron coinciden (diferencia ${fmt(dif, 0)} %).` : `Referencia y dron difieren ${fmt(dif, 0)} %. Revisa la medida o la altura del techo.`}</span></div>` : ''}
         ${!s && gsd ? `<button class="btn" data-act="usar-dron">Usar la escala del dron</button>` : ''}`
       : `<p class="mut">Sube la foto original del dron (sin pasar por WhatsApp) para leer la altura de vuelo y validar la escala.</p>`}
-      <label class="btn pri">${ic('upload')} ${p.img ? 'Cambiar foto' : 'Subir foto'}${E.hojaId ? '' : ' de dron'}<input type="file" accept="image/*" data-act="foto" hidden></label>`);
+      <label class="btn pri">${ic('upload')} ${p.img ? 'Cambiar foto' : 'Subir foto'}${hojaCorta() ? '' : ' de dron'}<input type="file" accept="image/*" data-act="foto" hidden></label>`);
   }
   if (E.step === 'techos') {
     h += sec('2 · Techos', `
@@ -710,6 +713,7 @@ document.addEventListener('click', ev => {
   const a = b.dataset.act, k = b.dataset.k, p = E.p;
   if (E.step === 'ficha' && accionFicha(a, b)) return;
   if (E.step === 'informe' && accionInforme(a, b)) return;
+  if (E.step === 'informe' && a.startsWith('lam-') && accionLamina(a, b, E.proyecto, () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, () => panel())) return;   // cajetín de las láminas A1, dentro de Informe
   if (E.step === 'lamina' && accionLamina(a, b, E.proyecto, () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, () => panel())) return;
   switch (a) {
     case 'salir': guardarYa().then(() => { cerrarEditor(); alSalir && alSalir(); }); break;
@@ -763,6 +767,7 @@ let enVivo = false;
 function aplicar(campo, v, desdeChange, vivo) {
   const p = E.p, n = parseNum(v), r = techoAct(), s = E.sel;
   if (campo === '_zonaForma') { E.zonaForma = v; panel(); pista(); return; }
+  if (campo === '_sinEscala') { antes(); p.sinEscala = !!v; despues(); render(); return; }
   if (campo === '_fotoAlpha') return;
   if (vivo) { if (!enVivo) { antes(); enVivo = true; } } else { if (!enVivo) antes(); enVivo = false; }
   const obj = { zona: () => p.zonas.find(x => x.id === s.id), eq: () => p.equipos.find(x => x.id === s.id), ruta: () => p.rutas.find(x => x.id === s.id), tx: () => p.textos.find(x => x.id === s.id), str: () => p.strings.find(x => x.id === E.strAct), roof: () => r, b: () => bloqueSel(), norte: () => p.norte };

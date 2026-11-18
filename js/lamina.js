@@ -243,7 +243,7 @@ export async function vistaLamina(el, p, R, SI) {
   const pap = el.querySelector('.lam-papel'); if (pap) pap.innerHTML = svg;
 }
 export function panelLamina(p, R, SI, cb = {}) {
-  cur = { ...cur, p, R, SI, cambio: cb.cambio || cur.cambio, rerender: cb.rerender || cur.rerender }; const L = p.lamina, D = datos(p, R, SI);
+  cur = { ...cur, p, R, SI, cambio: cb.cambio || cur.cambio, rerender: cb.rerender || cur.rerender, repintar: cb.repintar || null }; const L = p.lamina, D = datos(p, R, SI);
   const f = (k, l, ph = '') => `<label class="f"><span>${l}</span><input class="in" data-lam="${k}" value="${esc(L[k] ?? '')}" placeholder="${esc(ph)}"></label>`;
   const fp = (k, l, ph = '') => `<label class="f"><span>${l}</span><input class="in" data-pro="${k}" value="${esc(p[k] ?? '')}" placeholder="${esc(ph)}"></label>`;
   const av = [];
@@ -278,9 +278,10 @@ export function panelLamina(p, R, SI, cb = {}) {
   </div></details>`;
 }
 let tVista = null;
-function refrescarHoja() { clearTimeout(tVista); tVista = setTimeout(() => { const el = document.getElementById('laminaWrap'); if (el && cur.p) vistaLamina(el, cur.p, cur.R, cur.SI); }, 450); }
+/* Después de editar el cajetín: redibujar la lámina (paso antiguo) o la página del informe donde está */
+function refrescarHoja() { clearTimeout(tVista); tVista = setTimeout(() => { const el = document.getElementById('laminaWrap'); if (el && cur.p) vistaLamina(el, cur.p, cur.R, cur.SI); else if (cur.repintar) cur.repintar(); }, 450); }
 document.addEventListener('input', ev => {
-  const t = ev.target; if (!cur.p || !document.getElementById('laminaWrap')) return;
+  const t = ev.target; if (!cur.p || !(document.getElementById('laminaWrap') || document.getElementById('informeWrap'))) return;
   const p = cur.p, L = p.lamina;
   if (t.dataset.lam) { const k = t.dataset.lam; if (k === 'notas') L.notas = t.value.split('\n').map(x => x.trim()).filter(Boolean); else if (k.startsWith('largo_')) { const n = parseFloat(t.value.replace(',', '.')); if (isFinite(n)) L[k] = n; else delete L[k]; } else L[k] = t.value; }
   else if (t.dataset.pro) p[t.dataset.pro] = t.value;

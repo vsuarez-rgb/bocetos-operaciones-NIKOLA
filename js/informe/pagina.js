@@ -4,7 +4,7 @@
    sale en el PDF.
    ========================================================================== */
 import { esc } from '../util.js';
-import { calcular, calcStrings } from '../geom.js';
+import { calcular, calcStrings, escala } from '../geom.js';
 import { dibujar, cargarImg } from '../render.js';
 import { vistaHoja, resolverHoja, TIPOS_HOJA } from '../hojas.js';
 import { lamina01, lamina02, unilinealSVG } from '../lamina.js';
@@ -69,13 +69,9 @@ export function rellenar(texto, datos, { editor = false, mayusculas = false } = 
 /* ---------- Vista de una hoja de diseño (foto + dibujos) como imagen ---------- */
 const cacheVistas = new Map();
 export const olvidarVistas = () => cacheVistas.clear();
-async function imagenHoja(p, id, wmm, hmm, encuadre, foto) {
-  const v = id ? vistaHoja(p, id) : p;
-  if (!v.img) return null;
-  const clave = [id, Math.round(wmm), Math.round(hmm), encuadre, foto].join('|');
-  if (cacheVistas.has(clave)) return cacheVistas.get(clave);
-  await cargarImg(v.img);
-  const R = calcular(v), SI = calcStrings(v, R);
+/* Ventana de la foto que se muestra en la vista: { x0, y0, bw } en px de la foto (como una ventana
+   gráfica de AutoCAD). Sin ventana propia se calcula: ajustada a lo dibujado o la foto completa. */
+export function ventanaAuto(v, wmm, hmm, encuadre) {
   let x0 = 0, y0 = 0, x1 = v.w || 1000, y1 = v.h || 750;
   if (encuadre === 'dibujo') {
     const pts = [];
@@ -84,14 +80,24 @@ async function imagenHoja(p, id, wmm, hmm, encuadre, foto) {
     if (pts.length > 1) { x0 = Math.min(...pts.map(q => q[0])); x1 = Math.max(...pts.map(q => q[0])); y0 = Math.min(...pts.map(q => q[1])); y1 = Math.max(...pts.map(q => q[1])); const m = Math.max(x1 - x0, y1 - y0) * .1; x0 -= m; x1 += m; y0 -= m; y1 += m; }
   }
   const asp = wmm / hmm; let bw = x1 - x0, bh = y1 - y0;
-  if (bw / bh > asp) { const nh = bw / asp; y0 -= (nh - bh) / 2; bh = nh; } else { const nw = bh * asp; x0 -= (nw - bw) / 2; bw = nw; }
-  const PX = Math.max(600, Math.min(2800, Math.round(wmm * 11))), k = PX / bw, c = document.createElement('canvas');
+  if (bw / bh > asp) { const nh = bw / asp; y0 -= (nh - bh) / 2; } else { const nw = bh * asp; x0 -= (nw - bw) / 2; bw = nw; }
+  return { x0, y0, bw };
+}
+export async function imagenHoja(p, id, wmm, hmm, { encuadre, foto, ventana, borrador } = {}) {
+  const v = id ? vistaHoja(p, id) : p;
+  if (!v.img) return null;
+  const W = ventana && ventana.bw > 0 ? ventana : ventanaAuto(v, wmm, hmm, encuadre);
+  const clave = [id, Math.round(wmm), Math.round(hmm), foto, W.x0.toFixed(1), W.y0.toFixed(1), W.bw.toFixed(1), borrador ? 'b' : ''].join('|');
+  if (cacheVistas.has(clave)) return cacheVistas.get(clave);
+  await cargarImg(v.img);
+  const R = calcular(v), SI = calcStrings(v, R), asp = wmm / hmm;
+  const PX = borrador ? 700 : Math.max(600, Math.min(2800, Math.round(wmm * 11))), k = PX / W.bw, c = document.createElement('canvas');
   c.width = PX; c.height = Math.round(PX / asp);
   const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
-  dibujar(g, v, { k, ox: x0 * k, oy: y0 * k }, { plot: true, R, SI, u: PX / wmm * .3, step: 'lamina', fotoAlpha: (foto ?? 100) / 100 });
-  const url = c.toDataURL('image/jpeg', .9);
-  cacheVistas.set(clave, url);
-  return url;
+  dibujar(g, v, { k, ox: W.x0 * k, oy: W.y0 * k }, { plot: true, R, SI, u: PX / wmm * .3, step: 'lamina', fotoAlpha: (foto ?? 100) / 100 });
+  const res = { url: c.toDataURL('image/jpeg', borrador ? .75 : .9), ventana: { ...W }, escala: escala(v) };
+  if (!borrador) cacheVistas.set(clave, res);
+  return res;
 }
 
 /* ---------- Bloques ---------- */
@@ -109,19 +115,21 @@ async function interior(b, ctx) {
     case 'vista': {
       const h = resolverHoja(p, b.hoja);
       if (!h.existe) return editor ? `<div class="bq-vacio">Vista de hoja<b>Falta la hoja «${esc(h.falta)}»</b><span>Créala en el editor o elige otra hoja</span></div>` : '';
-      const url = await imagenHoja(p, h.id, b.w, b.h, b.encuadre, b.foto);
-      if (!url) return editor ? `<div class="bq-vacio">Vista de hoja<b>La hoja no tiene foto</b><span>Súbela en el paso Escala de esa hoja</span></div>` : '';
-      return `<img class="bq-img" src="${url}" alt="">`;
+      const r = await imagenHoja(p, h.id, b.w, b.h, { encuadre: b.encuadre, foto: b.foto, ventana: b.ventana });
+      if (!r) return editor ? `<div class="bq-vacio">Vista de hoja<b>La hoja no tiene foto</b><span>Súbela en el paso de la foto de esa hoja</span></div>` : '';
+      if (ctx.ventanas) ctx.ventanas[b.id] = { ...r.ventana, escala: r.escala, hojaId: h.id };
+      return `<img class="bq-img" src="${r.url}" alt="" draggable="false">`;
     }
     case 'tabla': {
       const filas = b.filas || [], n = Math.max(1, ...filas.map(f => f.length));
       const anchos = String(b.anchos || '').split(',').map(x => parseFloat(x)).filter(x => x > 0);
       const resto = Math.max(0, 100 - anchos.reduce((t, x) => t + x, 0)), libres = n - anchos.length;
       const col = Array.from({ length: n }, (_, i) => anchos[i] ?? (libres > 0 ? resto / libres : 0));
-      const celda = (t, cab) => `<${cab ? 'th' : 'td'}>${rellenar(t, datos, { editor, mayusculas: b.mayusculas && !cab })}</${cab ? 'th' : 'td'}>`;
+      // En el editor cada celda lleva su posición (data-celda) para escribir en ella con doble clic
+      const celda = (t, cab, i, j) => `<${cab ? 'th' : 'td'}${editor ? ` data-celda="${i},${j}"` : ''}>${rellenar(t, datos, { editor, mayusculas: b.mayusculas && !cab })}</${cab ? 'th' : 'td'}>`;
       return `<table class="bq-tb${b.cuerpo === 'normal' ? ' normal' : ''}" style="font-size:${b.tam || 8}pt"><colgroup>${col.map(w => `<col style="width:${w}%">`).join('')}</colgroup>
-        ${b.titulo ? `<thead><tr><th colspan="${n}" class="tb-tit c-${b.tituloColor || 'negro'}">${rellenar(b.titulo, datos, { editor })}</th></tr></thead>` : ''}
-        <tbody>${filas.map((f, i) => `<tr>${Array.from({ length: n }, (_, j) => celda(f[j] ?? '', b.cabecera && i === 0)).join('')}</tr>`).join('')}</tbody></table>`;
+        ${b.titulo ? `<thead><tr><th colspan="${n}" class="tb-tit c-${b.tituloColor || 'negro'}"${editor ? ' data-celda="t"' : ''}>${rellenar(b.titulo, datos, { editor })}</th></tr></thead>` : ''}
+        <tbody>${filas.map((f, i) => `<tr>${Array.from({ length: n }, (_, j) => celda(f[j] ?? '', b.cabecera && i === 0, i, j)).join('')}</tr>`).join('')}</tbody></table>`;
     }
     case 'unilineal': { const R = calcular(p); return unilinealSVG(p, R, calcStrings(p, R)); }
     case 'lamina': {

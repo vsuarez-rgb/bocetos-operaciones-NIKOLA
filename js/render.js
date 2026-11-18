@@ -4,7 +4,7 @@
    (modo plot: fondo blanco, colores de impresión).
    ========================================================================== */
 import { ZONAS, EQUIPOS, CANAL, COLORES_STRING } from './catalogo.js';
-import { zonaPoly, escala, largoM, medidaEquipo } from './geom.js';
+import { zonaPoly, escala, largoM, medidaEquipo, escalaSimbolos } from './geom.js';
 import { hull, centroid, lerp, dist, fmt } from './util.js';
 
 const imgs = new Map();
@@ -138,7 +138,7 @@ export function dibujar(g, p, V, o) {
   // Equipos (a escala, con rótulo al costado como en los planos)
   if (vis('equipos')) p.equipos.forEach(e => {
     const E = EQUIPOS[e.k] || EQUIPOS.inv, c = T([e.x, e.y]), sel = o.sel && o.sel.t === 'equipo' && o.sel.id === e.id;
-    const md = medidaEquipo(p, e); let w = s ? md.w / s * k : 14, h = s ? md.h / s * k : 14; w = Math.max(w, 12 * u); h = Math.max(h, 12 * u);
+    const md = medidaEquipo(p, e), sE = escalaSimbolos(p); let w = md.w / sE * k, h = md.h / sE * k; w = Math.max(w, 12 * u); h = Math.max(h, 12 * u);
     g.save(); g.translate(c[0], c[1]); g.rotate((e.ang || 0) * Math.PI / 180);
     g.fillStyle = plot ? '#fff' : 'rgba(10,20,28,.8)'; g.fillRect(-w / 2, -h / 2, w, h);
     g.lineWidth = 1.4 * u; g.strokeStyle = plot && E.c === '#FFFFFF' ? '#222' : E.c; g.strokeRect(-w / 2, -h / 2, w, h);

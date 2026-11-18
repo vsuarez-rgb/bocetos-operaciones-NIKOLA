@@ -58,7 +58,8 @@ const paramInversor = (x, y, w, h) => ({ tipo: 'tabla', x, y, w, h, titulo: 'PAR
   ['POTENCIA NOMINAL', '{POTENCIA Nominal} [kW]'], ['MARCA', '{INVERSOR A Marca}'], ['MODELO', '{INVERSOR A Modelo}']], mayusculas: true });
 const fusionSolar = (x, y, w, h) => ({ tipo: 'tabla', x, y, w, h, titulo: 'EN FUSION SOLAR', tituloColor: 'rojo', tam: 10, anchos: '26', cuerpo: 'normal', filas: [['**Nombre Planta**', '**{PROYECTO Nombre}** **[rojo](EXACTAMENTE IGUAL)**']] });
 
-const pagina = (id, grupo, nombre, tamano, orientacion, bloques) => ({ id, grupo, nombre, tamano, orientacion, incluida: true, bloques: bloques.map((b, i) => ({ id: `${id}-${i}`, ...b })) });
+/* Sección: 'informe' (documentos para el cliente) o 'planos' (láminas y planos para la obra) */
+const pagina = (id, grupo, nombre, tamano, orientacion, bloques) => ({ id, grupo, nombre, tamano, orientacion, seccion: grupo === 'Propuesta de diseño' ? 'informe' : 'planos', incluida: true, bloques: bloques.map((b, i) => ({ id: `${id}-${i}`, ...b })) });
 
 export const PLANTILLAS_INCLUIDAS = [
   /* ---------------- Propuesta de Diseño (A4 vertical) ---------------- */
@@ -139,8 +140,10 @@ export const PLANTILLAS_INCLUIDAS = [
 
 /* Informes completos (conjuntos de páginas) */
 export const PAQUETES = [
-  { id: 'propuesta', nombre: 'Propuesta de diseño', detalle: 'A4 vertical · 3 páginas para el cliente', paginas: ['prop-general', 'prop-equipos', 'prop-montaje'] },
-  { id: 'contratista', nombre: 'Planos contratista', detalle: 'A4 horizontal · 5 páginas para la obra', paginas: ['con-resumen', 'con-planta', 'con-canalizacion', 'con-unilineal', 'con-comisionado'] },
-  { id: 'laminas', nombre: 'Láminas A1 (modo plano)', detalle: 'Planta y unilineal + cuadros de carga', paginas: ['a1-planta', 'a1-cuadros'] }
+  { id: 'propuesta', seccion: 'informe', nombre: 'Propuesta de diseño', detalle: 'A4 vertical · 3 páginas para el cliente', paginas: ['prop-general', 'prop-equipos', 'prop-montaje'] },
+  { id: 'contratista', seccion: 'planos', nombre: 'Planos contratista', detalle: 'A4 horizontal · 5 páginas para la obra', paginas: ['con-resumen', 'con-planta', 'con-canalizacion', 'con-unilineal', 'con-comisionado'] },
+  { id: 'laminas', seccion: 'planos', nombre: 'Láminas A1 (modo plano)', detalle: 'Planta y unilineal + cuadros de carga', paginas: ['a1-planta', 'a1-cuadros'] }
 ];
-export const paginaEnBlanco = (tamano = 'A4', orientacion = 'vertical') => ({ id: uid('pg'), nombre: 'Página en blanco', tamano, orientacion, bloques: [] });
+export const paginaEnBlanco = (tamano = 'A4', orientacion = 'vertical', seccion = 'informe') => ({ id: uid('pg'), nombre: 'Página en blanco', tamano, orientacion, seccion, bloques: [] });
+export const SECCIONES = { informe: 'Informe', planos: 'Láminas y planos' };
+export const seccionDe = pg => pg.seccion || ((pg.bloques || []).some(b => b.tipo === 'lamina') || ['A1', 'A2'].includes(pg.tamano) ? 'planos' : 'informe');

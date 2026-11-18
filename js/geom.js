@@ -15,6 +15,9 @@ export const bajaDe = r => r.baja || 'abajo';
 
 /* Medida en planta (mm) de un equipo dibujado: la del modelo elegido o la del símbolo.
    El inversor usa el modelo del proyecto. En planta se ve ancho × prof (lo que sobresale del muro). */
+/* Escala para dibujar los equipos: la real o, si la hoja no tiene referencia, una aproximada
+   (la foto mide unos 6 m de ancho) para que los símbolos se vean de un tamaño razonable. */
+export const escalaSimbolos = p => escala(p) || (p.w ? 6000 / p.w : 10);
 export function medidaEquipo(p, e) {
   if (e.k === 'inv') { const I = inversorDe(p); return { w: I.ancho || EQUIPOS.inv.w, h: I.prof || EQUIPOS.inv.h, modelo: I.modelo }; }
   const M = e.modelo && OTROS_EMAT.find(x => (x.sku || x.item) === e.modelo);
@@ -61,7 +64,7 @@ export const girarV = (d, a) => [d[0] * Math.cos(a) - d[1] * Math.sin(a), d[0] *
 /* Paneles de todo el proyecto. Cada panel: {q (4 esquinas), key, rid, ri, bi?, off, bad} */
 export function calcular(p) {
   const out = { panels: [], bloques: [], sombras: [], filas: {}, porTecho: p.roofs.map(() => ({ n: 0, area: 0, wp: 0 })), n: 0, kwp: 0, area: 0 };
-  const s = escala(p); if (!s) return out;
+  const s = escala(p); if (!s) { out.validos = []; out.porKey = new Map(); return out; }   // sin escala (hojas que no la necesitan): listas vacías
   const bloquean = p.zonas.filter(z => (ZONAS[z.k] || ZONAS.obs).bloquea).map(zonaPoly);
   p.roofs.forEach((r, ri) => {
     if (!r.closed || r.poly.length < 3) return;

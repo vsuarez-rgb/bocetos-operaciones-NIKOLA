@@ -1,89 +1,106 @@
 /* ==========================================================================
-   Paso Informe: páginas armadas con bloques (texto, imagen, vistas de las
-   hojas de diseño, tablas con datos de la ficha, unilineal, láminas A1).
-   Cada página nace de una plantilla (las incluidas o las guardadas por la
-   persona) y se puede editar libremente en el proyecto.
+   Paso "Informe y planos": páginas armadas con bloques (texto, imagen, vistas
+   de las hojas de diseño, tablas, unilineal, láminas A1), en dos secciones:
+     · Informe            → documentos para el cliente (Propuesta de diseño…)
+     · Láminas y planos   → láminas A1, planos para el contratista
+   Cada página nace de una plantilla (incluida o guardada por la persona) y se
+   edita libremente: las tablas se escriben en la misma página (doble clic en
+   una celda) y las vistas se encuadran con el mouse, como una ventana gráfica
+   de AutoCAD (doble clic, rueda para zoom, arrastrar para mover).
    ========================================================================== */
 import { esc, ic, toast, uid } from '../util.js';
 import { leerAjuste, guardarAjuste } from '../ajustes.js';
 import { listaHojas, TIPOS_HOJA } from '../hojas.js';
-import { TAMANOS, TIPOS_BLOQUE, PLANTILLAS_INCLUIDAS, PAQUETES, medida, copiarPagina, nuevoBloque, paginaEnBlanco } from './modelo.js';
-import { htmlPagina, datosInforme, CSS_PAGINA, MM, olvidarVistas } from './pagina.js';
+import { calcular, calcStrings } from '../geom.js';
+import { panelLamina } from '../lamina.js';
+import { TAMANOS, TIPOS_BLOQUE, PLANTILLAS_INCLUIDAS, PAQUETES, SECCIONES, seccionDe, medida, copiarPagina, nuevoBloque, paginaEnBlanco } from './modelo.js';
+import { htmlPagina, datosInforme, CSS_PAGINA, MM, olvidarVistas, imagenHoja } from './pagina.js';
 
-const S = { p: null, el: null, cb: {}, pag: null, sel: null, zoom: null, datos: null, mias: [], gen: 0 };
+const S = { p: null, el: null, cb: {}, pag: null, sel: null, zoom: null, datos: null, mias: [], gen: 0, ventanas: {}, encuadre: null };
 const informe = () => (S.p.informe ||= { paginas: [] });
 const pagAct = () => informe().paginas.find(x => x.id === S.pag) || null;
 const bloqueAct = () => pagAct()?.bloques.find(b => b.id === S.sel) || null;
 const cambio = () => { S.cb.cambio && S.cb.cambio(); };
+const panel = () => { S.cb.panel && S.cb.panel(); };
+const activo = () => !!S.el?.isConnected;
 
 (function estilos() { if (document.getElementById('css-pagina')) return; const s = document.createElement('style'); s.id = 'css-pagina'; s.textContent = CSS_PAGINA; document.head.appendChild(s); })();
 
 /* ---------- Vista principal ---------- */
 export async function vistaInforme(el, p, cb = {}) {
-  S.el = el; S.p = p; S.cb = cb; olvidarVistas();
+  S.el = el; S.p = p; S.cb = cb; S.encuadre = null; olvidarVistas();
   el.innerHTML = '<div class="inf-cargando">Preparando el informe…</div>';
   [S.datos, S.mias] = await Promise.all([datosInforme(p), leerAjuste('plantillasPagina').then(x => x || [])]);
+  for (const pg of informe().paginas) pg.seccion ||= seccionDe(pg);
   if (!pagAct()) S.pag = informe().paginas[0]?.id || null;
   pintar();
 }
 
 async function pintar() {
-  const I = informe(), pg = pagAct();
-  const gen = ++S.gen;
+  const I = informe(), pg = pagAct(), gen = ++S.gen;
+  const grupo = sec => { const ps = I.paginas.filter(x => seccionDe(x) === sec); return `<div class="inf-grupo"><div class="inf-pags-t">${SECCIONES[sec]} <em>${ps.length}</em><button class="inf-mas" data-act="in-nueva" data-k="${sec}" title="Agregar página a ${SECCIONES[sec].toLowerCase()}">${ic('plus', 13)}</button></div>
+      ${ps.map(x => `<button class="inf-pag" data-act="in-pag" data-id="${x.id}" aria-pressed="${x.id === S.pag}"><b>${I.paginas.indexOf(x) + 1}</b><span>${esc(x.nombre || 'Página')}</span><em>${esc(x.tamano)} ${x.orientacion === 'horizontal' ? '↔' : '↕'}</em></button>`).join('') || `<p class="inf-sin">Sin páginas</p>`}</div>`; };
   S.el.innerHTML = `<div class="inf">
-    <aside class="inf-pags" aria-label="Páginas del informe">
-      <div class="inf-pags-t">Páginas <em>${I.paginas.length}</em></div>
-      ${I.paginas.map((x, i) => `<button class="inf-pag" data-act="in-pag" data-id="${x.id}" aria-pressed="${x.id === S.pag}"><b>${i + 1}</b><span>${esc(x.nombre || 'Página')}</span><em>${esc(x.tamano)} ${x.orientacion === 'horizontal' ? '↔' : '↕'}</em></button>`).join('')}
-      <button class="btn sm pri" data-act="in-nueva">${ic('plus', 14)} Agregar página</button>
-    </aside>
+    <aside class="inf-pags" aria-label="Páginas">${grupo('informe')}${grupo('planos')}</aside>
     <section class="inf-lienzo">
       ${pg ? `<div class="inf-bar">
           <span class="inf-bar-t">${esc(pg.nombre || 'Página')} · ${esc(pg.tamano)} ${pg.orientacion}</span><span class="tb-sp"></span>
-          <span class="inf-add">Agregar:</span>${Object.entries(TIPOS_BLOQUE).filter(([k]) => k !== 'lamina').map(([k, n]) => `<button class="inf-btn" data-act="in-add" data-k="${k}" title="Agregar ${n.toLowerCase()}">${n.replace(' de hoja de diseño', '')}</button>`).join('')}
+          <span class="inf-add">Agregar:</span>${Object.entries(TIPOS_BLOQUE).map(([k, n]) => `<button class="inf-btn" data-act="in-add" data-k="${k}" title="Agregar ${n.toLowerCase()}">${n.replace(' de hoja de diseño', '').replace(' (modo plano)', '')}</button>`).join('')}
           <span class="inf-zoom"><button data-act="in-zoom" data-k="-1" title="Alejar">−</button><button data-act="in-zoom" data-k="0" title="Ajustar a la pantalla">${S.zoom ? Math.round(S.zoom * 100) + ' %' : 'Ajustar'}</button><button data-act="in-zoom" data-k="1" title="Acercar">+</button></span>
         </div>
-        <div class="inf-scroll"><div class="inf-hoja"><div class="pg-esc"><div class="inf-gen">Generando la página…</div></div></div></div>`
+        <div class="inf-scroll"><div class="inf-hoja"><div class="pg-esc"><div class="inf-gen">Generando la página…</div></div></div></div>
+        <div class="inf-ayuda" hidden></div>`
       : bienvenida()}
     </section></div>`;
-  S.cb.panel && S.cb.panel();
+  panel();
   if (!pg) return;
-  const html = await htmlPagina(pg, { p: S.p, datos: S.datos, editor: true, sel: S.sel });
+  S.ventanas = {};
+  const html = await htmlPagina(pg, { p: S.p, datos: S.datos, editor: true, sel: S.sel, ventanas: S.ventanas });
   if (gen !== S.gen) return;                                   // se pidió otro dibujo mientras tanto
-  const cont = S.el.querySelector('.pg-esc'); cont.innerHTML = html;
-  ajustarZoom();
+  S.el.querySelector('.pg-esc').innerHTML = html;
+  ajustarZoom(); marcarEncuadre();
 }
 function bienvenida() {
-  return `<div class="inf-vacio"><h2>Arma el informe del proyecto</h2>
-    <p>Elige un informe completo para empezar (después puedes cambiar todo: textos, imágenes, qué hojas de diseño se muestran) o agrega páginas una a una.</p>
-    <div class="inf-paq">${PAQUETES.map(q => `<button class="inf-paq-b" data-act="in-paquete" data-k="${q.id}"><b>${esc(q.nombre)}</b><span>${esc(q.detalle)}</span></button>`).join('')}</div>
+  const paq = sec => PAQUETES.filter(q => q.seccion === sec).map(q => `<button class="inf-paq-b" data-act="in-paquete" data-k="${q.id}"><b>${esc(q.nombre)}</b><span>${esc(q.detalle)}</span></button>`).join('');
+  return `<div class="inf-vacio"><h2>Informe y planos del proyecto</h2>
+    <p>Elige con qué empezar. Después puedes cambiar todo: textos, tablas, imágenes, qué hojas de diseño se muestran y cómo se encuadran.</p>
+    <div class="inf-vacio-g"><div><h3>Informe</h3><div class="inf-paq">${paq('informe')}</div></div><div><h3>Láminas y planos</h3><div class="inf-paq">${paq('planos')}</div></div></div>
     <button class="btn" data-act="in-nueva">${ic('plus', 14)} Agregar una página</button></div>`;
 }
 function ajustarZoom() {
-  const pg = pagAct(), sc = S.el.querySelector('.inf-scroll'), hoja = S.el.querySelector('.inf-hoja'), esc_ = S.el.querySelector('.pg-esc'); if (!pg || !sc || !esc_) return;
+  const pg = pagAct(), sc = S.el.querySelector('.inf-scroll'), hoja = S.el.querySelector('.inf-hoja'), cont = S.el.querySelector('.pg-esc'); if (!pg || !sc || !cont) return;
   const [W, H] = medida(pg);
   const z = S.zoom || Math.max(.1, Math.min((sc.clientWidth - 48) / (W * MM), (sc.clientHeight - 48) / (H * MM)));
-  esc_.style.transform = `scale(${z})`; hoja.style.width = `${W * MM * z}px`; hoja.style.height = `${H * MM * z}px`;
+  cont.style.transform = `scale(${z})`; hoja.style.width = `${W * MM * z}px`; hoja.style.height = `${H * MM * z}px`;
   S.z = z;
 }
-window.addEventListener('resize', () => { if (S.el?.isConnected && !S.zoom) ajustarZoom(); });
+window.addEventListener('resize', () => { if (activo() && !S.zoom) ajustarZoom(); });
 
 /* ---------- Panel lateral ---------- */
 export function panelInforme(p) {
   if (!S.p) return '';
   const I = informe(), pg = pagAct(), b = bloqueAct();
   const sec = (t, c, abierto = true) => `<details class="pp" ${abierto ? 'open' : ''}><summary>${t}</summary><div class="pp-b">${c}</div></details>`;
-  let h = sec('Informe', `<p class="mut">${I.paginas.length ? `${I.paginas.length} páginas. Cada una se edita libremente; guarda como plantilla las que quieras reutilizar.` : 'Todavía no hay páginas.'}</p>
-    <button class="btn pri" data-act="in-pdf" ${I.paginas.length ? '' : 'disabled'}>${ic('print')} Imprimir / guardar PDF</button>
+  const n = s => I.paginas.filter(x => seccionDe(x) === s).length;
+  let h = sec('Informe y planos', `<p class="mut">${n('informe')} páginas de informe y ${n('planos')} de láminas y planos. Guarda como plantilla las páginas que quieras reutilizar.</p>
+    <div class="row wrap"><button class="btn pri" data-act="in-pdf" data-k="informe" ${n('informe') ? '' : 'disabled'}>${ic('print')} PDF informe</button><button class="btn pri" data-act="in-pdf" data-k="planos" ${n('planos') ? '' : 'disabled'}>${ic('print')} PDF planos</button></div>
     <button class="btn" data-act="in-nueva">${ic('plus')} Agregar página</button>
-    ${S.mias.length ? `<details class="in-mias"><summary>Mis plantillas (${S.mias.length})</summary>${S.mias.map(m => `<div class="row in-mia"><span>${esc(m.nombre)} <em>${esc(m.tamano)} ${m.orientacion === 'horizontal' ? '↔' : '↕'}</em></span><button class="btn sm del" data-act="in-mia-del" data-id="${m.id}" title="Borrar plantilla">${ic('trash', 14)}</button></div>`).join('')}</details>` : ''}`);
+    ${S.mias.length ? `<details class="in-mias"><summary>Mis plantillas (${S.mias.length})</summary>${S.mias.map(m => `<div class="row in-mia"><span>${esc(m.nombre)} <em>${esc(m.tamano)} ${m.orientacion === 'horizontal' ? '↔' : '↕'}</em></span><button class="btn sm del" data-act="in-mia-del" data-id="${m.id}" title="Borrar plantilla">${ic('trash', 14)}</button></div>`).join('')}</details>` : ''}`, !b);
   if (b) h += sec(`Bloque · ${TIPOS_BLOQUE[b.tipo]}`, propsBloque(b));
   if (pg) h += sec('Página', `
     <label class="f"><span>Nombre</span><input class="in" data-in="pg.nombre" value="${esc(pg.nombre || '')}"></label>
     <div class="row"><label class="f"><span>Tamaño</span><select class="in" data-in="pg.tamano">${Object.keys(TAMANOS).map(k => `<option ${k === pg.tamano ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
     <label class="f"><span>Orientación</span><select class="in" data-in="pg.orientacion"><option value="vertical" ${pg.orientacion !== 'horizontal' ? 'selected' : ''}>Vertical</option><option value="horizontal" ${pg.orientacion === 'horizontal' ? 'selected' : ''}>Horizontal</option></select></label></div>
+    <label class="f"><span>Sección</span><select class="in" data-in="pg.seccion">${Object.entries(SECCIONES).map(([k, v]) => `<option value="${k}" ${seccionDe(pg) === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
     <div class="row wrap"><button class="btn sm" data-act="in-pg-plantilla">${ic('save', 14)} Guardar como plantilla</button><button class="btn sm" data-act="in-pg-dup">${ic('copy', 14)} Duplicar</button></div>
     <div class="row wrap"><button class="btn sm" data-act="in-pg-mover" data-k="-1">↑ Subir</button><button class="btn sm" data-act="in-pg-mover" data-k="1">↓ Bajar</button><button class="btn sm del" data-act="in-pg-del">${ic('trash', 14)} Borrar página</button></div>
-    <p class="mut">Clic en un bloque para editarlo; arrástralo para moverlo y usa la esquina para el tamaño (Mayús = de a 5 mm). Supr lo borra.</p>`, !b);
+    <p class="mut">Clic en un bloque para editarlo; arrástralo para moverlo y usa la esquina para el tamaño (Mayús = de a 5 mm). Doble clic en una tabla para escribir en sus celdas y en una vista para encuadrarla. Supr borra.</p>`, !b);
+  // Láminas A1: los datos del cajetín, revisiones, notas y protecciones (antes era el paso "Lámina")
+  const hayLamina = I.paginas.some(x => x.bloques.some(y => y.tipo === 'lamina'));
+  if (pg && (seccionDe(pg) === 'planos' || hayLamina)) {
+    const R = calcular(S.p), SI = calcStrings(S.p, R);
+    h += `<div class="in-lam"><div class="in-lam-t">Datos de las láminas A1 (cajetín, firmas, notas)</div>${panelLamina(S.p, R, SI, { cambio, rerender: panel, repintar: repintarPagina }).replace(/<details class="pp" open>/g, '<details class="pp">')}</div>`;
+  }
   return h;
 }
 function propsBloque(b) {
@@ -103,18 +120,24 @@ function propsBloque(b) {
   if (b.tipo === 'vista') {
     const hs = listaHojas(S.p), ops = hs.map(x => [x.id || 'principal', x.nombre]);
     if (b.hoja && !ops.some(o => o[0] === b.hoja)) { const m = /^tipo:(\w+)(?:#(\d+))?$/.exec(b.hoja); ops.push([b.hoja, m ? `La ${m[2] || 1}ª de tipo «${TIPOS_HOJA[m[1]] || m[1]}»` : 'Hoja borrada']); }
-    h += `${sel('hoja', 'Hoja de diseño', ops)}${sel('encuadre', 'Encuadre', [['dibujo', 'Ajustado a lo dibujado'], ['foto', 'Foto completa']])}
-      <label class="f"><span>Foto (opacidad)</span><span class="fr"><input type="range" min="20" max="100" data-in="b.foto" value="${b.foto ?? 100}"><output>${b.foto ?? 100}%</output></span></label>`;
+    const V = S.ventanas[b.id], esc1 = V && V.escala ? Math.round(V.bw * V.escala / b.w) : null;
+    h += `${sel('hoja', 'Hoja de diseño', ops)}
+      <label class="f"><span>Encuadre</span><select class="in" data-in-encuadre><option value="dibujo" ${!b.ventana && b.encuadre !== 'foto' ? 'selected' : ''}>Ajustado a lo dibujado</option><option value="foto" ${!b.ventana && b.encuadre === 'foto' ? 'selected' : ''}>Foto completa</option><option value="propio" ${b.ventana ? 'selected' : ''}>Propio (encuadrado con el mouse)</option></select></label>
+      <button class="btn sm ${S.encuadre === b.id ? 'pri' : ''}" data-act="in-encuadrar">${ic('ext', 14)} ${S.encuadre === b.id ? 'Terminar encuadre' : 'Encuadrar con el mouse'}</button>
+      ${V && V.escala ? `<label class="f"><span>Escala de la vista</span><span class="fi"><em>1 :</em><input class="in" data-in-escala value="${esc1}" inputmode="numeric"></span></label>` : '<p class="mut">La hoja no tiene referencia de escala: la vista se encuadra libre.</p>'}
+      <label class="f"><span>Foto (opacidad)</span><span class="fr"><input type="range" min="0" max="100" data-in="b.foto" value="${b.foto ?? 100}"><output>${b.foto ?? 100}%</output></span></label>`;
   }
-  if (b.tipo === 'tabla') h += `<label class="f"><span>Título</span><input class="in" data-in="b.titulo" value="${esc(b.titulo || '')}"></label>
+  if (b.tipo === 'tabla') h += `<p class="mut">Doble clic en una celda de la página para escribir en ella (Enter guarda, Tab pasa a la siguiente, Esc cancela).</p>
+    <div class="row wrap"><button class="btn sm" data-act="in-tb" data-k="fila+">+ Fila</button><button class="btn sm" data-act="in-tb" data-k="fila-">− Fila</button><button class="btn sm" data-act="in-tb" data-k="col+">+ Columna</button><button class="btn sm" data-act="in-tb" data-k="col-">− Columna</button></div>
+    <label class="f"><span>Título</span><input class="in" data-in="b.titulo" value="${esc(b.titulo || '')}"></label>
     ${sel('tituloColor', 'Color del título', [['negro', 'Negro'], ['rojo', 'Rojo'], ['azul', 'Azul Nikola']])}
-    <label class="f"><span>Filas (una por línea, celdas separadas por | )</span><textarea class="in mono" rows="7" data-in="b.filas">${esc((b.filas || []).map(f => f.join(' | ')).join('\n'))}</textarea></label>${campos}
+    <details class="in-filas"><summary>Editar como texto</summary><label class="f"><span>Una fila por línea, celdas separadas por |</span><textarea class="in mono" rows="7" data-in="b.filas">${esc((b.filas || []).map(f => f.join(' | ')).join('\n'))}</textarea></label>${campos}</details>
     <div class="row">${num('tam', 'Letra (pt)', .5)}<label class="f"><span>Ancho columnas (%)</span><input class="in" data-in="b.anchos" value="${esc(b.anchos || '')}" placeholder="35,30"></label></div>
     <div class="row wrap">${chk('cabecera', 'Primera fila es encabezado')}${chk('mayusculas', 'Datos en MAYÚSCULAS')}</div>${sel('cuerpo', 'Estilo', [['', 'Planos (cursiva, como AutoCAD)'], ['normal', 'Documento (texto normal)']])}`;
-  if (b.tipo === 'lamina') h += sel('lamina', 'Lámina', [['01', 'Lámina 01 · Planta y unilineal'], ['02', 'Lámina 02 · Cuadros de carga']]) + '<p class="mut">Los datos del cajetín se completan en el paso Lámina.</p>';
+  if (b.tipo === 'lamina') h += sel('lamina', 'Lámina', [['01', 'Lámina 01 · Planta y unilineal'], ['02', 'Lámina 02 · Cuadros de carga']]) + '<p class="mut">El cajetín, las firmas y las notas se completan abajo, en «Datos de las láminas A1».</p>';
   if (b.tipo === 'unilineal') h += '<p class="mut">Es el unilineal del proyecto, el mismo de la lámina A1.</p>';
   h += `<div class="row">${num('x', 'X (mm)')}${num('y', 'Y (mm)')}</div><div class="row">${num('w', 'Ancho (mm)')}${num('h', 'Alto (mm)')}</div>
-    ${['texto', 'imagen', 'vista', 'tabla', 'unilineal', 'recuadro'].includes(b.tipo) ? chk('borde', 'Con borde') : ''}
+    ${b.tipo !== 'lamina' ? chk('borde', 'Con marco') : ''}
     <div class="row wrap"><button class="btn sm" data-act="in-b-orden" data-k="1">Al frente</button><button class="btn sm" data-act="in-b-orden" data-k="-1">Atrás</button><button class="btn sm" data-act="in-b-dup">${ic('copy', 14)} Duplicar</button><button class="btn sm del" data-act="in-b-del">${ic('trash', 14)} Borrar</button></div>`;
   return h;
 }
@@ -125,21 +148,30 @@ export function accionInforme(a, el) {
   const I = informe(), pg = pagAct(), b = bloqueAct();
   const repintar = () => { cambio(); pintar(); };
   switch (a) {
-    case 'in-pag': S.pag = el.dataset.id; S.sel = null; S.zoom = null; pintar(); break;
-    case 'in-nueva': dialogoNueva(); break;
+    case 'in-pag': salirEncuadre(false); S.pag = el.dataset.id; S.sel = null; S.zoom = null; pintar(); break;
+    case 'in-nueva': dialogoNueva(el.dataset.k || (pg ? seccionDe(pg) : 'informe')); break;
     case 'in-paquete': agregarPaquete(el.dataset.k); break;
-    case 'in-add': { const [W, H] = medida(pg), nb = nuevoBloque(el.dataset.k, 20, 20); nb.x = Math.max(0, Math.round((W - nb.w) / 2)); nb.y = Math.max(0, Math.round((H - nb.h) / 2)); pg.bloques.push(nb); S.sel = nb.id; repintar(); break; }
+    case 'in-add': { const [W, H] = medida(pg), nb = nuevoBloque(el.dataset.k, 20, 20); if (nb.tipo === 'lamina') { nb.w = W; nb.h = H; nb.x = 0; nb.y = 0; } nb.x = Math.max(0, Math.round((W - nb.w) / 2)); nb.y = Math.max(0, Math.round((H - nb.h) / 2)); pg.bloques.push(nb); S.sel = nb.id; repintar(); break; }
     case 'in-zoom': { const k = +el.dataset.k; S.zoom = k === 0 ? null : Math.max(.1, Math.min(4, (S.zoom || S.z || 1) * (k > 0 ? 1.25 : .8))); pintar(); break; }
-    case 'in-pdf': imprimir(); break;
+    case 'in-pdf': imprimir(el.dataset.k); break;
     case 'in-pg-dup': { const c = copiarPagina(pg, { nombre: `${pg.nombre} (copia)` }); I.paginas.splice(I.paginas.indexOf(pg) + 1, 0, c); S.pag = c.id; repintar(); break; }
-    case 'in-pg-mover': { const i = I.paginas.indexOf(pg), j = i + +el.dataset.k; if (j < 0 || j >= I.paginas.length) break; I.paginas.splice(i, 1); I.paginas.splice(j, 0, pg); repintar(); break; }
+    case 'in-pg-mover': { const mismas = I.paginas.filter(x => seccionDe(x) === seccionDe(pg)), i = mismas.indexOf(pg), otra = mismas[i + +el.dataset.k]; if (!otra) break; const a1 = I.paginas.indexOf(pg), a2 = I.paginas.indexOf(otra); I.paginas[a1] = otra; I.paginas[a2] = pg; repintar(); break; }
     case 'in-pg-del': { if (!confirm(`¿Borrar la página «${pg.nombre}»?`)) break; const i = I.paginas.indexOf(pg); I.paginas.splice(i, 1); S.pag = I.paginas[Math.max(0, i - 1)]?.id || null; S.sel = null; repintar(); break; }
     case 'in-pg-plantilla': guardarPlantilla(pg); break;
-    case 'in-mia-del': { const m = S.mias.find(x => x.id === el.dataset.id); if (m && confirm(`¿Borrar la plantilla «${m.nombre}»? Las páginas que ya la usan no cambian.`)) { S.mias = S.mias.filter(x => x !== m); guardarAjuste('plantillasPagina', S.mias); S.cb.panel && S.cb.panel(); } break; }
+    case 'in-mia-del': { const m = S.mias.find(x => x.id === el.dataset.id); if (m && confirm(`¿Borrar la plantilla «${m.nombre}»? Las páginas que ya la usan no cambian.`)) { S.mias = S.mias.filter(x => x !== m); guardarAjuste('plantillasPagina', S.mias); panel(); } break; }
     case 'in-b-del': borrarBloque(); break;
     case 'in-b-dup': { const c = { ...JSON.parse(JSON.stringify(b)), id: uid('b'), x: b.x + 5, y: b.y + 5 }; pg.bloques.push(c); S.sel = c.id; repintar(); break; }
     case 'in-b-orden': { const i = pg.bloques.indexOf(b); pg.bloques.splice(i, 1); if (+el.dataset.k > 0) pg.bloques.push(b); else pg.bloques.unshift(b); repintar(); break; }
     case 'in-img-quitar': b.src = null; repintar(); break;
+    case 'in-encuadrar': if (S.encuadre === b.id) salirEncuadre(true); else entrarEncuadre(b); break;
+    case 'in-tb': {
+      const f = b.filas ||= [[]], n = Math.max(1, ...f.map(x => x.length));
+      if (el.dataset.k === 'fila+') f.push(Array(n).fill(''));
+      if (el.dataset.k === 'fila-' && f.length > 1) f.pop();
+      if (el.dataset.k === 'col+') f.forEach(x => { while (x.length < n) x.push(''); x.push(''); });
+      if (el.dataset.k === 'col-' && n > 1) f.forEach(x => { x.length = Math.min(x.length, n - 1); });
+      cambio(); repintarPagina(); panel(); break;
+    }
   }
   return true;
 }
@@ -151,12 +183,13 @@ function agregarPaquete(id) {
   informe().paginas.push(...nuevas); S.pag = nuevas[0]?.id || S.pag; S.sel = null; cambio(); pintar();
   toast(`${nuevas.length} páginas de «${q.nombre}» agregadas`);
 }
-function dialogoNueva() {
+function dialogoNueva(seccion = 'informe') {
   const grupos = {}; for (const x of PLANTILLAS_INCLUIDAS) (grupos[x.grupo] ||= []).push(x);
   const item = (x, mia) => `<button class="dl-pl" data-pl="${x.id}" data-mia="${mia ? 1 : ''}"><b>${esc(x.nombre)}</b><span>${esc(x.tamano)} ${x.orientacion === 'horizontal' ? 'horizontal' : 'vertical'} · ${x.bloques.length} bloques</span></button>`;
   const d = document.createElement('dialog'); d.className = 'dlg dlg-pl';
   d.innerHTML = `<form method="dialog"><h2>Agregar página</h2>
-    <div class="dl-sec"><h3>Informe completo</h3><div class="dl-grid">${PAQUETES.map(q => `<button class="dl-pl" data-paq="${q.id}"><b>${esc(q.nombre)}</b><span>${esc(q.detalle)}</span></button>`).join('')}</div></div>
+    <label class="f"><span>Agregar a</span><select class="in" name="seccion">${Object.entries(SECCIONES).map(([k, v]) => `<option value="${k}" ${k === seccion ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+    <div class="dl-sec"><h3>Conjunto completo</h3><div class="dl-grid">${PAQUETES.map(q => `<button class="dl-pl" data-paq="${q.id}"><b>${esc(q.nombre)}</b><span>${esc(q.detalle)}</span></button>`).join('')}</div></div>
     ${S.mias.length ? `<div class="dl-sec"><h3>Mis plantillas</h3><div class="dl-grid">${S.mias.map(x => item(x, true)).join('')}</div></div>` : ''}
     ${Object.entries(grupos).map(([g, xs]) => `<div class="dl-sec"><h3>${esc(g)}</h3><div class="dl-grid">${xs.map(x => item(x)).join('')}</div></div>`).join('')}
     <div class="dl-sec"><h3>En blanco</h3><div class="dl-grid">${[['A4', 'vertical'], ['A4', 'horizontal'], ['A3', 'horizontal'], ['A1', 'horizontal']].map(([t, o]) => `<button class="dl-pl" data-blanco="${t}|${o}"><b>${t} ${o}</b><span>Página vacía</span></button>`).join('')}</div></div>
@@ -165,10 +198,12 @@ function dialogoNueva() {
   d.addEventListener('click', ev => {
     const t = ev.target.closest('.dl-pl'); if (!t) return; ev.preventDefault();
     if (t.dataset.paq) { d.close(); agregarPaquete(t.dataset.paq); return; }
+    const sec = d.querySelector('[name=seccion]').value;
     let nueva;
-    if (t.dataset.blanco) { const [ta, o] = t.dataset.blanco.split('|'); nueva = paginaEnBlanco(ta, o); }
-    else { const fuente = (t.dataset.mia ? S.mias : PLANTILLAS_INCLUIDAS).find(x => x.id === t.dataset.pl); nueva = copiarPagina(fuente, { desde: fuente.id }); }
-    const I = informe(), i = I.paginas.indexOf(pagAct()); I.paginas.splice(i < 0 ? I.paginas.length : i + 1, 0, nueva);
+    if (t.dataset.blanco) { const [ta, o] = t.dataset.blanco.split('|'); nueva = paginaEnBlanco(ta, o, sec); }
+    else { const fuente = (t.dataset.mia ? S.mias : PLANTILLAS_INCLUIDAS).find(x => x.id === t.dataset.pl); nueva = copiarPagina(fuente, { desde: fuente.id, seccion: sec }); }
+    const I = informe(), mismas = I.paginas.filter(x => seccionDe(x) === sec), ult = mismas[mismas.length - 1];
+    I.paginas.splice(ult ? I.paginas.indexOf(ult) + 1 : (sec === 'informe' ? 0 : I.paginas.length), 0, nueva);
     S.pag = nueva.id; S.sel = null; d.close(); cambio(); pintar();
   });
   d.addEventListener('close', () => d.remove());
@@ -178,7 +213,7 @@ async function guardarPlantilla(pg) {
   const pl = copiarPagina(pg, { id: uid('pl'), nombre: nombre.trim(), grupo: 'Mis plantillas', incluida: false, guardada: new Date().toISOString() });
   delete pl.desde;
   S.mias = [...S.mias, pl]; await guardarAjuste('plantillasPagina', S.mias);
-  toast('Plantilla guardada en este navegador'); S.cb.panel && S.cb.panel();
+  toast('Plantilla guardada en este navegador'); panel();
 }
 
 /* ---------- Editar propiedades (panel) ---------- */
@@ -191,11 +226,12 @@ function aplicar(t) {
   if (c === 'filas') b.filas = String(v).split('\n').map(l => l.split('|').map(x => x.trim()));
   else if (['x', 'y', 'w', 'h', 'tam', 'foto'].includes(c)) { const n = parseFloat(String(v).replace(',', '.')); if (!isFinite(n)) return; b[c] = c === 'w' || c === 'h' ? Math.max(3, n) : n; }
   else b[c] = v;
+  if (c === 'hoja') delete b.ventana;                         // otra hoja: el encuadre propio ya no aplica
   cambio(); pintar();
 }
 let tTexto = null;
 document.addEventListener('input', ev => {
-  const t = ev.target; if (!S.el?.isConnected || !t.matches?.('#props [data-in]')) return;
+  const t = ev.target; if (!activo() || !t.matches?.('#props [data-in]')) return;
   if (t.type === 'range') { const o = t.parentElement.querySelector('output'); if (o) o.textContent = t.value + '%'; }
   if (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && !['checkbox', 'number', 'range'].includes(t.type))) { clearTimeout(tTexto); tTexto = setTimeout(() => aplicarSinPanel(t), 350); }
 });
@@ -207,12 +243,12 @@ function aplicarSinPanel(t) {   // mientras se escribe: actualizar la página si
 }
 async function repintarPagina() {
   const pg = pagAct(), cont = S.el?.querySelector('.pg-esc'); if (!pg || !cont) return;
-  const gen = ++S.gen, html = await htmlPagina(pg, { p: S.p, datos: S.datos, editor: true, sel: S.sel }); if (gen !== S.gen) return;
-  cont.innerHTML = html; ajustarZoom();
+  const gen = ++S.gen, ventanas = {}, html = await htmlPagina(pg, { p: S.p, datos: S.datos, editor: true, sel: S.sel, ventanas }); if (gen !== S.gen) return;
+  S.ventanas = ventanas; cont.innerHTML = html; ajustarZoom(); marcarEncuadre();
   const lista = S.el.querySelector(`.inf-pag[data-id="${pg.id}"] span`); if (lista) lista.textContent = pg.nombre || 'Página';
 }
 document.addEventListener('change', ev => {
-  const t = ev.target; if (!S.el?.isConnected) return;
+  const t = ev.target; if (!activo()) return;
   if (t.matches?.('#props [data-in]')) { clearTimeout(tTexto); aplicar(t); }
   if (t.matches?.('#props [data-in-campo]') && t.value) {
     const area = document.querySelector('#props textarea[data-in="b.texto"], #props textarea[data-in="b.filas"]');
@@ -220,6 +256,12 @@ document.addEventListener('change', ev => {
     t.value = '';
   }
   if (t.matches?.('[data-in-img]') && t.files[0]) { const f = t.files[0]; t.value = ''; subirImagen(f); }
+  if (t.matches?.('#props [data-in-encuadre]')) {
+    const b = bloqueAct(); if (!b) return;
+    if (t.value === 'propio') { entrarEncuadre(b); return; }
+    delete b.ventana; b.encuadre = t.value; cambio(); pintar();
+  }
+  if (t.matches?.('#props [data-in-escala]')) fijarEscala(t.value);
 });
 async function subirImagen(f) {
   const b = bloqueAct(); if (!b) return;
@@ -231,21 +273,111 @@ async function subirImagen(f) {
   cambio(); pintar();
 }
 
+/* ---------- Tablas: escribir en la celda, en la misma página ---------- */
+function editarCelda(td, b) {
+  const pos = td.dataset.celda; if (!pos || td.isContentEditable) return;
+  const [i, j] = pos === 't' ? [null, null] : pos.split(',').map(Number);
+  const original = pos === 't' ? (b.titulo || '') : (b.filas?.[i]?.[j] ?? '');
+  td.textContent = original;                                   // se edita el texto con sus {Campos}, no el valor
+  td.contentEditable = 'plaintext-only'; if (td.contentEditable !== 'plaintext-only') td.contentEditable = 'true';
+  td.classList.add('editando'); td.focus();
+  const r = document.createRange(); r.selectNodeContents(td); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  let listo = false;
+  const terminar = (guardar, siguiente) => {
+    if (listo) return; listo = true;
+    const texto = td.innerText.replace(/\n$/, '');
+    td.contentEditable = 'false'; td.classList.remove('editando');
+    if (guardar && texto !== original) {
+      if (pos === 't') b.titulo = texto; else { b.filas ||= []; while (b.filas.length <= i) b.filas.push([]); b.filas[i][j] = texto; }
+      cambio();
+    }
+    repintarPagina().then(() => {
+      panel();
+      if (siguiente) { const tds = [...S.el.querySelectorAll(`.bq[data-b="${b.id}"] [data-celda]`)], k = tds.findIndex(x => x.dataset.celda === pos), nx = tds[k + 1]; if (nx) editarCelda(nx, b); }
+    });
+  };
+  td.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); terminar(true); }
+    else if (ev.key === 'Tab') { ev.preventDefault(); terminar(true, true); }
+    else if (ev.key === 'Escape') { ev.preventDefault(); terminar(false); }
+    ev.stopPropagation();
+  });
+  td.addEventListener('blur', () => terminar(true), { once: true });
+}
+
+/* ---------- Vistas: encuadrar con el mouse (como una ventana gráfica de AutoCAD) ---------- */
+function entrarEncuadre(b) {
+  const V = S.ventanas[b.id]; if (!V) { toast('Esta vista no tiene foto que encuadrar'); return; }
+  S.encuadre = b.id; S.sel = b.id;
+  if (!b.ventana) b.ventana = { x0: V.x0, y0: V.y0, bw: V.bw };
+  marcarEncuadre(); panel();
+}
+function salirEncuadre(redibujar = true) {
+  if (!S.encuadre) return; S.encuadre = null; marcarEncuadre();
+  if (redibujar) { cambio(); repintarPagina().then(panel); }
+}
+function marcarEncuadre() {
+  if (!S.el) return;
+  S.el.querySelectorAll('.inf-lienzo .bq').forEach(x => x.classList.toggle('encuadrando', x.dataset.b === S.encuadre));
+  const a = S.el.querySelector('.inf-ayuda');
+  if (a) { a.hidden = !S.encuadre; a.textContent = 'Encuadrando la vista: rueda del mouse = zoom · arrastrar = mover · Enter, Esc o clic afuera = terminar'; }
+}
+let dibujando = false, pendiente = false;
+async function refrescarVista() {    // dibujo rápido (borrador) mientras se encuadra
+  const b = bloqueAct(); if (!b || S.encuadre !== b.id) return;
+  if (dibujando) { pendiente = true; return; }
+  dibujando = true;
+  const V = S.ventanas[b.id], r = await imagenHoja(S.p, V.hojaId, b.w, b.h, { foto: b.foto, ventana: b.ventana, borrador: true });
+  const img = S.el.querySelector(`.bq[data-b="${b.id}"] img`); if (r && img) img.src = r.url;
+  dibujando = false; if (pendiente) { pendiente = false; refrescarVista(); }
+}
+function fijarEscala(txt) {
+  const b = bloqueAct(), V = b && S.ventanas[b.id], n = parseFloat(String(txt).replace(/[^\d.,]/g, '').replace(',', '.'));
+  if (!b || !V || !V.escala || !(n > 0)) return;
+  const W = b.ventana || V, asp = b.w / b.h, cx = W.x0 + W.bw / 2, cy = W.y0 + W.bw / asp / 2, bw = n * b.w / V.escala;
+  b.ventana = { x0: cx - bw / 2, y0: cy - bw / asp / 2, bw };
+  cambio(); repintarPagina().then(panel);
+}
+document.addEventListener('wheel', ev => {
+  if (!activo() || !S.encuadre) return;
+  const bq = ev.target.closest?.(`.inf-lienzo .bq[data-b="${S.encuadre}"]`); if (!bq) return;
+  ev.preventDefault();
+  const b = bloqueAct(), W = b.ventana, r = bq.getBoundingClientRect(), fx = (ev.clientX - r.left) / r.width, fy = (ev.clientY - r.top) / r.height;
+  const asp = b.w / b.h, bh = W.bw / asp, px = W.x0 + fx * W.bw, py = W.y0 + fy * bh, f = ev.deltaY < 0 ? 1 / 1.15 : 1.15, nbw = W.bw * f;
+  b.ventana = { x0: px - fx * nbw, y0: py - fy * nbw / asp, bw: nbw };
+  refrescarVista();
+}, { passive: false });
+
 /* ---------- Mover y redimensionar bloques con el mouse ---------- */
 let D = null;
 document.addEventListener('pointerdown', ev => {
-  if (!S.el?.isConnected) return;
-  const pgEl = ev.target.closest('.inf-lienzo .pg'); if (!pgEl) return;
-  const bq = ev.target.closest('.bq');
-  if (!bq) { if (S.sel) { S.sel = null; seleccionarVisual(); S.cb.panel && S.cb.panel(); } return; }
+  if (!activo()) return;
+  if (ev.target.closest('[contenteditable="true"], [contenteditable="plaintext-only"]')) return;
+  const pgEl = ev.target.closest('.inf-lienzo .pg');
+  const bq = pgEl && ev.target.closest('.bq');
+  if (S.encuadre) {
+    if (bq && bq.dataset.b === S.encuadre) {    // mover la foto dentro de la vista
+      ev.preventDefault(); const b = bloqueAct();
+      D = { b, el: bq, modo: 'pan', sx: ev.clientX, sy: ev.clientY, v: { ...b.ventana }, r: bq.getBoundingClientRect(), movio: false };
+      return;
+    }
+    if (!ev.target.closest('#props')) salirEncuadre(true);
+    if (!pgEl) return;
+  }
+  if (!pgEl) return;
+  if (!bq) { if (S.sel) { S.sel = null; seleccionarVisual(); panel(); } return; }
   const b = pagAct()?.bloques.find(x => x.id === bq.dataset.b); if (!b) return;
   ev.preventDefault();
-  if (S.sel !== b.id) { S.sel = b.id; seleccionarVisual(); S.cb.panel && S.cb.panel(); }
+  if (S.sel !== b.id) { S.sel = b.id; seleccionarVisual(); panel(); }
   D = { b, el: bq, modo: ev.target.classList.contains('bq-h') ? 'tam' : 'mover', sx: ev.clientX, sy: ev.clientY, x: b.x, y: b.y, w: b.w, h: b.h, movio: false };
-  bq.setPointerCapture?.(ev.pointerId);
 });
 document.addEventListener('pointermove', ev => {
   if (!D) return;
+  if (D.modo === 'pan') {
+    const W = D.v, asp = D.b.w / D.b.h, dx = (ev.clientX - D.sx) / D.r.width * W.bw, dy = (ev.clientY - D.sy) / D.r.height * (W.bw / asp);
+    if (Math.abs(ev.clientX - D.sx) + Math.abs(ev.clientY - D.sy) > 2) D.movio = true;
+    D.b.ventana = { x0: W.x0 - dx, y0: W.y0 - dy, bw: W.bw }; refrescarVista(); return;
+  }
   const k = MM * (S.z || 1), dx = (ev.clientX - D.sx) / k, dy = (ev.clientY - D.sy) / k, paso = ev.shiftKey ? 5 : 1, r = v => Math.round(v / paso) * paso;
   if (Math.abs(dx) + Math.abs(dy) > .5) D.movio = true;
   if (D.modo === 'mover') { D.b.x = r(D.x + dx); D.b.y = r(D.y + dy); D.el.style.left = D.b.x + 'mm'; D.el.style.top = D.b.y + 'mm'; }
@@ -253,17 +385,26 @@ document.addEventListener('pointermove', ev => {
 });
 document.addEventListener('pointerup', () => {
   if (!D) return; const d = D; D = null;
-  if (!d.movio) return;
-  cambio(); S.cb.panel && S.cb.panel();
-  if (d.modo === 'tam' && ['vista', 'lamina', 'unilineal'].includes(d.b.tipo)) repintarPagina();   // las vistas se vuelven a dibujar al nuevo tamaño
+  if (!d.movio || d.modo === 'pan') return;
+  cambio(); panel();
+  if (d.modo === 'tam' && ['vista', 'lamina', 'unilineal'].includes(d.b.tipo)) {   // las vistas se vuelven a dibujar al nuevo tamaño
+    if (d.b.ventana) { const asp0 = d.w / d.h, asp1 = d.b.w / d.b.h, W = d.b.ventana, cy = W.y0 + W.bw / asp0 / 2; d.b.ventana = { x0: W.x0, y0: cy - W.bw / asp1 / 2, bw: W.bw }; }
+    repintarPagina();
+  }
 });
 document.addEventListener('dblclick', ev => {
-  if (!S.el?.isConnected) return; const bq = ev.target.closest('.inf-lienzo .bq'); if (!bq) return;
-  const b = bloqueAct(); if (b?.tipo === 'imagen') document.querySelector('#props [data-in-img]')?.click();
-  if (b?.tipo === 'texto' || b?.tipo === 'tabla') document.querySelector('#props textarea')?.focus();
+  if (!activo()) return; const bq = ev.target.closest('.inf-lienzo .bq'); if (!bq) return;
+  const b = pagAct()?.bloques.find(x => x.id === bq.dataset.b); if (!b) return;
+  S.sel = b.id; seleccionarVisual();
+  if (b.tipo === 'tabla') { const td = ev.target.closest('[data-celda]'); if (td) { editarCelda(td, b); panel(); return; } }
+  if (b.tipo === 'vista') { entrarEncuadre(b); return; }
+  if (b.tipo === 'imagen') { panel(); document.querySelector('#props [data-in-img]')?.click(); }
+  if (b.tipo === 'texto') { panel(); document.querySelector('#props textarea')?.focus(); }
 });
 document.addEventListener('keydown', ev => {
-  if (!S.el?.isConnected || !S.sel || ev.target.matches('input, textarea, select')) return;
+  if (!activo() || ev.target.matches('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]')) return;
+  if (S.encuadre && (ev.key === 'Escape' || ev.key === 'Enter')) { ev.preventDefault(); salirEncuadre(true); return; }
+  if (!S.sel) return;
   const b = bloqueAct(); if (!b) return;
   if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); borrarBloque(); return; }
   const m = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
@@ -271,29 +412,30 @@ document.addEventListener('keydown', ev => {
 });
 function seleccionarVisual() { S.el.querySelectorAll('.inf-lienzo .bq').forEach(x => x.classList.toggle('sel', x.dataset.b === S.sel)); }
 
-/* ---------- Imprimir / PDF: todas las páginas, cada una con su tamaño ---------- */
-async function imprimir() {
-  const I = informe(); if (!I.paginas.length) return;
-  toast('Preparando el informe…');
+/* ---------- Imprimir / PDF: una sección (o todo), cada página con su tamaño ---------- */
+async function imprimir(seccion) {
+  const ps = informe().paginas.filter(x => !seccion || seccionDe(x) === seccion); if (!ps.length) return;
+  toast('Preparando el PDF…');
   const w = window.open('', '_blank'); if (!w) return toast('El navegador bloqueó la ventana: permite ventanas emergentes');
-  w.document.write('<p style="font:14px sans-serif;padding:20px">Preparando el informe…</p>');
-  const html = await htmlImpresion();
+  w.document.write('<p style="font:14px sans-serif;padding:20px">Preparando…</p>');
+  const html = await htmlImpresion(seccion);
   w.document.open(); w.document.write(html); w.document.close();
 }
-/* Documento HTML con todas las páginas, cada una con su tamaño de papel (@page con nombre) */
-export async function htmlImpresion() {
-  const I = informe();
-  const paginas = []; for (const pg of I.paginas) paginas.push({ pg, html: await htmlPagina(pg, { p: S.p, datos: S.datos, editor: false }) });
-  const nombres = [...new Set(I.paginas.map(pg => medida(pg).join('x')))];
+/* Documento HTML con las páginas, cada una con su tamaño de papel (@page con nombre) */
+export async function htmlImpresion(seccion) {
+  const ps = informe().paginas.filter(x => !seccion || seccionDe(x) === seccion);
+  const paginas = []; for (const pg of ps) paginas.push({ pg, html: await htmlPagina(pg, { p: S.p, datos: S.datos, editor: false }) });
+  const nombres = [...new Set(ps.map(pg => medida(pg).join('x')))];
   const css = nombres.map(n => { const [W, H] = n.split('x'); return `@page p${n.replace('.', '_')} { size: ${W}mm ${H}mm; margin: 0 }`; }).join('\n');
   const base = location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
-  return (`<!doctype html><html><head><meta charset="utf-8"><base href="${base}"><title>${esc((S.p.codigo || 'Proyecto') + ' — Informe')}</title>
+  const titulo = `${S.p.codigo || 'Proyecto'} — ${seccion ? SECCIONES[seccion] : 'Informe y planos'}`;
+  return `<!doctype html><html><head><meta charset="utf-8"><base href="${base}"><title>${esc(titulo)}</title>
     <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <style>${CSS_PAGINA}${css}
       html, body { margin: 0; background: #6b7378; } .pg { margin: 0 auto 8mm; box-shadow: 0 2px 12px rgba(0,0,0,.3); }
       .aviso { font: 14px sans-serif; color: #fff; text-align: center; padding: 10px; }
       @media print { html, body { background: none; } .aviso { display: none; } .pg { margin: 0; box-shadow: none; break-after: page; } }</style></head>
-    <body><div class="aviso">En el diálogo de impresión elige «Guardar como PDF». Cada página sale con su tamaño (${[...new Set(I.paginas.map(p => `${p.tamano} ${p.orientacion}`))].join(', ')}).</div>
+    <body><div class="aviso">En el diálogo de impresión elige «Guardar como PDF». Cada página sale con su tamaño (${[...new Set(ps.map(p => `${p.tamano} ${p.orientacion}`))].join(', ')}).</div>
     ${paginas.map(({ pg, html }) => html.replace(/^(<div class="pg" data-pg="[^"]*" style=")/, `$1page:p${medida(pg).join('x').replace('.', '_')};`)).join('\n')}
-    <script>Promise.all([document.fonts.ready, ...[...document.images].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; }))]).then(() => setTimeout(() => print(), 400))<\/script></body></html>`);
+    <script>Promise.all([document.fonts.ready, ...[...document.images].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; }))]).then(() => setTimeout(() => print(), 400))<\/script></body></html>`;
 }

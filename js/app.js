@@ -86,16 +86,17 @@ function abrir(p) { history.replaceState(null, '', '#p=' + p.id); abrirEditor(p,
 function nuevo() {
   const d = document.createElement('dialog'); d.className = 'dlg';
   d.innerHTML = `<form method="dialog"><h2>Nuevo proyecto</h2>
+    <div class="f"><span>Tipo de proyecto</span><div class="hoja-tipos">${[['techo', 'Fotovoltaico (techo con paneles)'], ['cargador', 'Solo cargador (EXT)'], ['otra', 'Otro']].map(([k, n], i) => `<label><input type="radio" name="tipo" value="${k}" ${i ? '' : 'checked'}><span>${n}</span></label>`).join('')}</div></div>
     <label class="f"><span>Código</span><input class="in" name="codigo" placeholder="ON 921" required></label>
     <label class="f"><span>Cliente</span><input class="in" name="cliente" placeholder="Nombre del cliente"></label>
     <label class="f"><span>Dirección</span><input class="in" name="direccion"></label>
     <div class="row"><label class="f"><span>Comuna</span><input class="in" name="comuna"></label><label class="f"><span>Región</span><input class="in" name="region"></label></div>
     <label class="f"><span>Distribuidora</span><input class="in" name="distrib" placeholder="ENEL, CGE…"></label>
-    <p class="mut">La foto de dron se sube en el primer paso (Escala).</p>
+    <p class="mut">La primera foto (de dron o cualquier otra) se sube en el paso de la foto. La referencia de escala es opcional.</p>
     <div class="row end"><button class="btn" value="cancel" formnovalidate>Cancelar</button><button class="btn pri" value="ok">Crear y abrir</button></div></form>`;
   document.body.appendChild(d); d.showModal();
   d.addEventListener('close', async () => {
-    if (d.returnValue === 'ok') { const fd = new FormData(d.querySelector('form')), p = nuevoProyecto(Object.fromEntries(fd)); p.estado = 'diseno'; await guardar(p); L.proyectos.push(p); abrir(p); }
+    if (d.returnValue === 'ok') { const fd = new FormData(d.querySelector('form')), tipo = fd.get('tipo'); fd.delete('tipo'); const p = nuevoProyecto(Object.fromEntries(fd)); p.estado = 'diseno'; if (tipo && tipo !== 'techo') p.tipoHojaPrincipal = tipo; await guardar(p); L.proyectos.push(p); abrir(p); }
     d.remove();
   });
 }

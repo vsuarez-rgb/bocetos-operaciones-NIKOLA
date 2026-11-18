@@ -7,8 +7,12 @@
    ========================================================================== */
 import { uid } from './util.js';
 
-export const CLAVES_HOJA = ['img', 'w', 'h', 'ref', 'drone', 'roofs', 'zonas', 'strings', 'equipos', 'rutas', 'cotas', 'textos', 'norte', 'sinElementos'];
+export const CLAVES_HOJA = ['img', 'w', 'h', 'ref', 'drone', 'roofs', 'zonas', 'strings', 'equipos', 'rutas', 'cotas', 'textos', 'norte', 'sinElementos', 'sinEscala'];
 export const TIPOS_HOJA = { canalizacion: 'Recorrido de canalización', equipos: 'Zona de equipos', cargador: 'Cargador', empalme: 'Empalme y medidor', otra: 'Otra' };
+/* La hoja principal puede ser el techo con paneles (proyecto fotovoltaico) o cualquier otra, p. ej. un proyecto EXT de solo cargador */
+export const TIPOS_PRINCIPAL = { techo: 'Techo con paneles (foto de dron)', ...TIPOS_HOJA };
+export const tipoPrincipal = p => p.tipoHojaPrincipal || 'techo';
+export const nombrePrincipal = p => p.nombreHojaPrincipal || (tipoPrincipal(p) === 'techo' ? 'Techo (dron)' : TIPOS_HOJA[tipoPrincipal(p)]);
 
 export function nuevaHoja(tipo = 'otra', nombre) {
   return { id: uid('h'), tipo, nombre: nombre || TIPOS_HOJA[tipo] || 'Hoja', img: null, w: 0, h: 0, ref: null, drone: null, roofs: [], zonas: [], strings: [], equipos: [], rutas: [], cotas: [], textos: [], norte: null };
@@ -22,7 +26,7 @@ export function vistaHoja(pr, id) {
   });
 }
 /* Todas las hojas del proyecto, la principal primero: [{ id (null = principal), nombre, tipo }] */
-export const listaHojas = p => [{ id: null, nombre: p.nombreHojaPrincipal || 'Techo (dron)', tipo: 'principal' }, ...(p.hojas || []).map(h => ({ id: h.id, nombre: h.nombre, tipo: h.tipo }))];
+export const listaHojas = p => [{ id: null, nombre: nombrePrincipal(p), tipo: 'principal' }, ...(p.hojas || []).map(h => ({ id: h.id, nombre: h.nombre, tipo: h.tipo }))];
 /* Referencia a una hoja desde una plantilla: "principal", un id, o "tipo:canalizacion#2" (la 2ª de ese tipo) */
 export function resolverHoja(p, ref) {
   if (!ref || ref === 'principal') return { id: null, existe: true };
