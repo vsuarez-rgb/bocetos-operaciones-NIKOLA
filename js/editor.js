@@ -249,7 +249,7 @@ function temporal(g, T) {
   const etiqueta = (a, b) => { const s = escala(E.p); if (!s) return; const q = T(lerp(a, b, .5)), txt = `${fmt(dist(a, b) * s / 1000, 2)} m`; g.font = "12px 'Archivo Narrow', Arial"; g.fillStyle = 'rgba(0,0,0,.75)'; const w = g.measureText(txt).width; g.fillRect(q[0] + 6, q[1] - 16, w + 8, 16); g.fillStyle = '#FAB704'; g.fillText(txt, q[0] + 10, q[1] - 4); };
   if (t && t.tipo === 'poly' && m) { const pts = [...t.pts, m]; linea(pts, t.col || '#FAB704', t.dash || [6, 4]); if (t.pts.length) etiqueta(t.pts[t.pts.length - 1], m); }
   if (t && t.tipo === 'linea' && m) { linea([t.a, m], '#FAB704', [6, 4]); etiqueta(t.a, m); }
-  if (E.D && E.D.kind === 'ventana') { const a = T(E.D.a), b = T(E.D.b), izq = E.D.b[0] >= E.D.a[0]; g.fillStyle = izq ? 'rgba(61,123,255,.15)' : 'rgba(47,208,107,.15)'; g.fillRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.setLineDash(izq ? [] : [6, 4]); g.strokeStyle = izq ? '#3D7BFF' : '#2FD06B'; g.strokeRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.setLineDash([]); }
+  if (E.D && (E.D.kind === 'ventana' || E.D.kind === 'ventanaSel')) { const a = T(E.D.a), b = T(E.D.b), izq = E.D.b[0] >= E.D.a[0]; g.fillStyle = izq ? 'rgba(61,123,255,.15)' : 'rgba(47,208,107,.15)'; g.fillRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.setLineDash(izq ? [] : [6, 4]); g.strokeStyle = izq ? '#3D7BFF' : '#2FD06B'; g.strokeRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.setLineDash([]); }
   if (E.D && E.D.kind === 'nuevaZona') { const z = zonaDeArrastre(E.D.a, E.D.b), pts = zonaPoly(z).map(T); g.beginPath(); pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); g.strokeStyle = ZONAS[E.zonaK].c; g.setLineDash([5, 4]); g.lineWidth = 1.5; g.stroke(); g.setLineDash([]); }
   // fantasma del bloque o equipo por poner
   if (m && E.step === 'paneles' && E.tool === 'sel' && !E.D) { const r = techoAct(); if (r && r.modo === 'manual' && pointInPoly(m, r.poly) && !bloqueEn(m) && !(E.sel && E.sel.t === 'bloque')) { const s = escala(E.p); if (s) { const G = geomTecho(E.p, r, s), b = { f: E.blk.f, c: E.blk.c }, gb = geomBloque(E.p, G, b); const q = [[-gb.BW / 2, -gb.BH / 2], [gb.BW / 2, -gb.BH / 2], [gb.BW / 2, gb.BH / 2], [-gb.BW / 2, gb.BH / 2]].map(v => { const w = girarV(v, gb.a); return [m[0] + w[0], m[1] + w[1]]; }); linea([...q, q[0]], 'rgba(47,208,107,.9)', [4, 4]); } } }
@@ -374,9 +374,13 @@ function down(ev) {
   // Seleccionar
   const gr = gripEn(raw); if (gr) { antes(); E.D = { kind: 'grip', gr, first: false }; return; }
   if (E.step === 'paneles') return downPaneles(raw, ev);
-  const o = objetoEn(raw);
-  E.sel = o; if (o && o.t === 'roof' && E.step === 'equipos') E.sel = null;
-  if (o && ['equipo', 'zona', 'texto', 'norte', 'ruta', 'cota', 'fig', 'etq'].includes(o.t)) E.D = { kind: 'mover', a: raw, last: raw, first: true };
+  let o = objetoEn(raw); if (o && o.t === 'roof' && E.step === 'equipos') o = null;
+  const MOVIBLES = ['equipo', 'zona', 'texto', 'norte', 'ruta', 'cota', 'fig', 'etq'];
+  if (o && E.sel && E.sel.t === 'multi' && enMulti(o) && !ev.shiftKey) { E.D = { kind: 'mover', a: raw, last: raw, first: true }; return; }   // mover el grupo
+  if (o && ev.shiftKey && E.sel && MOVIBLES.includes(o.t)) { E.sel = alternarSel(E.sel, o); panel(); dibujarTodo(); return; }
+  E.sel = o;
+  if (o && MOVIBLES.includes(o.t)) E.D = { kind: 'mover', a: raw, last: raw, first: true };
+  if (!o && E.tool === 'sel') E.D = { kind: 'ventanaSel', a: raw, b: raw, sumar: ev.shiftKey };
   panel(); dibujarTodo();
 }
 function downPaneles(raw, ev) {
@@ -389,6 +393,7 @@ function downPaneles(raw, ev) {
   if (act && act.modo !== 'manual' && pointInPoly(raw, act.poly)) { const pn = panelEn(raw); if (pn && pn.rid === act.id) { antes(); act.off = act.off || []; const i = act.off.indexOf(pn.key); i >= 0 ? act.off.splice(i, 1) : act.off.push(pn.key); despues(); return; } }
   const et0 = etqEn(raw), r = techoEn(raw); E.sel = et0 ? { t: 'etq', of: et0.of, id: et0.id } : r ? { t: 'roof', id: r.id } : objetoEn(raw);
   if (E.sel && ['equipo', 'texto', 'norte', 'cota', 'ruta', 'etq', 'fig'].includes(E.sel.t)) E.D = { kind: 'mover', a: raw, last: raw, first: true };
+  if (!E.sel && E.tool === 'sel') E.D = { kind: 'ventanaSel', a: raw, b: raw, sumar: ev && ev.shiftKey };
   panel(); dibujarTodo();
 }
 function move(ev) {
@@ -410,7 +415,7 @@ function move(ev) {
       const dx = q[0] - D.last[0], dy = q[1] - D.last[1]; if (!dx && !dy) return;
       if (D.first) { antes(); D.first = false; } D.last = q; moverSel(dx, dy, D); recalcular();
     }
-    else if (D.kind === 'nuevaZona' || D.kind === 'ventana' || D.kind === 'clicPanel') { D.b = q; if (D.kind === 'clicPanel' && dist(aPant(D.a), sp) > 6) D.kind = 'ventana'; }
+    else if (D.kind === 'nuevaZona' || D.kind === 'ventana' || D.kind === 'ventanaSel' || D.kind === 'clicPanel') { D.b = q; if (D.kind === 'clicPanel' && dist(aPant(D.a), sp) > 6) D.kind = 'ventana'; }
   }
   // cursor del sistema según lo que hay debajo
   const cv = $('#cv'); cv.style.cursor = E.tool === 'pan' || (D && D.kind === 'pan') ? 'grab' : 'none';
@@ -426,6 +431,7 @@ function up(ev) {
     return;
   }
   if (D.kind === 'clicPanel') { asignarPaneles([D.pn.key], ev.shiftKey); return; }
+  if (D.kind === 'ventanaSel') { seleccionarVentana(D); return; }
   if (D.kind === 'ventana') {
     const x0 = Math.min(D.a[0], D.b[0]), x1 = Math.max(D.a[0], D.b[0]), y0 = Math.min(D.a[1], D.b[1]), y1 = Math.max(D.a[1], D.b[1]), cruce = D.b[0] < D.a[0];
     const dentro = pn => cruce ? pn.q.some(v => v[0] >= x0 && v[0] <= x1 && v[1] >= y0 && v[1] <= y1) || pointInPoly([x0, y0], pn.q) : pn.q.every(v => v[0] >= x0 && v[0] <= x1 && v[1] >= y0 && v[1] <= y1);
@@ -444,7 +450,39 @@ function zonaDeArrastre(a, b) {
   return { ...z, x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), w: Math.abs(b[0] - a[0]), h: Math.abs(b[1] - a[1]) };
 }
 function moverSel(dx, dy, D) {
-  const s = E.sel, p = E.p; if (!s) return;
+  const s = E.sel; if (!s) return;
+  if (s.t === 'multi') s.items.forEach(it => moverObj(it, dx, dy, D)); else moverObj(s, dx, dy, D);
+}
+/* ---------- Selección con ventana (arrastrar en vacío) ----------
+   De izquierda a derecha: lo que queda completo adentro. De derecha a izquierda: lo que toca. */
+function puntosObj(t, x) {
+  if (t === 'equipo') { const Q = tamEquipoPx(E.p, x); return [[x.x - Q.w / 2, x.y - Q.h / 2], [x.x + Q.w / 2, x.y + Q.h / 2]]; }
+  if (t === 'ruta') return x.pts; if (t === 'cota') return [x.a, x.b]; if (t === 'texto') return [x.p]; if (t === 'fig') return x.pts; if (t === 'zona') return zonaPoly(x);
+  return [];
+}
+function seleccionarVentana(D) {
+  const x0 = Math.min(D.a[0], D.b[0]), x1 = Math.max(D.a[0], D.b[0]), y0 = Math.min(D.a[1], D.b[1]), y1 = Math.max(D.a[1], D.b[1]), cruce = D.b[0] < D.a[0];
+  if ((x1 - x0) * E.V.k < 4 && (y1 - y0) * E.V.k < 4) { if (!D.sumar) E.sel = null; panel(); dibujarTodo(); return; }   // fue un clic, no una ventana
+  const p = E.p, dentro = q => q[0] >= x0 && q[0] <= x1 && q[1] >= y0 && q[1] <= y1, items = [];
+  const tipos = E.step === 'etiquetas' ? [['cota', p.cotas], ['texto', p.textos]]
+    : [['equipo', E.capas.has('equipos') ? p.equipos : []], ['ruta', p.rutas.filter(r => E.capas.has(CANAL[r.k]?.riel ? 'rieles' : 'canal'))], ['cota', E.capas.has('cotas') ? p.cotas : []], ['texto', E.capas.has('textos') ? p.textos : []],
+       ['fig', E.capas.has('paneles') ? (p.figPaneles || []) : []], ['zona', ['elementos', 'techos'].includes(E.step) && E.capas.has('zonas') ? p.zonas : []]];
+  tipos.forEach(([t, lista]) => lista.forEach(x => { const pts = puntosObj(t, x); if (pts.length && (cruce ? pts.some(dentro) : pts.every(dentro))) items.push({ t, id: x.id }); }));
+  let sel = D.sumar && E.sel ? E.sel : null;
+  items.forEach(it => { sel = sel ? (enMultiDe(sel, it) ? sel : alternarSel(sel, it)) : it; });
+  E.sel = sel; if (items.length) log(`SELECCIONAR  ${items.length} objeto(s)`);
+  panel(); dibujarTodo();
+}
+const itemsDe = s => !s ? [] : s.t === 'multi' ? s.items : [{ t: s.t, id: s.id }];
+const enMultiDe = (s, o) => itemsDe(s).some(x => x.t === o.t && x.id === o.id);
+const enMulti = o => enMultiDe(E.sel, o);
+function alternarSel(s, o) {
+  const its = itemsDe(s).filter(x => !['roof', 'bloque', 'ref', 'norte'].includes(x.t)), ya = its.some(x => x.t === o.t && x.id === o.id);
+  const n = ya ? its.filter(x => !(x.t === o.t && x.id === o.id)) : [...its, { t: o.t, id: o.id }];
+  return !n.length ? null : n.length === 1 ? n[0] : { t: 'multi', items: n };
+}
+function moverObj(s, dx, dy, D) {
+  const p = E.p; if (!s) return;
   if (s.t === 'equipo') { const e = p.equipos.find(x => x.id === s.id); e.x += dx; e.y += dy; }
   if (s.t === 'zona') { const z = p.zonas.find(x => x.id === s.id); z.x += dx; z.y += dy; }
   if (s.t === 'texto') { const t = p.textos.find(x => x.id === s.id); t.p = [t.p[0] + dx, t.p[1] + dy]; }
@@ -597,6 +635,10 @@ function ejecutar(v) {
   log(`Comando desconocido "${v}". Escribe AYUDA.`);
 }
 function borrarSel() {
+  if (E.sel && E.sel.t === 'multi') { const its = E.sel.items, p = E.p; antes();
+    const quita = (arr, id) => { const i = arr.findIndex(x => x.id === id); if (i >= 0) arr.splice(i, 1); };
+    its.forEach(it => quita({ equipo: p.equipos, ruta: p.rutas, cota: p.cotas, texto: p.textos, fig: p.figPaneles || [], zona: p.zonas }[it.t] || [], it.id));
+    log(`BORRAR  ${its.length} objetos`); E.sel = null; despues(); return; }
   const s = E.sel, p = E.p; if (!s) return toast('No hay nada seleccionado');
   if (s.t === 'etq') { const ow = duenoEtq(s); if (ow) { antes(); (ow.etq ||= {}).oculta = true; E.sel = null; log('ETIQUETA quitada'); despues(); } return; }
   antes();
@@ -847,7 +889,7 @@ const stepper = (campo, val) => `<span class="stp"><button data-act="stp" data-c
 function nombreSel(s) {
   const p = E.p;
   return { roof: () => `Techo ${p.roofs.findIndex(r => r.id === s.id) + 1}`, zona: () => 'Zona', equipo: () => EQUIPOS[(p.equipos.find(e => e.id === s.id) || {}).k]?.n || 'Equipo', ruta: () => CANAL[(p.rutas.find(x => x.id === s.id) || {}).k]?.libre ? 'Línea' : 'Canalización',
-    fig: () => 'Paneles dibujados', etq: () => 'Etiqueta', cota: () => 'Cota', texto: () => 'Texto', norte: () => 'Norte', ref: () => 'Referencia', bloque: () => 'Bloque de paneles' }[s.t]?.() || '';
+    fig: () => 'Paneles dibujados', etq: () => 'Etiqueta', multi: () => `${s.items.length} objetos`, cota: () => 'Cota', texto: () => 'Texto', norte: () => 'Norte', ref: () => 'Referencia', bloque: () => 'Bloque de paneles' }[s.t]?.() || '';
 }
 function propsSel(s, { num, rango, seg }) {
   const p = E.p, del = `<button class="btn sm del" data-act="borrar">${ic('trash', 14)} Borrar</button>`;
@@ -879,6 +921,9 @@ function propsSel(s, { num, rango, seg }) {
       <label class="chk"><input type="checkbox" data-campo="ruta.etqVer" ${!(r.etq && r.etq.oculta) ? 'checked' : ''}> Mostrar su etiqueta</label>
       ${r.k === 'riel' && !escala(p) ? num('ruta.mManual', r.mManual ?? '', { l: 'Largo real del riel', u: 'm' }) : ''}
       <dl class="dl"><dt>Largo</dt><dd>${escala(p) ? fmt(largoM(p, r.pts), 2) + ' m' : r.mManual ? fmt(r.mManual, 2) + ' m (escrito)' : '— (sin escala)'}</dd><dt>Vértices</dt><dd>${r.pts.length}</dd></dl><p class="mut">Arrastra los cuadros azules para mover vértices.</p>${del}`; }
+  if (s.t === 'multi') { const N = { equipo: 'equipo(s)', ruta: 'línea(s) o canalización(es)', cota: 'cota(s)', texto: 'texto(s)', fig: 'figura(s) de paneles', zona: 'zona(s)' }, c = {};
+    s.items.forEach(x => { c[x.t] = (c[x.t] || 0) + 1; });
+    return `<p class="mut">${Object.entries(c).map(([t, n]) => `${n} ${N[t] || t}`).join(' · ')}</p><p class="mut">Arrastra cualquiera para mover todo junto. Mayús + clic suma o quita uno. Supr borra todo lo elegido.</p>${del}`; }
   if (s.t === 'etq') { const ow = duenoEtq(s); if (!ow) return ''; const et = ow.etq || {};
     const txt = s.of === 'equipo' ? (ow.rotulo || '') : (ow.etqTxt || ''), ph = s.of === 'incl' || s.of === 'inclb' ? 'Inclinación (ej: 15º)' : s.of === 'equipo' ? EQUIPOS[ow.k]?.n : s.of === 'string' ? `String ${p.strings.indexOf(ow) + 1}` : CANAL[ow.k]?.corto;
     return `<label class="f"><span>Texto</span><input class="in" data-campo="etq.txt" value="${esc(txt)}" placeholder="${esc(ph || '')}"></label>

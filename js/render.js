@@ -55,7 +55,7 @@ export function dibujar(g, p, V, o) {
   // Techos
   if (vis('techos')) p.roofs.forEach((r, i) => {
     if (!r.poly.length) return;
-    const pts = r.poly.map(T), act = o.sel && o.sel.t === 'roof' && o.sel.id === r.id;
+    const pts = r.poly.map(T), act = esSel(o, 'roof', r.id);
     path(g, pts, r.closed);
     if (r.closed && !plot) { g.fillStyle = act ? 'rgba(250,183,4,.10)' : 'rgba(255,255,255,.04)'; g.fill(); }
     g.lineWidth = (act ? 2.2 : 1.4) * u; g.strokeStyle = plot ? '#2b2b2b' : act ? '#FAB704' : '#FFFFFF'; g.stroke();
@@ -77,7 +77,7 @@ export function dibujar(g, p, V, o) {
 
   // Zonas
   if (vis('zonas')) p.zonas.forEach(z => {
-    const Z = ZONAS[z.k] || ZONAS.obs, pts = zonaPoly(z).map(T), sel = o.sel && o.sel.t === 'zona' && o.sel.id === z.id;
+    const Z = ZONAS[z.k] || ZONAS.obs, pts = zonaPoly(z).map(T), sel = esSel(o, 'zona', z.id);
     g.save(); path(g, pts, true); g.fillStyle = Z.c + (plot ? '22' : '33'); g.fill(); g.clip();
     const bb = pts.reduce((b, q) => [Math.min(b[0], q[0]), Math.min(b[1], q[1]), Math.max(b[2], q[0]), Math.max(b[3], q[1])], [1e9, 1e9, -1e9, -1e9]);
     g.strokeStyle = Z.c + 'AA'; g.lineWidth = 1 * u; const H = bb[3] - bb[1];
@@ -120,7 +120,7 @@ export function dibujar(g, p, V, o) {
 
   // Paneles dibujados a mano (sin escala o en perspectiva): misma apariencia que los paneles
   if (vis('paneles')) (p.figPaneles || []).forEach(f => {
-    const sel = o.sel && o.sel.t === 'fig' && o.sel.id === f.id, pts = f.pts.map(T);
+    const sel = esSel(o, 'fig', f.id), pts = f.pts.map(T);
     if (f.tipo === 'poly' || f.pts.length !== 4) { panelDibujo(g, pts, { plot, u, sel }); }
     else celdasFigura(f).forEach(c => panelDibujo(g, c.map(T), { plot, u, sel }));
     if (sel) { path(g, pts, true); g.setLineDash([5, 4]); g.lineWidth = 1.4; g.strokeStyle = '#FAB704'; g.stroke(); g.setLineDash([]); grips(g, pts); }
@@ -149,7 +149,7 @@ export function dibujar(g, p, V, o) {
 
   // Canalización
   p.rutas.forEach(rt => {
-    const C = CANAL[rt.k] || CANAL.ca, pts = rt.pts.map(T), sel = o.sel && o.sel.t === 'ruta' && o.sel.id === rt.id; if (pts.length < 2) return;
+    const C = CANAL[rt.k] || CANAL.ca, pts = rt.pts.map(T), sel = esSel(o, 'ruta', rt.id); if (pts.length < 2) return;
     if (!vis(C.riel ? 'rieles' : 'canal')) return;
     if (sel) { path(g, pts); g.lineWidth = 6; g.strokeStyle = 'rgba(250,183,4,.35)'; g.stroke(); }
     const colR = C.libre ? (rt.color || C.c) : C.c, dashR = C.libre ? (rt.dash ? [10, 6] : []) : C.dash;
@@ -162,7 +162,7 @@ export function dibujar(g, p, V, o) {
 
   // Equipos (a escala, con rótulo al costado como en los planos)
   if (vis('equipos')) p.equipos.forEach(e => {
-    const E = EQUIPOS[e.k] || EQUIPOS.inv, c = T([e.x, e.y]), sel = o.sel && o.sel.t === 'equipo' && o.sel.id === e.id;
+    const E = EQUIPOS[e.k] || EQUIPOS.inv, c = T([e.x, e.y]), sel = esSel(o, 'equipo', e.id);
     const tp = tamEquipoPx(p, e), md = tp.md; let w = tp.w * k, h = tp.h * k; w = Math.max(w, 12 * u); h = Math.max(h, 12 * u);
     g.save(); g.translate(c[0], c[1]); g.rotate((e.ang || 0) * Math.PI / 180);
     // Medidas del equipo (ancho × profundidad en mm), como cotas pegadas al símbolo
@@ -205,12 +205,12 @@ export function dibujar(g, p, V, o) {
       g.save(); g.translate(m[0] - nx * 1.2, m[1] - ny * 1.2); g.rotate(rot); texto(g, txt, 0, -2 * u, { size: (plot ? 9 : 11.5) * u * (p.tamCotas || 1), color: plot ? '#111' : col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); g.restore();
     };
     if (p.ref && !plot && (o.step === 'escala' || o.verRef)) cota(p.ref.a, p.ref.b, p.ref.mm ? `${fmt(p.ref.mm / 1000, 2)} m · REF` : '? m', '#FAB704', true);
-    p.cotas.forEach(ct => { const sel = o.sel && o.sel.t === 'cota' && o.sel.id === ct.id; cota(ct.a, ct.b, textoCota(p, ct), sel ? '#FAB704' : (plot ? '#111' : '#FAB704')); if (sel) grips(g, [T(ct.a), T(ct.b)]); });
+    p.cotas.forEach(ct => { const sel = esSel(o, 'cota', ct.id); cota(ct.a, ct.b, textoCota(p, ct), sel ? '#FAB704' : (plot ? '#111' : '#FAB704')); if (sel) grips(g, [T(ct.a), T(ct.b)]); });
   }
 
   // Textos (alto en mm reales, como TEXT de AutoCAD)
   if (vis('textos')) p.textos.forEach(tx => {
-    const q = T(tx.p), size = Math.max(plot ? 4 : 7, altoTextoPx(p, tx) * k), sel = o.sel && o.sel.t === 'texto' && o.sel.id === tx.id;
+    const q = T(tx.p), size = Math.max(plot ? 4 : 7, altoTextoPx(p, tx) * k), sel = esSel(o, 'texto', tx.id);
     texto(g, tx.s, q[0], q[1], { size, color: plot ? '#111' : (tx.c || '#fff'), halo: plot ? null : 'rgba(0,0,0,.7)' });
     if (sel) { g.font = `400 ${size}px 'Archivo Narrow', Arial`; const w = g.measureText(tx.s).width; g.strokeStyle = '#FAB704'; g.setLineDash([4, 3]); g.strokeRect(q[0] - 3, q[1] - size, w + 6, size + 5); g.setLineDash([]); grips(g, [q]); }
   });
@@ -265,6 +265,8 @@ export function textoCota(p, ct) {
   if (ct.txt) return /^[\d.,]+$/.test(ct.txt.trim()) ? `${ct.txt.trim()} m` : ct.txt;
   const s = escala(p); return s ? `${fmt(dist(ct.a, ct.b) * s / 1000, 2)} m` : '?';
 }
+/* ¿Está elegido? (uno solo, o dentro de una selección múltiple) */
+const esSel = (o, t, id) => !!o.sel && ((o.sel.t === t && o.sel.id === id) || (o.sel.t === 'multi' && o.sel.items.some(x => x.t === t && x.id === id)));
 export function grips(g, pts) { pts.forEach(q => { g.fillStyle = '#3D7BFF'; g.fillRect(q[0] - 4, q[1] - 4, 8, 8); g.strokeStyle = '#fff'; g.lineWidth = 1; g.strokeRect(q[0] - 4, q[1] - 4, 8, 8); }); }
 
 export function dibujarNorte(g, c, angDeg, L, plot, sel) {
