@@ -102,6 +102,8 @@ export function extraerPlantilla(libro, { archivo = null, nombresPrivados = [] }
     version: VERSION_PLANTILLA, archivo, extraida: new Date().toISOString().slice(0, 10),
     huella: huella(JSON.stringify([hojas, tablas])),
     hojas, tablas, privado, validaciones, autocad,
+    // Nombres de rango del Excel (los usan las listas desplegables: "Regiones", INDIRECT($B$8)…)
+    nombres: Object.fromEntries(libro.nombres.filter(n => !n.name.startsWith('_xl') && !n.hidden && !/#REF!/.test(n.ref) && n.localSheetId == null).map(n => [n.name, n.ref])),
     zonos: { hoja: 'Información proyecto', fila: 4, desde: 'R', hasta: 'AY', encabezados: encabezadosZonos },
     funciones: [...usadas.keys()].sort(), problemas
   };

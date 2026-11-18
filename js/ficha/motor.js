@@ -104,6 +104,7 @@ export function calcularFicha(plantilla, ficha = {}, opciones = {}) {
   return {
     ms: Date.now() - t0,
     valor: leerRef,
+    leerCelda: leer,          // (hoja, col, fila) → valor; lo usan las listas desplegables
     origen: origenDe,
     avisos, problemas, funcionesNoSoportadas: [...noSoportadas],
     /* Valores por campo del diccionario (hoja Autocad) */

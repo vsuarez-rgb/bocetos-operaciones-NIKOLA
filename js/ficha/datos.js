@@ -13,12 +13,12 @@ const leer = async n => { const r = await fetch(`data/${n}`); if (!r.ok) throw n
 
 export function cargarDatosFicha() {
   if (!cache) cache = (async () => {
-    const [dic, modulos, inversores, baterias, cargadores, publicada, local, personas] = await Promise.all([
-      leer('campos.json'), leer('catalogos/modulos.json'), leer('catalogos/inversores.json'), leer('catalogos/baterias.json'), leer('catalogos/cargadores.json'),
+    const [dic, modulos, inversores, baterias, cargadores, regiones, publicada, local, personas] = await Promise.all([
+      leer('campos.json'), leer('catalogos/modulos.json'), leer('catalogos/inversores.json'), leer('catalogos/baterias.json'), leer('catalogos/cargadores.json'), leer('catalogos/regiones.json'),
       leer('plantilla/plantilla.json'), leerAjuste('plantilla'), leerAjuste('personas')
     ]);
     return {
-      dic, catalogos: { modulos: modulos.modulos, inversores, baterias: baterias.baterias, cargadores: cargadores.cargadores },
+      dic, regiones: regiones.regiones, catalogos: { modulos: modulos.modulos, inversores, baterias: baterias.baterias, cargadores: cargadores.cargadores },
       plantilla: local?.plantilla || publicada, plantillaPublicada: publicada, plantillaLocal: local || null,
       personas: personas || { instaladores: [], proyectistas: [] }
     };

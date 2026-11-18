@@ -9,12 +9,13 @@ import { escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, z
 import { dibujar, cargarImg, imgDe, colorString, dibujarNorte } from './render.js';
 import { nuevoTecho, guardar } from './store.js';
 import { vistaLamina, panelLamina, accionLamina } from './lamina.js';
+import { vistaFicha, panelFicha, accionFicha } from './ficha/ficha.js';
 
 export const PASOS = [
-  ['escala', 'Escala', 'ruler'], ['techos', 'Techos', 'roof'], ['elementos', 'Elementos', 'block'], ['paneles', 'Paneles', 'grid'],
+  ['ficha', 'Ficha', 'folder'], ['escala', 'Escala', 'ruler'], ['techos', 'Techos', 'roof'], ['elementos', 'Elementos', 'block'], ['paneles', 'Paneles', 'grid'],
   ['strings', 'Strings', 'string'], ['equipos', 'Equipos y canalización', 'plug'], ['lamina', 'Lámina', 'sheet']
 ];
-const HERR_DEF = { escala: 'ref', techos: 'roof', elementos: 'zona', paneles: 'sel', strings: 'str', equipos: 'sel', lamina: 'sel' };
+const HERR_DEF = { ficha: 'sel', escala: 'ref', techos: 'roof', elementos: 'zona', paneles: 'sel', strings: 'str', equipos: 'sel', lamina: 'sel' };
 
 let E = null;          // estado del editor
 let alSalir = null;
@@ -32,7 +33,8 @@ export function abrirEditor(p, volver) {
   window.addEventListener('resize', onResize);
 }
 export function cerrarEditor() { window.removeEventListener('keydown', teclas); window.removeEventListener('resize', onResize); E = null; }
-const onResize = () => { if (E && E.step !== 'lamina') { dibujarTodo(); } };
+const esPagina = () => E && (E.step === 'lamina' || E.step === 'ficha');   // pasos sin canvas
+const onResize = () => { if (E && !esPagina()) { dibujarTodo(); } };
 
 /* ---------- Cambios, deshacer y guardado automático ---------- */
 const snap = () => JSON.stringify({ ...E.p, img: undefined });
@@ -70,17 +72,17 @@ function render() {
     <button class="tb-btn" data-act="exportar" title="Exportar proyecto (.json)">${ic('download')}</button>
   </header>
   <nav class="ribbon" aria-label="Pasos">${PASOS.map(([k, n, i], idx) => `<button class="paso ${pasoOk(k) ? 'ok' : ''}" data-act="paso" data-k="${k}" aria-pressed="${E.step === k}"><i>${pasoOk(k) ? ic('check', 13) : idx + 1}</i>${ic(i, 16)}<span>${n}</span></button>`).join('')}</nav>
-  <div class="ed-body ${E.step === 'lamina' ? 'es-lamina' : ''}">
-    ${E.step === 'lamina' ? '' : `<aside class="tools" aria-label="Herramientas">${herramientas()}</aside>`}
+  <div class="ed-body ${esPagina() ? 'es-lamina' : ''}">
+    ${esPagina() ? '' : `<aside class="tools" aria-label="Herramientas">${herramientas()}</aside>`}
     <main class="model" id="model">
-      ${E.step === 'lamina' ? `<div id="laminaWrap" class="lamina-wrap"></div>` : `<canvas id="cv" tabindex="0" aria-label="Espacio modelo"></canvas>
+      ${E.step === 'lamina' ? `<div id="laminaWrap" class="lamina-wrap"></div>` : E.step === 'ficha' ? `<div id="fichaWrap" class="ficha-wrap"></div>` : `<canvas id="cv" tabindex="0" aria-label="Espacio modelo"></canvas>
       <div class="ucs">${ic('move', 14)}<span>X</span></div>
       <div class="vctl"><button data-act="zin" title="Acercar">${ic('zoomin', 16)}</button><button data-act="zout" title="Alejar">${ic('zoomout', 16)}</button><button data-act="zext" title="Zoom extensión (Z)">${ic('ext', 16)}</button></div>
       <div class="hint" id="hint"></div>`}
     </main>
     <aside class="props" id="props"></aside>
   </div>
-  ${E.step === 'lamina' ? '' : `<footer class="cmd">
+  ${esPagina() ? '' : `<footer class="cmd">
     <div class="cmd-log" id="cmdLog">${E.cmdLog.slice(-3).map(l => `<div>${esc(l)}</div>`).join('')}</div>
     <label class="cmd-in"><span id="cmdPrompt">Comando:</span><input id="cmdIn" autocomplete="off" spellcheck="false" placeholder="Escribe un comando (AYUDA) o una distancia en metros"></label>
   </footer>
@@ -95,6 +97,7 @@ function render() {
   </div>`}`;
   panel();
   if (E.step === 'lamina') { vistaLamina($('#laminaWrap'), E.p, E.R, E.SI); return; }
+  if (E.step === 'ficha') { vistaFicha($('#fichaWrap'), E.p, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, panel: () => panel() }); return; }
   const cv = $('#cv');
   cv.addEventListener('pointerdown', down); cv.addEventListener('pointermove', move); cv.addEventListener('pointerup', up);
   cv.addEventListener('wheel', wheel, { passive: false }); cv.addEventListener('dblclick', dbl);
@@ -111,6 +114,7 @@ function herramientas() {
 }
 function pasoOk(k) {
   const p = E.p, R = E.R || calcular(p);
+  if (k === 'ficha') return !!(p.ficha && (Object.keys(p.ficha.entradas || {}).length || Object.keys(p.ficha.zonos || {}).length));
   if (k === 'escala') return !!escala(p);
   if (k === 'techos') return p.roofs.some(r => r.closed);
   if (k === 'elementos') return p.zonas.length > 0 || !!p.sinElementos;
@@ -399,7 +403,8 @@ function pedirMedidaRef() { prompt('Largo real de la referencia en metros:'); co
 
 /* ---------- Teclado y línea de comandos ---------- */
 function teclas(ev) {
-  if (!E || E.step === 'lamina') return;
+  if (E && E.step === 'ficha' && (ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') { ev.preventDefault(); guardarYa().then(() => toast('Proyecto guardado')); return; }
+  if (!E || esPagina()) return;
   const enInput = ev.target.matches('input, textarea, select') && ev.target.id !== 'cmdIn';
   if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z') { if (enInput) return; ev.preventDefault(); deshacer(); return; }
   if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'y') { if (enInput) return; ev.preventDefault(); rehacer(); return; }
@@ -501,6 +506,7 @@ function pista() {
 /* ---------- Panel derecho ---------- */
 function panel() {
   const el = $('#props'); if (!el || !E) return;
+  if (E.step === 'ficha') { el.innerHTML = panelFicha(E.p); return; }
   if (E.step === 'lamina') { el.innerHTML = panelLamina(E.p, E.R, E.SI, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, rerender: () => panel() }); return; }
   const p = E.p, R = E.R, s = escala(p);
   let h = '';
@@ -635,6 +641,7 @@ function propsSel(s, { num, rango, seg }) {
 document.addEventListener('click', ev => {
   if (!E) return; const b = ev.target.closest('[data-act]'); if (!b || b.tagName === 'INPUT') return;
   const a = b.dataset.act, k = b.dataset.k, p = E.p;
+  if (E.step === 'ficha' && accionFicha(a, b)) return;
   if (E.step === 'lamina' && accionLamina(a, b, E.p, () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, () => panel())) return;
   switch (a) {
     case 'salir': guardarYa().then(() => { cerrarEditor(); alSalir && alSalir(); }); break;
@@ -671,7 +678,7 @@ document.addEventListener('click', ev => {
 document.addEventListener('change', ev => {
   if (!E) return; const t = ev.target;
   if (t.dataset.act === 'foto' && t.files[0]) { subirFoto(t.files[0]); return; }
-  if (E.step === 'lamina') return;
+  if (esPagina()) return;
   if (t.dataset.campo) aplicar(t.dataset.campo, t.type === 'checkbox' ? t.checked : t.value, true);
 });
 document.addEventListener('input', ev => {

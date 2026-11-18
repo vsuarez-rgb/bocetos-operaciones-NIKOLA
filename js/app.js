@@ -147,7 +147,7 @@ async function importarExcel(archivo) {
   d.addEventListener('close', async () => {
     if (d.returnValue === 'ok') {
       const base = nuevoProyecto();
-      const p = nuevoProyecto({ ...datos, lamina: { ...base.lamina, ...Object.fromEntries(Object.entries(datos.lamina).filter(([, v]) => v)) }, ficha, estado: 'diseno' });
+      const p = nuevoProyecto({ ...datos, lamina: { ...base.lamina, ...Object.fromEntries(Object.entries(datos.lamina).filter(([, v]) => v)) }, ficha, estado: 'diseno', _paso: 'ficha' });
       await guardar(p); L.proyectos.push(p); toast('Proyecto creado desde el Excel'); abrir(p);
     }
     d.remove();
