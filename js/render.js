@@ -67,8 +67,10 @@ export function dibujar(g, p, V, o) {
     // Inclinación junto al vértice de más a la izquierda: la del techo mientras se dibuja; después, la de los paneles
     // (en manual, cada bloque muestra la suya junto a él)
     const iv = ['techos', 'elementos'].includes(o.step) ? (r.incl || 0) : r.modo === 'manual' ? null : inclPanelesDe(r);
-    if (r.closed && iv && (plot || o.step !== 'escala')) {
-      const v = r.poly.reduce((m, q) => q[0] < m[0] ? q : m, r.poly[0]), q = T(v);
+    const vI = r.poly.length ? r.poly.reduce((m, q) => q[0] < m[0] ? q : m, r.poly[0]) : null;
+    if (r.closed && iv && (plot || o.rotulos)) { const q = T(vI); etiqueta(g, o, { p, of: 'incl', id: r.id, et: r.etq, txt: r.etqTxt || `${iv}º`, anchorF: vI, attach: () => q, def: [q[0] - 6 * u, q[1] - 4 * u], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#fff' }); }
+    else if (r.closed && iv && ['techos', 'elementos', 'paneles'].includes(o.step)) {
+      const q = T(vI);
       texto(g, `${iv}º`, q[0] - 6 * u, q[1] - 4 * u, { size: 13 * u, color: plot ? '#111' : '#fff', halo: plot ? null : 'rgba(0,0,0,.7)', align: 'right' });
     }
   });
@@ -107,10 +109,11 @@ export function dibujar(g, p, V, o) {
         texto(g, si.etq, c[0], c[1] + .5, { size: r * 1.05, color: plot ? '#111' : '#fff', align: 'center', base: 'middle' });
       }
     });
-    if (R.bloques && (plot || ['paneles', 'strings', 'equipos', 'etiquetas'].includes(o.step))) R.bloques.forEach(B => {
+    if (R.bloques && (plot || o.rotulos || o.step === 'paneles')) R.bloques.forEach(B => {
       const r = p.roofs[B.ri], bl = r && (r.bloques || [])[B.bi]; if (!bl) return; const iv = bl.incl != null ? bl.incl : inclPanelesDe(r); if (!iv) return;
-      const q = B.q.map(T), v = q.reduce((m, x) => x[0] + x[1] < m[0] + m[1] ? x : m, q[0]);
-      texto(g, `${iv}º`, v[0] - 4 * u, v[1] - 4 * u, { size: 12 * u, color: plot ? '#111' : '#FAB704', halo: plot ? null : 'rgba(0,0,0,.75)', align: 'right' });
+      const q = B.q.map(T), v = q.reduce((m, x) => x[0] + x[1] < m[0] + m[1] ? x : m, q[0]), vf = B.q.reduce((m, x) => x[0] + x[1] < m[0] + m[1] ? x : m, B.q[0]);
+      if ((plot || o.rotulos) && bl.id) etiqueta(g, o, { p, of: 'inclb', id: bl.id, et: bl.etq, txt: bl.etqTxt || `${iv}º`, anchorF: vf, attach: () => v, def: [v[0] - 4 * u, v[1] - 4 * u], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#FAB704' });
+      else if (!plot && o.step === 'paneles') texto(g, `${iv}º`, v[0] - 4 * u, v[1] - 4 * u, { size: 12 * u, color: '#FAB704', halo: 'rgba(0,0,0,.75)', align: 'right' });
     });
     if (!plot && o.step === 'paneles' && o.selBloque) { const B = R.bloques.find(b => b.ri === o.selBloque.ri && b.bi === o.selBloque.bi); if (B) { path(g, B.q.map(T), true); g.setLineDash([6, 4]); g.lineWidth = 1.6; g.strokeStyle = '#FAB704'; g.stroke(); g.setLineDash([]); grips(g, B.q.map(T)); } }
   }
@@ -162,7 +165,7 @@ export function dibujar(g, p, V, o) {
     const tp = tamEquipoPx(p, e), md = tp.md; let w = tp.w * k, h = tp.h * k; w = Math.max(w, 12 * u); h = Math.max(h, 12 * u);
     g.save(); g.translate(c[0], c[1]); g.rotate((e.ang || 0) * Math.PI / 180);
     // Medidas del equipo (ancho × profundidad en mm), como cotas pegadas al símbolo
-    if (p.verMedidas && e.verMed !== false) {
+    if (p.verMedidas && e.verMed !== false && E.real) {
       const col = plot ? '#111' : '#FAB704', off = 9 * u, tk = 3 * u, fs = 9.5 * u;
       g.strokeStyle = col; g.lineWidth = .8 * u; g.beginPath();
       g.moveTo(-w / 2, -h / 2 - off); g.lineTo(w / 2, -h / 2 - off); g.moveTo(-w / 2, -h / 2 - off - tk); g.lineTo(-w / 2, -h / 2 - 2 * u); g.moveTo(w / 2, -h / 2 - off - tk); g.lineTo(w / 2, -h / 2 - 2 * u);
@@ -299,8 +302,13 @@ function pastilla(g, w, h, y, col, lw, u) {
   rrect(g, -pw / 2, y - ph / 2, pw, ph, ph / 2); g.strokeStyle = col; g.lineWidth = lw; g.stroke();
   logoHuawei(g, 0, y - ph * .12, ph * .42, col, lw * .7);
 }
+function equipoLibre(g, e, w, h, plot, u, relleno) {
+  let col = e.color || '#FFFFFF'; if (plot && col === '#FFFFFF') col = '#222';
+  g.fillStyle = relleno; g.fillRect(-w / 2, -h / 2, w, h); g.strokeStyle = col; g.lineWidth = 1.3 * u; g.strokeRect(-w / 2, -h / 2, w, h);
+  if (e.txt) textoMultilinea(g, e.txt, w * .9, h * .9, col, u);
+}
 function textoMultilinea(g, txt, w, h, col, u) {
-  const lineas = String(txt).split('|'), size = Math.max(5, Math.min(h / (lineas.length + 1.5), w / (Math.max(...lineas.map(l => l.length)) * .55), 13 * u));
+  const lineas = String(txt).split(/\||\n/), size = Math.max(5, Math.min(h / (lineas.length + 1.5), w / (Math.max(...lineas.map(l => l.length)) * .55), 13 * u));
   lineas.forEach((l, i) => texto(g, l, 0, (i - (lineas.length - 1) / 2) * size * 1.2, { size, color: col, align: 'center', base: 'middle', italic: true }));
 }
 export function equipoFrente(g, e, E, md, w, h, plot, u) {
@@ -326,6 +334,7 @@ export function equipoFrente(g, e, E, md, w, h, plot, u) {
     case 'med': caja(); g.strokeRect(-w * .3, -h * .32, w * .6, h * .22); g.beginPath(); g.arc(0, h * .15, Math.min(w, h) * .14, 0, Math.PI * 2); g.stroke(); break;
     case 'ev': caja(Math.min(w, h) * .25); g.beginPath(); g.arc(0, -h * .15, w * .28, 0, Math.PI * 2); g.stroke(); texto(g, 'EV', 0, -h * .15, { size: Math.min(w * .25, 11 * u), color: col, align: 'center', base: 'middle', bold: true }); break;
     case 'bc': caja(); g.beginPath(); g.arc(w * .15, 0, h * .35, 0, Math.PI * 2); g.stroke(); g.beginPath(); for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; g.moveTo(w * .15, 0); g.lineTo(w * .15 + Math.cos(a) * h * .3, Math.sin(a) * h * .3); } g.stroke(); break;
+    case 'libre': equipoLibre(g, e, w, h, plot, u, relleno); break;
     case 'marca': g.lineWidth = 2.6 * u; g.strokeStyle = plot ? '#E00000' : '#FF2B2B'; g.strokeRect(-w / 2, -h / 2, w, h); break;
     case 'bpc': g.fillStyle = relleno; g.fillRect(-w / 2, -h / 2, w, h); g.strokeRect(-w / 2, -h / 2, w, h); break;
     case 'cp': case 'cdj': g.fillStyle = relleno; g.fillRect(-w / 2, -h / 2, w, h); g.strokeRect(-w / 2, -h / 2, w, h); break;
@@ -335,6 +344,7 @@ export function equipoFrente(g, e, E, md, w, h, plot, u) {
 export function equipoPlanta(g, e, E, w, h, plot, u) {
   const col = plot && E.c === '#FFFFFF' ? '#222' : plot && E.c === '#FFE14D' ? '#C9A800' : E.c;
   if (e.k === 'marca') { g.lineWidth = 2.6 * u; g.strokeStyle = plot ? '#E00000' : '#FF2B2B'; g.strokeRect(-w / 2, -h / 2, w, h); return; }
+  if (e.k === 'libre') { equipoLibre(g, e, w, h, plot, u, plot ? '#fff' : 'rgba(10,20,28,.6)'); return; }
   g.fillStyle = plot ? '#fff' : 'rgba(10,20,28,.8)'; g.fillRect(-w / 2, -h / 2, w, h);
   g.lineWidth = 1.4 * u; g.strokeStyle = col; g.strokeRect(-w / 2, -h / 2, w, h);
   if (e.k === 'inv') {                                             // símbolo del inversor (~ / =) en un cuadrado al centro, sin estirarlo

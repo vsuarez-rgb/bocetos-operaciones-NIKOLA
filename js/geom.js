@@ -88,9 +88,18 @@ export function geomBloque(p, G, b) {
 export const girarV = (d, a) => [d[0] * Math.cos(a) - d[1] * Math.sin(a), d[0] * Math.sin(a) + d[1] * Math.cos(a)];
 
 /* Paneles de todo el proyecto. Cada panel: {q (4 esquinas), key, rid, ri, bi?, off, bad} */
+/* Paneles dibujados a mano que se suman al proyecto (fig.contar): grilla = filas × columnas, o la cantidad escrita.
+   Del proyecto completo se cuentan los de todas las hojas; de una hoja, solo los suyos. */
+export const nPanelesFig = f => f.n != null ? f.n : (f.tipo === 'grid' || f.pts.length === 4) && f.tipo !== 'poly' ? (f.f || 1) * (f.c || 1) : 0;
+export function panelesDibujados(p) {
+  const figs = p._esHoja ? (p.figPaneles || []) : [...(p.figPaneles || []), ...(p.hojas || []).flatMap(h => h.figPaneles || [])];
+  let n = 0, wp = 0; figs.filter(f => f.contar).forEach(f => { const k = nPanelesFig(f), P = PANELES.find(x => x.id === (f.panel || p.panel)) || PANELES[0]; n += k; wp += k * P.wp; });
+  return { n, kwp: wp / 1000 };
+}
 export function calcular(p) {
   const out = { panels: [], bloques: [], sombras: [], filas: {}, porTecho: p.roofs.map(() => ({ n: 0, area: 0, wp: 0 })), n: 0, kwp: 0, area: 0 };
-  const s = escala(p); if (!s) { out.validos = []; out.porKey = new Map(); out.rieles = { lineas: [], mm: 0, filas: 0, porTecho: [] }; return out; }   // sin escala (hojas que no la necesitan): listas vacías
+  const PD = panelesDibujados(p); out.nDibujados = PD.n;
+  const s = escala(p); if (!s) { out.validos = []; out.porKey = new Map(); out.rieles = { lineas: [], mm: 0, filas: 0, porTecho: [] }; out.n = PD.n; out.kwp = PD.kwp; return out; }   // sin escala (hojas que no la necesitan): listas vacías
   const bloquean = p.zonas.filter(z => (ZONAS[z.k] || ZONAS.obs).bloquea).map(zonaPoly);
   p.roofs.forEach((r, ri) => {
     if (!r.closed || r.poly.length < 3) return;
@@ -156,7 +165,7 @@ export function calcular(p) {
   const vale = pn => !pn.off && !pn.bad;
   out.panels.forEach(pn => { if (vale(pn)) out.porTecho[pn.ri].n++; });
   out.n = out.panels.filter(vale).length;
-  out.kwp = out.porTecho.reduce((t, x) => t + x.n * x.wp, 0) / 1000;
+  out.kwp = out.porTecho.reduce((t, x) => t + x.n * x.wp, 0) / 1000 + PD.kwp; out.n += PD.n;
   out.area = out.porTecho.reduce((t, x) => t + x.area, 0);
   out.validos = out.panels.filter(vale);
   out.porKey = new Map(out.validos.map(pn => [pn.key, pn]));

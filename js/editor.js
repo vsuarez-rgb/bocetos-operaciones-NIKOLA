@@ -5,7 +5,7 @@
    ========================================================================== */
 import { $, $$, esc, fmt, parseNum, uid, clone, dist, lerp, rotP, centroid, pointInPoly, distSeg, edgeAngle, anguloBordeCercano, ic, toast, descargar } from './util.js';
 import { PANELES, INVERSORES, ZONAS, EQUIPOS, CANAL, CAPAS, ESTADOS, COLORES_STRING, GAP_FILA, MODELOS_EQUIPO } from './catalogo.js';
-import { inclPanelesDe, vistaEq, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo, tamEquipoPx, altoTextoPx } from './geom.js';
+import { nPanelesFig, inclPanelesDe, vistaEq, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo, tamEquipoPx, altoTextoPx } from './geom.js';
 import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota } from './render.js';
 import { vistaUnilineal, panelUnilineal, accionUnilineal } from './unilineal.js';
 import { CONJUNTOS_INCLUIDOS, insertarConjunto, conjuntoDeHoja } from './conjuntos.js';
@@ -275,7 +275,7 @@ function equipoEn(q) { return [...E.p.equipos].reverse().find(e => { const Q = t
 const rutaEn = q => [...E.p.rutas].reverse().find(r => r.pts.some((v, i) => i && distSeg(q, r.pts[i - 1], v) < tol()));
 const cotaEn = q => E.p.cotas.find(c => distSeg(q, c.a, c.b) < tol());
 function textoEn(q) { return E.p.textos.find(t => { const h = Math.max(altoTextoPx(E.p, t), 7 / E.V.k); return q[0] >= t.p[0] - 3 / E.V.k && q[0] <= t.p[0] + t.s.length * h * .55 && q[1] <= t.p[1] + 3 / E.V.k && q[1] >= t.p[1] - h; }); }
-const RECT_LIBRE = new Set(['marca', 'bpc']);         // equipos que se estiran desde sus esquinas
+const rectLibre = k => !EQUIPOS[k]?.real || k === 'bpc';   // de referencia (y la bandeja, para su largo): se estiran desde sus esquinas
 const figEn = q => [...(E.p.figPaneles || [])].reverse().find(f => f.pts.length >= 3 && pointInPoly(q, f.pts));
 const norteEn = q => E.p.norte && dist(q, [E.p.norte.x, E.p.norte.y]) < 36 / E.V.k;
 function bloqueEn(q) { const B = E.R.bloques.find(b => pointInPoly(q, b.q)); return B ? { ...B, rid: E.p.roofs[B.ri].id } : null; }
@@ -286,17 +286,17 @@ function gripEn(q) {
   if (s.t === 'fig') { const f = (E.p.figPaneles || []).find(x => x.id === s.id); const i = f ? f.pts.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: f.pts, i }; }
   if (s.t === 'cota') { const c = E.p.cotas.find(x => x.id === s.id); if (c) { if (dist(c.a, q) < d) return { obj: c, k: 'a' }; if (dist(c.b, q) < d) return { obj: c, k: 'b' }; } }
   // ubicación propuesta y bandeja: cada esquina estira el rectángulo (la esquina opuesta queda fija)
-  if (s.t === 'equipo') { const e = E.p.equipos.find(x => x.id === s.id); if (e && RECT_LIBRE.has(e.k)) { const Q = tamEquipoPx(E.p, e), w = Q.w / 2, h = Q.h / 2;
+  if (s.t === 'equipo') { const e = E.p.equipos.find(x => x.id === s.id); if (e && rectLibre(e.k)) { const Q = tamEquipoPx(E.p, e), w = Q.w / 2, h = Q.h / 2;
     const i = [[-1, -1], [1, -1], [1, 1], [-1, 1]].findIndex(([sx, sy]) => dist([e.x + sx * w, e.y + sy * h], q) < d);
     if (i >= 0) { const [sx, sy] = [[-1, -1], [1, -1], [1, 1], [-1, 1]][i], a = (e.ang || 0) * Math.PI / 180, R = v => [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)];
       const o = R([-sx * w, -sy * h]); return { rect: e, fijo: [e.x + o[0], e.y + o[1]], a, mmPx: Q.md.w / Q.w }; } } }
   // sin escala, las esquinas de un equipo lo agrandan o achican
-  if (s.t === 'equipo' && !escala(E.p)) { const e = E.p.equipos.find(x => x.id === s.id); if (e && !RECT_LIBRE.has(e.k)) { const Q = tamEquipoPx(E.p, e), w = Math.max(Q.w, 12 / E.V.k) / 2, h = Math.max(Q.h, 12 / E.V.k) / 2;
+  if (s.t === 'equipo' && !escala(E.p)) { const e = E.p.equipos.find(x => x.id === s.id); if (e && !rectLibre(e.k)) { const Q = tamEquipoPx(E.p, e), w = Math.max(Q.w, 12 / E.V.k) / 2, h = Math.max(Q.h, 12 / E.V.k) / 2;
     if ([[-w, -h], [w, -h], [w, h], [-w, h]].some(v => dist([e.x + v[0], e.y + v[1]], q) < d)) return { eq: e, d0: Math.max(dist([e.x, e.y], q), 1e-6), f0: e.f || 1 }; } }
   if (s.t === 'ref' && E.p.ref) { if (dist(E.p.ref.a, q) < d) return { obj: E.p.ref, k: 'a' }; if (dist(E.p.ref.b, q) < d) return { obj: E.p.ref, k: 'b' }; }
   return null;
 }
-const listaEtq = of => of === 'equipo' ? E.p.equipos : of === 'string' ? E.p.strings : E.p.rutas;
+const listaEtq = of => of === 'equipo' ? E.p.equipos : of === 'string' ? E.p.strings : of === 'incl' ? E.p.roofs : of === 'inclb' ? E.p.roofs.flatMap(r => r.bloques || []) : E.p.rutas;
 const duenoEtq = s => s && s.t === 'etq' ? listaEtq(s.of).find(x => x.id === s.id) : null;
 function etqEn(q) { const sq = aPant(q); return [...(E.hits || [])].reverse().find(h => sq[0] >= h.caja[0] && sq[0] <= h.caja[2] && sq[1] >= h.caja[1] && sq[1] <= h.caja[3]); }
 function objetoEn(q) {
@@ -349,7 +349,7 @@ function down(ev) {
   if (E.tool === 'conjunto') { const cj = [...CONJUNTOS_INCLUIDOS, ...(E.conjuntos || [])].find(x => x.id === E.conjunto); if (!cj) return; antes();
     if (cj.vista && !p.equipos.length) p.vistaEquipos = cj.vista;
     const r = insertarConjunto(p, cj, q); E.sel = r.equipos[0] ? { t: 'equipo', id: r.equipos[0].id } : null; E.tool = 'sel'; log(`CONJUNTO  ${cj.nombre}`); despues(); render(); return; }
-  if (E.tool === 'equipo') { antes(); const e = { id: uid('e'), k: E.eqK, x: q[0], y: q[1], ang: 0 }; if (E.eqK === 'cp') e.etq = { oculta: true }; p.equipos.push(e); E.sel = { t: 'equipo', id: e.id }; log(`EQUIPO  ${EQUIPOS[E.eqK].n}`); despues(); return; }
+  if (E.tool === 'equipo') { antes(); const e = { id: uid('e'), k: E.eqK, x: q[0], y: q[1], ang: 0 }; if (E.eqK === 'cp' || E.eqK === 'libre') e.etq = { oculta: true }; if (E.eqK === 'libre') e.txt = 'EQUIPO'; p.equipos.push(e); E.sel = { t: 'equipo', id: e.id }; log(`EQUIPO  ${EQUIPOS[E.eqK].n}`); despues(); return; }
   if (E.tool === 'zona') { const z = zonaEn(raw); if (z) { E.sel = { t: 'zona', id: z.id }; E.D = { kind: 'mover', a: raw, last: raw, first: true }; panel(); dibujarTodo(); return; } E.D = { kind: 'nuevaZona', a: raw, b: raw }; return; }
   if (E.tool === 'str') {
     const pn = panelEn(raw);
@@ -761,7 +761,7 @@ function panel() {
     h += sec('Paneles dibujados', `<p class="mut">Para hojas sin escala o en perspectiva: figuras con el mismo relleno de los paneles. No se suman al conteo de paneles del proyecto.</p>
       ${seg('_figForma', E.figForma, [['grid', 'Cuadrícula (4 esquinas)'], ['poly', 'Figura libre']])}
       ${E.figForma === 'grid' ? `<div class="f"><span>Nueva cuadrícula</span><span class="row">${stepper('fig.nf', E.figFC.f)} filas × ${stepper('fig.nc', E.figFC.c)} col.</span></div>` : ''}
-      <button class="btn sm" data-act="tool" data-k="figpan">${ic('grid', 14)} Dibujar paneles</button>${figs.length ? `<p class="mut">${figs.length} figura(s) en esta hoja.</p>` : ''}`);
+      <button class="btn sm" data-act="tool" data-k="figpan">${ic('grid', 14)} Dibujar paneles</button>${figs.some(x => x.contar) ? `<dl class="dl"><dt>Se suman al proyecto</dt><dd>${figs.filter(x => x.contar).reduce((t, x) => t + nPanelesFig(x), 0)} paneles</dd></dl>` : '<p class="mut">Para que cuenten, elige la figura y marca «Sumar estos paneles al proyecto».</p>'}${figs.length ? `<p class="mut">${figs.length} figura(s) en esta hoja.</p>` : ''}`);
     h += sec('Rieles (dibujo libre)', `<p class="mut">Para casos en perspectiva o sin cálculo automático: dibuja cada riel como una línea. ${s ? 'Se miden solos con la escala.' : 'Sin escala, escribe su largo en Propiedades.'}</p>
       <button class="btn sm" data-act="rutaK" data-k="riel">${ic('pline', 14)} Dibujar riel</button>
       ${rielesL.length ? `<dl class="dl"><dt>Rieles dibujados</dt><dd>${rielesL.length}</dd><dt>Total aprox.</dt><dd>${fmt(rielesL.reduce((t, r) => t + largoRuta(p, r), 0), 1)} m</dd></dl>` : ''}`);
@@ -792,6 +792,8 @@ function panel() {
       ${p.strings.length ? `<label class="chk"><input type="checkbox" data-campo="hoja.encerrar" ${p.encerrarStrings !== false ? 'checked' : ''}> Encerrar los strings (contorno de color)</label>` : ''}
       <div class="row wrap"><button class="btn sm" data-act="etq-todas" data-k="ver">Mostrar todas</button><button class="btn sm" data-act="etq-todas" data-k="quitar">Quitar todas</button><button class="btn sm" data-act="etq-todas" data-k="lugar">Todas a su lugar</button></div>
       ${grupo('equipo', 'Equipos', p.equipos, nEq)}${grupo('ruta', 'Canalizaciones', p.rutas, nRt)}${grupo('string', 'Strings', p.strings, nSt)}
+      ${grupo('incl', 'Inclinación de los paneles (techos automáticos)', p.roofs.filter(r => r.closed && r.modo !== 'manual' && inclPanelesDe(r)), x => x.etqTxt || `Techo ${p.roofs.indexOf(x) + 1} · ${inclPanelesDe(x)}º`)}
+      ${grupo('inclb', 'Inclinación de cada bloque', p.roofs.flatMap(r => (r.bloques || []).filter(b => b.id && (b.incl != null ? b.incl : inclPanelesDe(r))).map(b => ({ id: b.id, etq: b.etq, etqTxt: b.etqTxt, incl: b.incl, _r: r }))), x => x.etqTxt || `Bloque · ${x.incl != null ? x.incl : inclPanelesDe(x._r)}º`)}
       ${!p.equipos.length && !p.rutas.length && !p.strings.length ? '<p class="mut">Esta hoja no tiene equipos, canalizaciones ni strings.</p>' : ''}`);
     h += sec('Cotas y textos', `<div class="row wrap"><button class="btn sm" data-act="tool" data-k="cota">${ic('dim', 14)} Cota</button><button class="btn sm" data-act="tool" data-k="texto">${ic('text', 14)} Texto</button><button class="btn sm" data-act="tool" data-k="norte">${ic('north', 14)} Norte</button></div>
       ${rango('hoja.tamCotas', Math.round((p.tamCotas || 1) * 100), 30, 300, 'Tamaño del texto de las cotas', ' %')}
@@ -806,9 +808,10 @@ function panel() {
       <div class="lista">${[...CONJUNTOS_INCLUIDOS, ...mis].map(cj => `<div class="row cj-f"><button class="li" data-act="conj" data-k="${cj.id}" aria-pressed="${E.tool === 'conjunto' && E.conjunto === cj.id}" title="${esc(cj.detalle || '')}"><b>${esc(cj.nombre)}</b><span>${esc(cj.detalle || '')}</span></button>${cj.id.startsWith('cj-') ? '' : `<button class="btn sm del" data-act="conj-del" data-k="${cj.id}" title="Borrar este conjunto">${ic('trash', 14)}</button>`}</div>`).join('')}</div>
       <button class="btn sm" data-act="conj-guardar" ${p.equipos.length ? '' : 'disabled'}>${ic('save', 14)} Guardar los equipos de esta hoja como conjunto</button>`);
     h += sec('Equipos', `
-      <div class="grid2">${Object.entries(EQUIPOS).map(([k, Q]) => `<button class="li cmp" data-act="eqK" data-k="${k}" aria-pressed="${E.tool === 'equipo' && E.eqK === k}"><i class="sw" style="border-color:${Q.c}"></i><b>${Q.n}</b><em>${p.equipos.filter(e => e.k === k).length || ''}</em></button>`).join('')}</div>
+${[['De referencia', 'Bloques que muestran dónde va cada equipo: se agrandan o achican desde sus esquinas.', ([, Q]) => !Q.real], ['Con medida real', 'Cajas y bandejas a su medida (modelos del catálogo).', ([, Q]) => Q.real]].map(([t, ayuda, filtro]) => `<div class="sub">${t}</div><p class="mut">${ayuda}</p>
+      <div class="grid2">${Object.entries(EQUIPOS).filter(filtro).map(([k, Q]) => `<button class="li cmp" data-act="eqK" data-k="${k}" aria-pressed="${E.tool === 'equipo' && E.eqK === k}"><i class="sw" style="border-color:${Q.c}"></i><b>${Q.n}</b><em>${p.equipos.filter(e => e.k === k).length || ''}</em></button>`).join('')}</div>`).join('')}
       <label class="f"><span>Cantidad de inversores</span><input class="in" data-campo="cantInv" value="${p.cantInv || 1}" inputmode="numeric"></label>
-      <label class="chk"><input type="checkbox" data-campo="hoja.verMedidas" ${p.verMedidas ? 'checked' : ''}> Mostrar las medidas de los equipos (ancho × profundidad, mm)</label>
+      <label class="chk"><input type="checkbox" data-campo="hoja.verMedidas" ${p.verMedidas ? 'checked' : ''}> Mostrar las medidas de los equipos con medida real (mm)</label>
       ${s ? '' : `${rango('hoja.tamSimb', Math.round((p.tamSimb || 1) * 100), 20, 400, 'Tamaño de los equipos y textos', ' %')}<p class="mut">Esta hoja no tiene escala: los equipos salen con un tamaño aproximado. Agrándalos o achícalos aquí (todos) o uno por uno arrastrando las esquinas del equipo seleccionado.</p>`}`);
     const largos = Object.keys(CANAL).map(k => [k, p.rutas.filter(r => r.k === k).reduce((t, r) => t + largoM(p, r.pts), 0)]);
     h += sec('Canalización', `
@@ -840,11 +843,13 @@ function propsSel(s, { num, rango, seg }) {
   if (s.t === 'equipo') { const e = p.equipos.find(x => x.id === s.id); if (!e) return '';
     return `<label class="f"><span>Tipo</span><select class="in" data-campo="eq.k">${Object.entries(EQUIPOS).map(([k, Q]) => `<option value="${k}" ${e.k === k ? 'selected' : ''}>${Q.n}</option>`).join('')}</select></label>
       ${e.k === 'inv' ? `<dl class="dl"><dt>Modelo</dt><dd>${esc(inversorDe(p).modelo)}</dd></dl><p class="mut">El modelo se elige en el paso Strings.</p>` : MODELOS_EQUIPO(e.k).length ? `<label class="f"><span>Modelo</span><select class="in" data-campo="eq.modelo"><option value="">Genérico</option>${MODELOS_EQUIPO(e.k).map(x => `<option value="${esc(x.sku || x.item)}" ${e.modelo === (x.sku || x.item) ? 'selected' : ''}>${esc(x.item)}</option>`).join('')}</select></label>` : ''}
-      ${(() => { const base = medidaEquipo(p, { ...e, mw: 0, mh: 0 }); return `<div class="row"><label class="f mini"><span>Ancho</span><span class="fi"><input class="in" data-campo="eq.mw" value="${e.mw || ''}" placeholder="${fmt(base.w, 0)}" inputmode="numeric"><em>mm</em></span></label>
+      ${e.k === 'libre' ? `<label class="f"><span>Texto adentro</span><textarea class="in" rows="2" data-campo="eq.txt" placeholder="Escribe lo que es (Enter = otra línea)">${esc(e.txt || '')}</textarea></label>
+        <div class="f"><span>Color</span><div class="colores">${['#FFFFFF', '#FFE14D', '#FF3DFF', '#00E5FF', '#52C892', '#FF2B2B', '#3D6BFF', '#FF8A00'].map(c => `<button data-act="set" data-campo="eq.color" data-v="${c}" aria-pressed="${(e.color || '#FFFFFF') === c}" style="--c:${c}" title="${c}"></button>`).join('')}</div></div>` : ''}
+      ${!EQUIPOS[e.k]?.real ? `<p class="mut">Equipo de referencia: arrastra sus esquinas para agrandarlo o achicarlo.</p>${e.mw || e.f ? '<button class="btn sm" data-act="eq-tam0">Volver a su tamaño inicial</button>' : ''}` : (() => { const base = medidaEquipo(p, { ...e, mw: 0, mh: 0 }); return `<div class="row"><label class="f mini"><span>Ancho</span><span class="fi"><input class="in" data-campo="eq.mw" value="${e.mw || ''}" placeholder="${fmt(base.w, 0)}" inputmode="numeric"><em>mm</em></span></label>
         <label class="f mini"><span>${vistaEq(p) === 'elevacion' ? 'Alto' : 'Profundidad'}</span><span class="fi"><input class="in" data-campo="eq.mh" value="${e.mh || ''}" placeholder="${fmt(base.h, 0)}" inputmode="numeric"><em>mm</em></span></label></div>
-        <p class="mut">Medida ${vistaEq(p) === 'elevacion' ? 'de frente' : 'en planta'}${RECT_LIBRE.has(e.k) ? ' (también arrastrando sus esquinas)' : ''}. Vacío = la del ${e.k === 'inv' || e.modelo ? 'modelo' : 'símbolo'} (${fmt(base.w, 0)} × ${fmt(base.h, 0)} mm).</p>`; })()}
-      <label class="chk"><input type="checkbox" data-campo="eq.verMed" ${p.verMedidas && e.verMed !== false ? 'checked' : ''}> Mostrar sus medidas en el dibujo</label>
-      ${escala(p) ? '' : rango('eq.f', Math.round((e.f || 1) * 100), 10, 500, 'Tamaño en el dibujo (sin escala)', ' %')}
+        <p class="mut">Medida real ${vistaEq(p) === 'elevacion' ? 'de frente' : 'en planta'}${rectLibre(e.k) ? ' (también arrastrando sus esquinas)' : ''}. Vacío = la del ${e.modelo ? 'modelo' : 'símbolo'} (${fmt(base.w, 0)} × ${fmt(base.h, 0)} mm).</p>
+        <label class="chk"><input type="checkbox" data-campo="eq.verMed" ${p.verMedidas && e.verMed !== false ? 'checked' : ''}> Mostrar sus medidas en el dibujo</label>
+        ${escala(p) ? '' : rango('eq.f', Math.round((e.f || 1) * 100), 10, 500, 'Tamaño en el dibujo (sin escala)', ' %')}`; })()}
       ${e.k === 'bat' ? `<div class="f"><span>Módulos de batería</span><span class="row">${stepper('eq.mods', e.mods || 3)} módulos (de frente se apilan)</span></div>` : ''}
       <label class="chk"><input type="checkbox" data-campo="eq.etqVer" ${!(e.etq && e.etq.oculta) ? 'checked' : ''}> Mostrar su etiqueta</label>
       <label class="f"><span>Rótulo</span><input class="in" data-campo="eq.rotulo" value="${esc(e.rotulo || '')}" placeholder="${esc(EQUIPOS[e.k].n)}"></label>${rango('eq.ang', Math.round(e.ang || 0), -180, 180, 'Giro')}${del}`; }
@@ -856,7 +861,7 @@ function propsSel(s, { num, rango, seg }) {
       ${r.k === 'riel' && !escala(p) ? num('ruta.mManual', r.mManual ?? '', { l: 'Largo real del riel', u: 'm' }) : ''}
       <dl class="dl"><dt>Largo</dt><dd>${escala(p) ? fmt(largoM(p, r.pts), 2) + ' m' : r.mManual ? fmt(r.mManual, 2) + ' m (escrito)' : '— (sin escala)'}</dd><dt>Vértices</dt><dd>${r.pts.length}</dd></dl><p class="mut">Arrastra los cuadros azules para mover vértices.</p>${del}`; }
   if (s.t === 'etq') { const ow = duenoEtq(s); if (!ow) return ''; const et = ow.etq || {};
-    const txt = s.of === 'equipo' ? (ow.rotulo || '') : (ow.etqTxt || ''), ph = s.of === 'equipo' ? EQUIPOS[ow.k]?.n : s.of === 'string' ? `String ${p.strings.indexOf(ow) + 1}` : CANAL[ow.k]?.corto;
+    const txt = s.of === 'equipo' ? (ow.rotulo || '') : (ow.etqTxt || ''), ph = s.of === 'incl' || s.of === 'inclb' ? 'Inclinación (ej: 15º)' : s.of === 'equipo' ? EQUIPOS[ow.k]?.n : s.of === 'string' ? `String ${p.strings.indexOf(ow) + 1}` : CANAL[ow.k]?.corto;
     return `<label class="f"><span>Texto</span><input class="in" data-campo="etq.txt" value="${esc(txt)}" placeholder="${esc(ph || '')}"></label>
       ${rango('etq.tam', Math.round((et.tam || 1) * 100), 40, 400, 'Tamaño', ' %')}
       <label class="chk"><input type="checkbox" data-campo="etq.fijo" ${et.fijo ? 'checked' : ''}> Fija (no se mueve con el mouse)</label>
@@ -866,6 +871,10 @@ function propsSel(s, { num, rango, seg }) {
   if (s.t === 'fig') { const f = (p.figPaneles || []).find(x => x.id === s.id); if (!f) return '';
     return `${f.pts.length === 4 ? seg('fig.tipo', f.tipo, [['grid', 'Cuadrícula'], ['poly', 'Figura entera']]) : ''}
       ${f.tipo === 'grid' ? `<div class="f"><span>Paneles</span><span class="row">${stepper('fig.f', f.f)} filas × ${stepper('fig.c', f.c)} col.</span></div>` : ''}
+      <label class="chk"><input type="checkbox" data-campo="fig.contar" ${f.contar ? 'checked' : ''}> Sumar estos paneles al proyecto</label>
+      ${f.contar ? `${num('fig.n', f.n ?? '', { l: 'Cantidad de paneles', u: 'pan.' }, `placeholder="${f.tipo === 'grid' ? (f.f || 1) * (f.c || 1) + ' (filas × columnas)' : 'escríbela'}"`)}
+        <label class="f"><span>Panel</span><select class="in" data-campo="fig.panel">${PANELES.map(x => `<option value="${x.id}" ${(f.panel || p.panel) === x.id ? 'selected' : ''}>${x.n}</option>`).join('')}</select></label>
+        <dl class="dl"><dt>Se suman</dt><dd>${nPanelesFig(f)} paneles</dd></dl>` : ''}
       <p class="mut">Arrastra los cuadros azules para ajustar las esquinas (en perspectiva también).</p>${del}`; }
   if (s.t === 'texto') { const t = p.textos.find(x => x.id === s.id); if (!t) return '';
     return `<label class="f"><span>Texto</span><input class="in" data-campo="tx.s" value="${esc(t.s)}"></label>${escala(p) ? num('tx.h', fmt((t.h || 400) / 1000, 2), { l: 'Altura', u: 'm' }) : rango('tx.f', Math.round((t.f || 1) * 100), 20, 600, 'Tamaño', ' %')}${del}`; }
@@ -941,11 +950,12 @@ document.addEventListener('click', ev => {
     case 'etq-sel': E.sel = { t: 'etq', of: b.dataset.of, id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'sel-obj': E.sel = { t: b.dataset.t, id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'etq-ojo': { const ow = listaEtq(b.dataset.of).find(x => x.id === b.dataset.id); if (!ow) break; antes(); const et = (ow.etq ||= {}); et.oculta = !et.oculta; if (!et.oculta && E.sel && E.sel.id === ow.id) E.sel = null; despues(); break; }
-    case 'etq-todas': { antes(); const k2 = b.dataset.k; [...p.equipos, ...p.rutas, ...p.strings].forEach(x => { const et = (x.etq ||= {}); if (k2 === 'ver') delete et.oculta; if (k2 === 'quitar') et.oculta = true; if (k2 === 'lugar') { delete et.dx; delete et.dy; } }); E.sel = null; despues(); break; }
+    case 'etq-todas': { antes(); const k2 = b.dataset.k; [...p.equipos, ...p.rutas, ...p.strings, ...p.roofs, ...p.roofs.flatMap(r => r.bloques || [])].forEach(x => { const et = (x.etq ||= {}); if (k2 === 'ver') delete et.oculta; if (k2 === 'quitar') et.oculta = true; if (k2 === 'lugar') { delete et.dx; delete et.dy; } }); E.sel = null; despues(); break; }
     case 'hoja-renombrar': renombrarHoja(); break;
     case 'hoja-duplicar': duplicarHoja(); break;
     case 'etq-reset': { const ow = duenoEtq(E.sel); if (ow && ow.etq) { antes(); delete ow.etq.dx; delete ow.etq.dy; despues(); } break; }
     case 'etq-quitar': borrarSel(); break;
+    case 'eq-tam0': { const e = E.sel && p.equipos.find(x => x.id === E.sel.id); if (e) { antes(); delete e.mw; delete e.mh; delete e.f; despues(); } break; }
     case 'cota-escala': { const c = E.sel && p.cotas.find(x => x.id === E.sel.id), m = c && parseNum(c.txt); if (!(m > 0)) break; antes(); p.ref = { a: [...c.a], b: [...c.b], mm: m * 1000 }; p.sinEscala = false; delete c.txt; log(`Escala desde la cota: 1 px = ${fmt(escala(p), 1)} mm`); despues(); render(); toast('La hoja ya tiene escala: ahora los equipos salen a su tamaño real'); break; }
     case 'str-new': antes(); nuevoString(); E.tool = 'str'; despues(); render(); break;
     case 'str-act': E.strAct = b.dataset.id; E.tool = 'str'; panel(); dibujarTodo(); break;
@@ -987,6 +997,8 @@ function aplicar(campo, v, desdeChange, vivo) {
   else if (pre === 'zona') { const z = obj.zona(); if (!z) return; z[k] = k === 'ang' ? +v : v; }
   else if (pre === 'eq') { const e = obj.eq(); if (!e) return;
     if (k === 'etqVer') { (e.etq ||= {}).oculta = !v; }
+    else if (k === 'txt') { const t = String(v).trim(); if (t) e.txt = t; else delete e.txt; }
+    else if (k === 'color') e.color = v;
     else if (k === 'mw' || k === 'mh') { if (n > 0) e[k] = Math.round(n); else delete e[k]; }
     else if (k === 'f') e.f = Math.max(.1, +v / 100);
     else if (k === 'verMed') { if (v) { delete e.verMed; if (!p.verMedidas) { p.verMedidas = true; p.equipos.forEach(x => { if (x !== e) x.verMed = false; }); } } else e.verMed = false; }
@@ -1002,7 +1014,9 @@ function aplicar(campo, v, desdeChange, vivo) {
   else if (pre === 'ruta' && k === 'etqVer') { const rt = obj.ruta(); if (!rt) return; (rt.etq ||= {}).oculta = !v; }
   else if (pre === 'eq' && k === 'etqVer') { const e = obj.eq(); if (!e) return; (e.etq ||= {}).oculta = !v; }
   else if (pre === 'ruta') { const rt = obj.ruta(); if (!rt) return; if (k === 'mManual') { if (n > 0) rt.mManual = n; else delete rt.mManual; } else rt[k] = v; }
-  else if (pre === 'fig') { const f = (p.figPaneles || []).find(x => s && x.id === s.id); if (!f) return; if (k === 'tipo') f.tipo = v; else f[k] = Math.max(1, Math.round(+v || 1)); }
+  else if (pre === 'fig') { const f = (p.figPaneles || []).find(x => s && x.id === s.id); if (!f) return;
+    if (k === 'tipo') f.tipo = v; else if (k === 'contar') { if (v) f.contar = true; else delete f.contar; } else if (k === 'panel') f.panel = v;
+    else if (k === 'n') { if (n != null && n >= 0) f.n = Math.round(n); else delete f.n; } else f[k] = Math.max(1, Math.round(+v || 1)); }
   else if (pre === 'riel') { const tgt = k.startsWith('b') ? bloqueSel() : r; if (!tgt) return; const kk = k.replace(/^b/, '').toLowerCase(); tgt.rieles ||= {}; if (kk === 'modo') { if (v === 'hereda') delete tgt.rieles; else tgt.rieles.modo = v; } else { if (n > 0) tgt.rieles.d = n * 10; else delete tgt.rieles.d; } }
   else if (pre === 'tx') { const t = obj.tx(); if (!t) return; if (k === 'h') t.h = (n || .4) * 1000; else if (k === 'f') t.f = Math.max(.1, +v / 100); else t.s = v; }
   else if (pre === 'norte') { p.norte.ang = +v; }

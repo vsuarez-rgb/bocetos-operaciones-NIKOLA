@@ -24,7 +24,9 @@ export const ZONAS = {
   pas: { n: 'Pasillo de mantención', corto: 'Pasillo', d: 'Franja libre para caminar sobre el techo.', bloquea: true, c: '#FFD166' }
 };
 
-/* Símbolos de equipos (paso Equipos y canalización). w/h = medida en planta (ancho × prof) en mm,
+/* Equipos con real: true se dibujan a su medida real (cajas, bandeja); los demás son bloques de referencia
+   que muestran dónde va cada equipo y se agrandan o achican libremente desde sus esquinas.
+   Símbolos de equipos (paso Equipos y canalización). w/h = medida en planta (ancho × prof) en mm,
    por defecto; cada equipo puede elegir un modelo de OTROS_EMAT (equipos-emat.js) con su medida real.
    El inversor toma la medida del modelo elegido en el paso Strings. */
 export const EQUIPOS = {
@@ -36,12 +38,13 @@ export const EQUIPOS = {
   dcdc: { n: 'Módulo DC/DC', l: 'DC', w: 670, h: 150, a: 240, c: '#FF3DFF', huawei: true },
   sg: { n: 'SmartGuard', l: 'SG', w: 355, h: 150, a: 485, c: '#FF3DFF', huawei: true },
   sm: { n: 'Smart Power Sensor', l: 'SM', w: 72, h: 80, a: 100, c: '#35D0FF' },
-  cdj: { n: 'Caja de derivación', l: 'CD', w: 100, h: 50, a: 100, c: '#FF3DFF' },
-  cp: { n: 'Caja de paso', l: '', w: 150, h: 75, a: 150, c: '#00E5FF' },
+  cdj: { n: 'Caja de derivación', l: 'CD', w: 100, h: 50, a: 100, c: '#FF3DFF', real: true },
+  cp: { n: 'Caja de paso', l: '', w: 150, h: 75, a: 150, c: '#00E5FF', real: true },
   ev: { n: 'Cargador EV', l: 'EV', w: 180, h: 145, a: 335, c: '#52C892' },
   bc: { n: 'Bomba de calor', l: 'BC', w: 1000, h: 400, a: 800, c: '#2BB3A3' },
-  bpc: { n: 'Bandeja porta conductores', l: '', w: 1500, h: 100, a: 100, c: '#FFE14D' },
-  marca: { n: 'Ubicación propuesta', l: '', w: 800, h: 60, a: 800, c: '#FF2B2B' }
+  bpc: { n: 'Bandeja porta conductores', l: '', w: 1500, h: 100, a: 100, c: '#FFE14D', real: true },
+  marca: { n: 'Ubicación propuesta', l: '', w: 800, h: 60, a: 800, c: '#FF2B2B' },
+  libre: { n: 'Equipo libre (con texto)', l: '', w: 400, h: 200, a: 300, c: '#FFFFFF', libre: true }
 };
 /* Modelos que se pueden elegir para cada símbolo (los que tienen medida). */
 export const MODELOS_EQUIPO = k => OTROS_EMAT.filter(x => x.k === (k === 'bpc' ? 'bandeja' : k) && x.ancho);

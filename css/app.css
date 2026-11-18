@@ -493,3 +493,8 @@ select.fi-ctl { background: #1C2228; border-color: var(--ed-line); cursor: point
 .pop-bl-t b { font: 700 13px var(--f-disp); color: var(--nk-amarillo); } .pop-bl-t span { color: var(--ed-mut); flex: 1; }
 .pop-bl-t button { background: none; border: 0; color: var(--ed-mut); cursor: pointer; display: inline-flex; padding: 3px; } .pop-bl-t button:hover { color: var(--ed-ink); }
 .pop-bl-b { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+
+/* Colores del equipo libre */
+.colores { display: flex; flex-wrap: wrap; gap: 5px; }
+.colores button { width: 24px; height: 24px; border-radius: 6px; border: 2px solid var(--ed-line); background: var(--c); cursor: pointer; padding: 0; }
+.colores button[aria-pressed="true"] { border-color: var(--nk-amarillo); box-shadow: 0 0 0 2px rgba(250,183,4,.35); }
