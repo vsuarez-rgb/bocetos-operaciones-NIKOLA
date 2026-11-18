@@ -17,6 +17,7 @@ Es un sitio **estático**: HTML, CSS y JavaScript sin compilación. No hay que i
 | 5 · Strings | Se asignan paneles a cada MPPT con clic o ventana. Calcula Voc, Voc en frío, Vmp, potencia y caída de tensión, y avisa si algo se sale del rango del inversor. |
 | 6 · Equipos y canalización | Inversor, tableros, medidor, baterías, etc. a escala, y recorridos CC / CA / subterráneo / tierra con su largo. |
 | 7 · Lámina | Cajetín, revisiones, notas, protecciones. Imprimir / PDF en A1, exportar DXF (mm) o SVG. |
+| Informe | Páginas armadas con bloques que se mueven y cambian de tamaño: texto (con {Campos} de la ficha o del DWG), imagen, vista de cualquier hoja de diseño, tablas, unilineal y láminas A1 (modo plano). Tamaño y orientación por página. Plantillas incluidas a partir de los informes reales (Propuesta de diseño, Planos contratista, Láminas A1) y plantillas propias guardadas para reutilizar. PDF de todas las páginas, cada una con su tamaño. |
 
 ## Atajos (estilo AutoCAD)
 

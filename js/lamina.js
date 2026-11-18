@@ -180,7 +180,12 @@ async function imagenPlanta(p, R, SI, vw, vh) {
 }
 
 /* ---------- Lámina 01 y 02 ---------- */
-async function lamina01(p, R, SI) {
+/* Solo el diagrama unilineal, como SVG independiente (bloque "Unilineal" del informe) */
+export function unilinealSVG(p, R, SI) {
+  const D = datos(p, R, SI), w = 262, h = 314;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%"><rect width="${w}" height="${h}" fill="#fff"/>${unilineal(p, D, SI, 0, 4, w, h - 4)}</svg>`;
+}
+export async function lamina01(p, R, SI) {
   const D = datos(p, R, SI), vx = 400, vy = M + 2, vw = W - M - 2 - vx, vh = 340;
   const img = await imagenPlanta(p, R, SI, vw, vh);
   let s = marco();
@@ -194,7 +199,7 @@ async function lamina01(p, R, SI) {
   s += franja(p, D, '01');
   return svgHoja(s);
 }
-async function lamina02(p, R, SI) {
+export async function lamina02(p, R, SI) {
   const D = datos(p, R, SI), I = D.inv; let s = marco();
   const filasCC = SI.lista.map(x => ['A', x.nombre, x.P.tipo, x.P.wp, x.P.imp, x.P.voc, x.P.vmp, x.P.isc, '-', x.n, fmt(x.voc, 2), fmt(x.P.imp, 2), fmt(x.pw, 0), '-', '-', `${I.vmin} - ${I.vmax}`, I.isc, x.st.mppt, fmt(x.pw, 0), 'EMT\nFlex. Met.', '32\n32', 'PV1-F', x.seccion, 48, fmt(x.largo, 0), fmt(x.dv, 2), fmt(x.dvp, 2)]);
   while (filasCC.length < 4) filasCC.push(['', `A.${filasCC.length + 1}.1`, 'Libre', ...Array(24).fill('-')]);

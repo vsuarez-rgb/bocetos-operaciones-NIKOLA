@@ -10,12 +10,14 @@ import { dibujar, cargarImg, imgDe, colorString, dibujarNorte } from './render.j
 import { nuevoTecho, guardar } from './store.js';
 import { vistaLamina, panelLamina, accionLamina } from './lamina.js';
 import { vistaFicha, panelFicha, accionFicha } from './ficha/ficha.js';
+import { TIPOS_HOJA, nuevaHoja, vistaHoja } from './hojas.js';
+import { vistaInforme, panelInforme, accionInforme } from './informe/informe.js';
 
 export const PASOS = [
   ['ficha', 'Ficha', 'folder'], ['escala', 'Escala', 'ruler'], ['techos', 'Techos', 'roof'], ['elementos', 'Elementos', 'block'], ['paneles', 'Paneles', 'grid'],
-  ['strings', 'Strings', 'string'], ['equipos', 'Equipos y canalización', 'plug'], ['lamina', 'Lámina', 'sheet']
+  ['strings', 'Strings', 'string'], ['equipos', 'Equipos y canalización', 'plug'], ['lamina', 'Lámina', 'sheet'], ['informe', 'Informe', 'print']
 ];
-const HERR_DEF = { ficha: 'sel', escala: 'ref', techos: 'roof', elementos: 'zona', paneles: 'sel', strings: 'str', equipos: 'sel', lamina: 'sel' };
+const HERR_DEF = { ficha: 'sel', escala: 'ref', techos: 'roof', elementos: 'zona', paneles: 'sel', strings: 'str', equipos: 'sel', lamina: 'sel', informe: 'sel' };
 
 let E = null;          // estado del editor
 
@@ -24,22 +26,9 @@ let E = null;          // estado del editor
    Las demás (canalización, zona de equipos, cargador…) viven en p.hojas, cada una con
    su foto, escala y dibujos. El editor trabaja con E.p = "la hoja activa vista como
    proyecto": las herramientas no cambian; lo que es de la hoja va a la hoja. */
-export const CLAVES_HOJA = ['img', 'w', 'h', 'ref', 'drone', 'roofs', 'zonas', 'strings', 'equipos', 'rutas', 'cotas', 'textos', 'norte', 'sinElementos'];
-export const TIPOS_HOJA = { canalizacion: 'Recorrido de canalización', equipos: 'Zona de equipos', cargador: 'Cargador', empalme: 'Empalme y medidor', otra: 'Otra' };
 const ICONO_HOJA = { principal: 'drone', canalizacion: 'pline', equipos: 'inverter', cargador: 'plug', empalme: 'block', otra: 'crop' };
-export function nuevaHoja(tipo = 'otra', nombre) {
-  return { id: uid('h'), tipo, nombre: nombre || TIPOS_HOJA[tipo] || 'Hoja', img: null, w: 0, h: 0, ref: null, drone: null, roofs: [], zonas: [], strings: [], equipos: [], rutas: [], cotas: [], textos: [], norte: null };
-}
-export function vistaHoja(pr, id) {
-  if (!id) return pr;
-  const hoja = t => (t.hojas || []).find(x => x.id === id);
-  return new Proxy(pr, {
-    get(t, k) { const h = hoja(t); return h && CLAVES_HOJA.includes(k) ? h[k] : t[k]; },
-    set(t, k, v) { const h = hoja(t); if (h && CLAVES_HOJA.includes(k)) h[k] = v; else t[k] = v; return true; }
-  });
-}
 const hojaActiva = () => E.hojaId ? (E.proyecto.hojas || []).find(h => h.id === E.hojaId) : null;
-const pasosVisibles = () => E.hojaId ? PASOS.filter(([k]) => ['ficha', 'escala', 'equipos', 'lamina'].includes(k)) : PASOS;
+const pasosVisibles = () => E.hojaId ? PASOS.filter(([k]) => ['ficha', 'escala', 'equipos', 'lamina', 'informe'].includes(k)) : PASOS;
 const nombrePaso = (k, n) => E.hojaId && k === 'equipos' ? 'Dibujo' : n;
 let alSalir = null;
 
@@ -57,7 +46,7 @@ export function abrirEditor(p, volver) {
   window.addEventListener('resize', onResize);
 }
 export function cerrarEditor() { window.removeEventListener('keydown', teclas); window.removeEventListener('resize', onResize); E = null; }
-const esPagina = () => E && (E.step === 'lamina' || E.step === 'ficha');   // pasos sin canvas
+const esPagina = () => E && (E.step === 'lamina' || E.step === 'ficha' || E.step === 'informe');   // pasos sin canvas
 const onResize = () => { if (E && !esPagina()) { dibujarTodo(); } };
 
 /* ---------- Cambios, deshacer y guardado automático ---------- */
@@ -104,7 +93,7 @@ function render() {
   <div class="ed-body ${esPagina() ? 'es-lamina' : ''}">
     ${esPagina() ? '' : `<aside class="tools" aria-label="Herramientas">${herramientas()}</aside>`}
     <main class="model" id="model">
-      ${E.step === 'lamina' ? `<div id="laminaWrap" class="lamina-wrap"></div>` : E.step === 'ficha' ? `<div id="fichaWrap" class="ficha-wrap"></div>` : `<canvas id="cv" tabindex="0" aria-label="Espacio modelo"></canvas>
+      ${E.step === 'lamina' ? `<div id="laminaWrap" class="lamina-wrap"></div>` : E.step === 'ficha' ? `<div id="fichaWrap" class="ficha-wrap"></div>` : E.step === 'informe' ? `<div id="informeWrap" class="informe-wrap"></div>` : `<canvas id="cv" tabindex="0" aria-label="Espacio modelo"></canvas>
       <div class="ucs">${ic('move', 14)}<span>X</span></div>
       <div class="vctl"><button data-act="zin" title="Acercar">${ic('zoomin', 16)}</button><button data-act="zout" title="Alejar">${ic('zoomout', 16)}</button><button data-act="zext" title="Zoom extensión (Z)">${ic('ext', 16)}</button></div>
       <div class="hint" id="hint"></div>`}
@@ -127,6 +116,7 @@ function render() {
   </div>`}`;
   panel();
   if (E.step === 'lamina') { vistaLamina($('#laminaWrap'), E.proyecto, E.R, E.SI); return; }
+  if (E.step === 'informe') { vistaInforme($('#informeWrap'), E.proyecto, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, panel: () => panel() }); return; }
   if (E.step === 'ficha') { vistaFicha($('#fichaWrap'), E.proyecto, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, panel: () => panel() }); return; }
   const cv = $('#cv');
   cv.addEventListener('pointerdown', down); cv.addEventListener('pointermove', move); cv.addEventListener('pointerup', up);
@@ -144,6 +134,7 @@ function herramientas() {
 }
 function pasoOk(k) {
   const p = E.p, R = E.R || calcular(p);
+  if (k === 'informe') return !!(p.informe && p.informe.paginas && p.informe.paginas.length);
   if (k === 'ficha') return !!(p.ficha && (Object.keys(p.ficha.entradas || {}).length || Object.keys(p.ficha.zonos || {}).length));
   if (k === 'escala') return !!escala(p);
   if (k === 'techos') return p.roofs.some(r => r.closed);
@@ -582,6 +573,7 @@ function dialogoHoja(h) {
 function panel() {
   const el = $('#props'); if (!el || !E) return;
   if (E.step === 'ficha') { el.innerHTML = panelFicha(E.proyecto); return; }
+  if (E.step === 'informe') { el.innerHTML = panelInforme(E.proyecto); return; }
   if (E.step === 'lamina') { el.innerHTML = panelLamina(E.proyecto, E.R, E.SI, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, rerender: () => panel() }); return; }
   const p = E.p, R = E.R, s = escala(p);
   let h = '';
@@ -717,6 +709,7 @@ document.addEventListener('click', ev => {
   if (!E) return; const b = ev.target.closest('[data-act]'); if (!b || b.tagName === 'INPUT') return;
   const a = b.dataset.act, k = b.dataset.k, p = E.p;
   if (E.step === 'ficha' && accionFicha(a, b)) return;
+  if (E.step === 'informe' && accionInforme(a, b)) return;
   if (E.step === 'lamina' && accionLamina(a, b, E.proyecto, () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, () => panel())) return;
   switch (a) {
     case 'salir': guardarYa().then(() => { cerrarEditor(); alSalir && alSalir(); }); break;
