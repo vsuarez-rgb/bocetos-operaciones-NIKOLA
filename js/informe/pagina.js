@@ -10,7 +10,7 @@ import { vistaHoja, resolverHoja, TIPOS_HOJA } from '../hojas.js';
 import { lamina01, lamina02, unilinealSVG } from '../lamina.js';
 import { cargarDatosFicha } from '../ficha/datos.js';
 import { calcularFicha } from '../ficha/motor.js';
-import { medida } from './modelo.js';
+import { medida, esFijo } from './modelo.js';
 
 export const MM = 96 / 25.4;      // px por mm en pantalla (a escala 1)
 
@@ -147,7 +147,7 @@ export async function htmlPagina(pg, ctx) {
   const bloques = [];
   for (const b of pg.bloques || []) {
     let dentro; try { dentro = await interior(b, ctx); } catch (e) { console.error(e); dentro = ctx.editor ? `<div class="bq-vacio">No se pudo dibujar<b>${esc(e.message)}</b></div>` : ''; }
-    bloques.push(`<div class="bq bq-${b.tipo}${b.borde ? ' con-borde' : ''}${ctx.sel === b.id ? ' sel' : ''}" data-b="${b.id}" style="left:${b.x}mm;top:${b.y}mm;width:${b.w}mm;height:${b.h}mm">${dentro}${ctx.editor ? '<i class="bq-h" title="Arrastra para cambiar el tamaño"></i>' : ''}</div>`);
+    bloques.push(`<div class="bq bq-${b.tipo}${b.borde ? ' con-borde' : ''}${ctx.sel === b.id ? ' sel' : ''}${ctx.editor && esFijo(b) ? ' fijo' : ''}" data-b="${b.id}" style="left:${b.x}mm;top:${b.y}mm;width:${b.w}mm;height:${b.h}mm">${dentro}${ctx.editor && !esFijo(b) ? '<i class="bq-h" title="Arrastra para cambiar el tamaño"></i>' : ''}</div>`);
   }
   return `<div class="pg" data-pg="${pg.id}" style="width:${W}mm;height:${H}mm">${bloques.join('')}</div>`;
 }

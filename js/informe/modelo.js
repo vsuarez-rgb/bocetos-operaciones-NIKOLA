@@ -147,3 +147,5 @@ export const PAQUETES = [
 export const paginaEnBlanco = (tamano = 'A4', orientacion = 'vertical', seccion = 'informe') => ({ id: uid('pg'), nombre: 'Página en blanco', tamano, orientacion, seccion, bloques: [] });
 export const SECCIONES = { informe: 'Informe', planos: 'Láminas y planos' };
 export const seccionDe = pg => pg.seccion || ((pg.bloques || []).some(b => b.tipo === 'lamina') || ['A1', 'A2'].includes(pg.tamano) ? 'planos' : 'informe');
+/* Bloques fijos: no se mueven ni cambian de tamaño con el mouse (la lámina A1 que llena la página lo es por defecto) */
+export const esFijo = b => b.fijo ?? (b.tipo === 'lamina');

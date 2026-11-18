@@ -4,7 +4,7 @@
    (modo plot: fondo blanco, colores de impresión).
    ========================================================================== */
 import { ZONAS, EQUIPOS, CANAL, COLORES_STRING } from './catalogo.js';
-import { zonaPoly, escala, largoM, medidaEquipo, escalaSimbolos } from './geom.js';
+import { zonaPoly, escala, largoM, tamEquipoPx, altoTextoPx } from './geom.js';
 import { hull, centroid, lerp, dist, fmt } from './util.js';
 
 const imgs = new Map();
@@ -138,8 +138,19 @@ export function dibujar(g, p, V, o) {
   // Equipos (a escala, con rótulo al costado como en los planos)
   if (vis('equipos')) p.equipos.forEach(e => {
     const E = EQUIPOS[e.k] || EQUIPOS.inv, c = T([e.x, e.y]), sel = o.sel && o.sel.t === 'equipo' && o.sel.id === e.id;
-    const md = medidaEquipo(p, e), sE = escalaSimbolos(p); let w = md.w / sE * k, h = md.h / sE * k; w = Math.max(w, 12 * u); h = Math.max(h, 12 * u);
+    const tp = tamEquipoPx(p, e), md = tp.md; let w = tp.w * k, h = tp.h * k; w = Math.max(w, 12 * u); h = Math.max(h, 12 * u);
     g.save(); g.translate(c[0], c[1]); g.rotate((e.ang || 0) * Math.PI / 180);
+    // Medidas del equipo (ancho × profundidad en mm), como cotas pegadas al símbolo
+    if (p.verMedidas && e.verMed !== false) {
+      const col = plot ? '#111' : '#FAB704', off = 9 * u, tk = 3 * u, fs = 9.5 * u;
+      g.strokeStyle = col; g.lineWidth = .8 * u; g.beginPath();
+      g.moveTo(-w / 2, -h / 2 - off); g.lineTo(w / 2, -h / 2 - off); g.moveTo(-w / 2, -h / 2 - off - tk); g.lineTo(-w / 2, -h / 2 - 2 * u); g.moveTo(w / 2, -h / 2 - off - tk); g.lineTo(w / 2, -h / 2 - 2 * u);
+      g.moveTo(w / 2 + off, -h / 2); g.lineTo(w / 2 + off, h / 2); g.moveTo(w / 2 + 2 * u, -h / 2); g.lineTo(w / 2 + off + tk, -h / 2); g.moveTo(w / 2 + 2 * u, h / 2); g.lineTo(w / 2 + off + tk, h / 2);
+      g.stroke();
+      [[-w / 2, -h / 2 - off], [w / 2, -h / 2 - off], [w / 2 + off, -h / 2], [w / 2 + off, h / 2]].forEach(q => { g.beginPath(); g.moveTo(q[0] - 2 * u, q[1] + 2 * u); g.lineTo(q[0] + 2 * u, q[1] - 2 * u); g.stroke(); });
+      texto(g, `${fmt(md.w, 0)}`, 0, -h / 2 - off - 2 * u, { size: fs, color: col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' });
+      g.save(); g.translate(w / 2 + off + 2 * u, 0); g.rotate(Math.PI / 2); texto(g, `${fmt(md.h, 0)}`, 0, 0, { size: fs, color: col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); g.restore();
+    }
     g.fillStyle = plot ? '#fff' : 'rgba(10,20,28,.8)'; g.fillRect(-w / 2, -h / 2, w, h);
     g.lineWidth = 1.4 * u; g.strokeStyle = plot && E.c === '#FFFFFF' ? '#222' : E.c; g.strokeRect(-w / 2, -h / 2, w, h);
     if (e.k === 'inv') { g.beginPath(); g.moveTo(-w / 2, h / 2); g.lineTo(w / 2, -h / 2); g.stroke(); g.beginPath(); g.moveTo(-w * .38, -h * .2); g.quadraticCurveTo(-w * .28, -h * .42, -w * .18, -h * .2); g.quadraticCurveTo(-w * .08, 0, w * .02, -h * .2); g.stroke(); g.beginPath(); g.moveTo(w * .05, h * .3); g.lineTo(w * .38, h * .3); g.stroke(); }
@@ -168,12 +179,12 @@ export function dibujar(g, p, V, o) {
       g.save(); g.translate(m[0] - nx * 1.2, m[1] - ny * 1.2); g.rotate(rot); texto(g, txt, 0, -2 * u, { size: 11.5 * u, color: plot ? '#111' : col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); g.restore();
     };
     if (p.ref && !plot && (o.step === 'escala' || o.verRef)) cota(p.ref.a, p.ref.b, p.ref.mm ? `${fmt(p.ref.mm / 1000, 2)} m · REF` : '? m', '#FAB704', true);
-    p.cotas.forEach(ct => { const sel = o.sel && o.sel.t === 'cota' && o.sel.id === ct.id; cota(ct.a, ct.b, s ? `${fmt(dist(ct.a, ct.b) * s / 1000, 2)} m` : '?', sel ? '#FAB704' : (plot ? '#111' : '#FAB704')); if (sel) grips(g, [T(ct.a), T(ct.b)]); });
+    p.cotas.forEach(ct => { const sel = o.sel && o.sel.t === 'cota' && o.sel.id === ct.id; cota(ct.a, ct.b, textoCota(p, ct), sel ? '#FAB704' : (plot ? '#111' : '#FAB704')); if (sel) grips(g, [T(ct.a), T(ct.b)]); });
   }
 
   // Textos (alto en mm reales, como TEXT de AutoCAD)
   if (vis('textos')) p.textos.forEach(tx => {
-    const q = T(tx.p), size = s ? Math.max(9, (tx.h || 400) / s * k) : 14, sel = o.sel && o.sel.t === 'texto' && o.sel.id === tx.id;
+    const q = T(tx.p), size = Math.max(plot ? 4 : 7, altoTextoPx(p, tx) * k), sel = o.sel && o.sel.t === 'texto' && o.sel.id === tx.id;
     texto(g, tx.s, q[0], q[1], { size, color: plot ? '#111' : (tx.c || '#fff'), halo: plot ? null : 'rgba(0,0,0,.7)' });
     if (sel) { g.font = `400 ${size}px 'Archivo Narrow', Arial`; const w = g.measureText(tx.s).width; g.strokeStyle = '#FAB704'; g.setLineDash([4, 3]); g.strokeRect(q[0] - 3, q[1] - size, w + 6, size + 5); g.setLineDash([]); grips(g, [q]); }
   });
@@ -184,6 +195,11 @@ export function dibujar(g, p, V, o) {
   if (o.temp) o.temp(g, T);
 }
 
+/* Texto de una cota: el escrito a mano (sirve en hojas sin escala) o el largo medido */
+export function textoCota(p, ct) {
+  if (ct.txt) return /^[\d.,]+$/.test(ct.txt.trim()) ? `${ct.txt.trim()} m` : ct.txt;
+  const s = escala(p); return s ? `${fmt(dist(ct.a, ct.b) * s / 1000, 2)} m` : '?';
+}
 export function grips(g, pts) { pts.forEach(q => { g.fillStyle = '#3D7BFF'; g.fillRect(q[0] - 4, q[1] - 4, 8, 8); g.strokeStyle = '#fff'; g.lineWidth = 1; g.strokeRect(q[0] - 4, q[1] - 4, 8, 8); }); }
 
 export function dibujarNorte(g, c, angDeg, L, plot, sel) {

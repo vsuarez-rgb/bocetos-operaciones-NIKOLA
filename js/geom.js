@@ -19,10 +19,24 @@ export const bajaDe = r => r.baja || 'abajo';
    (la foto mide unos 6 m de ancho) para que los símbolos se vean de un tamaño razonable. */
 export const escalaSimbolos = p => escala(p) || (p.w ? 6000 / p.w : 10);
 export function medidaEquipo(p, e) {
+  if (e.mw > 0 && e.mh > 0) return { w: e.mw, h: e.mh, modelo: null, propia: true };      // medida escrita a mano (p. ej. la caja de derivación real)
   if (e.k === 'inv') { const I = inversorDe(p); return { w: I.ancho || EQUIPOS.inv.w, h: I.prof || EQUIPOS.inv.h, modelo: I.modelo }; }
   const M = e.modelo && OTROS_EMAT.find(x => (x.sku || x.item) === e.modelo);
   if (M && M.ancho) return { w: M.ancho, h: M.prof || M.alto, modelo: M.modelo };
   const Q = EQUIPOS[e.k] || EQUIPOS.inv; return { w: Q.w, h: Q.h, modelo: null };
+}
+/* Tamaño de un equipo en px de la foto. Con escala es el real; sin escala es aproximado y se puede
+   agrandar o achicar: el de toda la hoja (p.tamSimb) por el de cada equipo (e.f). */
+export function tamEquipoPx(p, e) {
+  const md = medidaEquipo(p, e), s = escala(p);
+  if (s) return { w: md.w / s, h: md.h / s, md };
+  const f = (p.tamSimb || 1) * (e.f || 1), sE = escalaSimbolos(p);
+  return { w: md.w / sE * f, h: md.h / sE * f, md };
+}
+/* Alto de un texto en px de la foto: en mm reales si hay escala; si no, relativo al ancho de la foto */
+export function altoTextoPx(p, t) {
+  const s = escala(p);
+  return s ? (t.h || 400) / s : (p.w || 1000) / 70 * (t.f || 1) * (p.tamSimb || 1);
 }
 /* Protección normalizada inmediatamente superior a una corriente. */
 const STD = [6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400];

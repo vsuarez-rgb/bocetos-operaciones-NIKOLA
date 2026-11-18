@@ -13,14 +13,21 @@ import { leerAjuste, guardarAjuste } from '../ajustes.js';
 import { listaHojas, TIPOS_HOJA } from '../hojas.js';
 import { calcular, calcStrings } from '../geom.js';
 import { panelLamina } from '../lamina.js';
-import { TAMANOS, TIPOS_BLOQUE, PLANTILLAS_INCLUIDAS, PAQUETES, SECCIONES, seccionDe, medida, copiarPagina, nuevoBloque, paginaEnBlanco } from './modelo.js';
+import { TAMANOS, TIPOS_BLOQUE, PLANTILLAS_INCLUIDAS, PAQUETES, SECCIONES, seccionDe, medida, copiarPagina, nuevoBloque, paginaEnBlanco, esFijo } from './modelo.js';
 import { htmlPagina, datosInforme, CSS_PAGINA, MM, olvidarVistas, imagenHoja } from './pagina.js';
 
-const S = { p: null, el: null, cb: {}, pag: null, sel: null, zoom: null, datos: null, mias: [], gen: 0, ventanas: {}, encuadre: null };
+/* plantilla: { pg, id, mia } cuando se está editando una plantilla (no una página del proyecto) */
+const S = { p: null, el: null, cb: {}, pag: null, sel: null, zoom: null, datos: null, mias: [], editadas: {}, plantilla: null, gen: 0, ventanas: {}, encuadre: null };
 const informe = () => (S.p.informe ||= { paginas: [] });
-const pagAct = () => informe().paginas.find(x => x.id === S.pag) || null;
+const pagAct = () => S.plantilla ? S.plantilla.pg : informe().paginas.find(x => x.id === S.pag) || null;
 const bloqueAct = () => pagAct()?.bloques.find(b => b.id === S.sel) || null;
-const cambio = () => { S.cb.cambio && S.cb.cambio(); };
+/* Plantillas incluidas, con los cambios que les haya hecho la persona (guardados en el navegador) */
+const incluida = id => S.editadas[id] || PLANTILLAS_INCLUIDAS.find(x => x.id === id);
+let tPlantilla = null;
+const cambio = () => {
+  if (S.plantilla) { S.plantilla.sucio = true; clearTimeout(tPlantilla); tPlantilla = setTimeout(guardarPlantillaEditada, 400); return; }
+  S.cb.cambio && S.cb.cambio();
+};
 const panel = () => { S.cb.panel && S.cb.panel(); };
 const activo = () => !!S.el?.isConnected;
 
@@ -28,9 +35,9 @@ const activo = () => !!S.el?.isConnected;
 
 /* ---------- Vista principal ---------- */
 export async function vistaInforme(el, p, cb = {}) {
-  S.el = el; S.p = p; S.cb = cb; S.encuadre = null; olvidarVistas();
+  S.el = el; S.p = p; S.cb = cb; S.encuadre = null; S.plantilla = null; olvidarVistas();
   el.innerHTML = '<div class="inf-cargando">Preparando el informe…</div>';
-  [S.datos, S.mias] = await Promise.all([datosInforme(p), leerAjuste('plantillasPagina').then(x => x || [])]);
+  [S.datos, S.mias, S.editadas] = await Promise.all([datosInforme(p), leerAjuste('plantillasPagina').then(x => x || []), leerAjuste('plantillasEditadas').then(x => x || {})]);
   for (const pg of informe().paginas) pg.seccion ||= seccionDe(pg);
   if (!pagAct()) S.pag = informe().paginas[0]?.id || null;
   pintar();
@@ -38,15 +45,19 @@ export async function vistaInforme(el, p, cb = {}) {
 
 async function pintar() {
   const I = informe(), pg = pagAct(), gen = ++S.gen;
-  const grupo = sec => { const ps = I.paginas.filter(x => seccionDe(x) === sec); return `<div class="inf-grupo"><div class="inf-pags-t">${SECCIONES[sec]} <em>${ps.length}</em><button class="inf-mas" data-act="in-nueva" data-k="${sec}" title="Agregar página a ${SECCIONES[sec].toLowerCase()}">${ic('plus', 13)}</button></div>
-      ${ps.map(x => `<button class="inf-pag" data-act="in-pag" data-id="${x.id}" aria-pressed="${x.id === S.pag}"><b>${I.paginas.indexOf(x) + 1}</b><span>${esc(x.nombre || 'Página')}</span><em>${esc(x.tamano)} ${x.orientacion === 'horizontal' ? '↔' : '↕'}</em></button>`).join('') || `<p class="inf-sin">Sin páginas</p>`}</div>`; };
+  const scPrev = S.el.querySelector('.inf-scroll'), scroll = scPrev && S.pagPintada === (S.plantilla ? 'pl:' + S.plantilla.id : S.pag) ? [scPrev.scrollLeft, scPrev.scrollTop] : null;
+  S.pagPintada = S.plantilla ? 'pl:' + S.plantilla.id : S.pag;
+  const grupo = sec => { const ps = I.paginas.filter(x => seccionDe(x) === sec); return `<div class="inf-grupo" data-sec="${sec}"><div class="inf-pags-t">${SECCIONES[sec]} <em>${ps.length}</em><button class="inf-mas" data-act="in-nueva" data-k="${sec}" title="Agregar página a ${SECCIONES[sec].toLowerCase()}">${ic('plus', 13)}</button></div>
+      ${ps.map(x => `<button class="inf-pag" draggable="true" data-act="in-pag" data-id="${x.id}" aria-pressed="${!S.plantilla && x.id === S.pag}" title="Arrastra para cambiar el orden (también a la otra sección)"><b>${I.paginas.indexOf(x) + 1}</b><span>${esc(x.nombre || 'Página')}</span><em>${esc(x.tamano)} ${x.orientacion === 'horizontal' ? '↔' : '↕'}</em></button>`).join('') || `<p class="inf-sin">Sin páginas · arrastra una aquí</p>`}</div>`; };
   S.el.innerHTML = `<div class="inf">
-    <aside class="inf-pags" aria-label="Páginas">${grupo('informe')}${grupo('planos')}</aside>
+    <aside class="inf-pags" aria-label="Páginas">${S.plantilla ? `<div class="inf-pl-ed">${ic('sheet', 15)}<div><b>Editando una plantilla</b><span>${esc(S.plantilla.pg.nombre)}</span></div>
+        <p>Los cambios se guardan solos en la plantilla y se usan en las páginas nuevas que se armen con ella. Las páginas que ya están en los proyectos no cambian.</p>
+        <button class="btn sm pri" data-act="in-pl-salir">Terminar</button>${!S.plantilla.mia && (S.editadas[S.plantilla.id] || S.plantilla.sucio) ? '<button class="btn sm" data-act="in-pl-original">Volver a la original</button>' : ''}</div>` : ''}${grupo('informe')}${grupo('planos')}</aside>
     <section class="inf-lienzo">
       ${pg ? `<div class="inf-bar">
-          <span class="inf-bar-t">${esc(pg.nombre || 'Página')} · ${esc(pg.tamano)} ${pg.orientacion}</span><span class="tb-sp"></span>
+          <span class="inf-bar-t">${S.plantilla ? 'Plantilla: ' : ''}${esc(pg.nombre || 'Página')} · ${esc(pg.tamano)} ${pg.orientacion}</span><span class="tb-sp"></span>
           <span class="inf-add">Agregar:</span>${Object.entries(TIPOS_BLOQUE).map(([k, n]) => `<button class="inf-btn" data-act="in-add" data-k="${k}" title="Agregar ${n.toLowerCase()}">${n.replace(' de hoja de diseño', '').replace(' (modo plano)', '')}</button>`).join('')}
-          <span class="inf-zoom"><button data-act="in-zoom" data-k="-1" title="Alejar">−</button><button data-act="in-zoom" data-k="0" title="Ajustar a la pantalla">${S.zoom ? Math.round(S.zoom * 100) + ' %' : 'Ajustar'}</button><button data-act="in-zoom" data-k="1" title="Acercar">+</button></span>
+          <span class="inf-zoom" title="Ctrl + rueda del mouse también hace zoom"><button data-act="in-zoom" data-k="-1" title="Alejar">−</button><button data-act="in-zoom" data-k="0" title="Ajustar la página a la pantalla" id="infZ">Ajustar</button><button data-act="in-zoom" data-k="1" title="Acercar">+</button></span>
         </div>
         <div class="inf-scroll"><div class="inf-hoja"><div class="pg-esc"><div class="inf-gen">Generando la página…</div></div></div></div>
         <div class="inf-ayuda" hidden></div>`
@@ -59,6 +70,7 @@ async function pintar() {
   if (gen !== S.gen) return;                                   // se pidió otro dibujo mientras tanto
   S.el.querySelector('.pg-esc').innerHTML = html;
   ajustarZoom(); marcarEncuadre();
+  if (scroll) { const sc = S.el.querySelector('.inf-scroll'); if (sc) { sc.scrollLeft = scroll[0]; sc.scrollTop = scroll[1]; } }
 }
 function bienvenida() {
   const paq = sec => PAQUETES.filter(q => q.seccion === sec).map(q => `<button class="inf-paq-b" data-act="in-paquete" data-k="${q.id}"><b>${esc(q.nombre)}</b><span>${esc(q.detalle)}</span></button>`).join('');
@@ -70,10 +82,28 @@ function bienvenida() {
 function ajustarZoom() {
   const pg = pagAct(), sc = S.el.querySelector('.inf-scroll'), hoja = S.el.querySelector('.inf-hoja'), cont = S.el.querySelector('.pg-esc'); if (!pg || !sc || !cont) return;
   const [W, H] = medida(pg);
-  const z = S.zoom || Math.max(.1, Math.min((sc.clientWidth - 48) / (W * MM), (sc.clientHeight - 48) / (H * MM)));
+  const fit = Math.max(.1, Math.min((sc.clientWidth - 48) / (W * MM), (sc.clientHeight - 48) / (H * MM))), z = S.zoom || fit;
   cont.style.transform = `scale(${z})`; hoja.style.width = `${W * MM * z}px`; hoja.style.height = `${H * MM * z}px`;
   S.z = z;
+  const bz = S.el.querySelector('#infZ'); if (bz) bz.textContent = S.zoom ? `${Math.round(S.zoom / fit * 100)} %` : 'Ajustar';
 }
+/* Zoom de la página: la hoja queda fija en su lugar (no se arrastra ni se recorta); se recorre con las barras.
+   (sx, sy) = punto de la pantalla que se queda quieto al hacer zoom. */
+function zoomPagina(z, sx, sy) {
+  const sc = S.el.querySelector('.inf-scroll'); if (!sc) return;
+  const r = sc.getBoundingClientRect(); sx ??= r.left + sc.clientWidth / 2; sy ??= r.top + sc.clientHeight / 2;
+  const hoja = S.el.querySelector('.inf-hoja'), hr = hoja.getBoundingClientRect(), z0 = S.z || 1;
+  const fx = (sx - hr.left) / (hr.width || 1), fy = (sy - hr.top) / (hr.height || 1);
+  S.zoom = z; ajustarZoom();
+  const nr = hoja.getBoundingClientRect();
+  sc.scrollLeft += (nr.left + fx * nr.width) - sx; sc.scrollTop += (nr.top + fy * nr.height) - sy;
+}
+document.addEventListener('wheel', ev => {
+  if (!activo() || !(ev.ctrlKey || ev.metaKey)) return;
+  if (!ev.target.closest?.('.inf-lienzo .inf-scroll')) return;
+  ev.preventDefault();
+  zoomPagina(Math.max(.1, Math.min(8, (S.z || 1) * (ev.deltaY < 0 ? 1.15 : 1 / 1.15))), ev.clientX, ev.clientY);
+}, { passive: false });
 window.addEventListener('resize', () => { if (activo() && !S.zoom) ajustarZoom(); });
 
 /* ---------- Panel lateral ---------- */
@@ -82,22 +112,35 @@ export function panelInforme(p) {
   const I = informe(), pg = pagAct(), b = bloqueAct();
   const sec = (t, c, abierto = true) => `<details class="pp" ${abierto ? 'open' : ''}><summary>${t}</summary><div class="pp-b">${c}</div></details>`;
   const n = s => I.paginas.filter(x => seccionDe(x) === s).length;
-  let h = sec('Informe y planos', `<p class="mut">${n('informe')} páginas de informe y ${n('planos')} de láminas y planos. Guarda como plantilla las páginas que quieras reutilizar.</p>
+  const filaPl = (m, mia) => `<div class="row in-mia${S.plantilla && S.plantilla.id === m.id ? ' on' : ''}"><span>${esc(m.nombre)} <em>${esc(m.tamano)} ${m.orientacion === 'horizontal' ? '↔' : '↕'}${!mia && S.editadas[m.id] ? ' · editada' : ''}</em></span>
+    <button class="btn sm" data-act="in-pl-editar" data-id="${m.id}" ${mia ? 'data-mia="1"' : ''} title="Editar el contenido de esta plantilla">Editar</button>${mia ? `<button class="btn sm del" data-act="in-mia-del" data-id="${m.id}" title="Borrar plantilla">${ic('trash', 14)}</button>` : ''}</div>`;
+  const grupos = {}; for (const x of PLANTILLAS_INCLUIDAS) (grupos[x.grupo] ||= []).push(incluida(x.id));
+  const plantillas = `${S.mias.length ? `<div class="sub">Mis plantillas</div>${S.mias.map(m => filaPl(m, true)).join('')}` : ''}
+    ${Object.entries(grupos).map(([g, xs]) => `<div class="sub">${esc(g)}</div>${xs.map(m => filaPl(m, false)).join('')}`).join('')}`;
+  let h = '';
+  if (!S.plantilla) h += sec('Informe y planos', `<p class="mut">${n('informe')} páginas de informe y ${n('planos')} de láminas y planos. Arrastra las páginas de la lista para cambiar su orden. Guarda como plantilla las páginas que quieras reutilizar.</p>
     <div class="row wrap"><button class="btn pri" data-act="in-pdf" data-k="informe" ${n('informe') ? '' : 'disabled'}>${ic('print')} PDF informe</button><button class="btn pri" data-act="in-pdf" data-k="planos" ${n('planos') ? '' : 'disabled'}>${ic('print')} PDF planos</button></div>
-    <button class="btn" data-act="in-nueva">${ic('plus')} Agregar página</button>
-    ${S.mias.length ? `<details class="in-mias"><summary>Mis plantillas (${S.mias.length})</summary>${S.mias.map(m => `<div class="row in-mia"><span>${esc(m.nombre)} <em>${esc(m.tamano)} ${m.orientacion === 'horizontal' ? '↔' : '↕'}</em></span><button class="btn sm del" data-act="in-mia-del" data-id="${m.id}" title="Borrar plantilla">${ic('trash', 14)}</button></div>`).join('')}</details>` : ''}`, !b);
+    <button class="btn" data-act="in-nueva">${ic('plus')} Agregar página</button>`, !b);
+  h += sec(S.plantilla ? 'Plantillas · editando' : 'Plantillas de página', `<p class="mut">Edita lo que traen las plantillas (textos, tablas, vistas, imágenes): se abren aquí mismo, con los datos de este proyecto de muestra.</p><div class="in-pls">${plantillas}</div>`, !!S.plantilla && !b);
   if (b) h += sec(`Bloque · ${TIPOS_BLOQUE[b.tipo]}`, propsBloque(b));
-  if (pg) h += sec('Página', `
+  if (pg && S.plantilla) h += sec('Página de la plantilla', `
+    <label class="f"><span>Nombre</span><input class="in" data-in="pg.nombre" value="${esc(pg.nombre || '')}"></label>
+    <div class="row"><label class="f"><span>Tamaño</span><select class="in" data-in="pg.tamano">${Object.keys(TAMANOS).map(k => `<option ${k === pg.tamano ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
+    <label class="f"><span>Orientación</span><select class="in" data-in="pg.orientacion"><option value="vertical" ${pg.orientacion !== 'horizontal' ? 'selected' : ''}>Vertical</option><option value="horizontal" ${pg.orientacion === 'horizontal' ? 'selected' : ''}>Horizontal</option></select></label></div>
+    <label class="f"><span>Sección</span><select class="in" data-in="pg.seccion">${Object.entries(SECCIONES).map(([k, v]) => `<option value="${k}" ${seccionDe(pg) === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+    <button class="btn sm pri" data-act="in-pl-salir">Terminar de editar la plantilla</button>`, !b);
+  if (pg && !S.plantilla) h += sec('Página', `
     <label class="f"><span>Nombre</span><input class="in" data-in="pg.nombre" value="${esc(pg.nombre || '')}"></label>
     <div class="row"><label class="f"><span>Tamaño</span><select class="in" data-in="pg.tamano">${Object.keys(TAMANOS).map(k => `<option ${k === pg.tamano ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
     <label class="f"><span>Orientación</span><select class="in" data-in="pg.orientacion"><option value="vertical" ${pg.orientacion !== 'horizontal' ? 'selected' : ''}>Vertical</option><option value="horizontal" ${pg.orientacion === 'horizontal' ? 'selected' : ''}>Horizontal</option></select></label></div>
     <label class="f"><span>Sección</span><select class="in" data-in="pg.seccion">${Object.entries(SECCIONES).map(([k, v]) => `<option value="${k}" ${seccionDe(pg) === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
     <div class="row wrap"><button class="btn sm" data-act="in-pg-plantilla">${ic('save', 14)} Guardar como plantilla</button><button class="btn sm" data-act="in-pg-dup">${ic('copy', 14)} Duplicar</button></div>
+    ${pg.desde && (S.mias.some(x => x.id === pg.desde) || PLANTILLAS_INCLUIDAS.some(x => x.id === pg.desde)) ? `<button class="btn sm" data-act="in-pg-a-plantilla" title="La plantilla de la que salió esta página queda igual a como está ahora">${ic('save', 14)} Actualizar su plantilla con esta página</button>` : ''}
     <div class="row wrap"><button class="btn sm" data-act="in-pg-mover" data-k="-1">↑ Subir</button><button class="btn sm" data-act="in-pg-mover" data-k="1">↓ Bajar</button><button class="btn sm del" data-act="in-pg-del">${ic('trash', 14)} Borrar página</button></div>
-    <p class="mut">Clic en un bloque para editarlo; arrástralo para moverlo y usa la esquina para el tamaño (Mayús = de a 5 mm). Doble clic en una tabla para escribir en sus celdas y en una vista para encuadrarla. Supr borra.</p>`, !b);
+    <p class="mut">Clic en un bloque para editarlo; arrástralo para moverlo y usa la esquina para el tamaño (Mayús = de a 5 mm). Los bloques no se salen de la hoja; los fijos (como la lámina A1) no se mueven. Ctrl + rueda = zoom. Doble clic en una tabla para escribir en sus celdas y en una vista para encuadrarla. Supr borra.</p>`, !b);
   // Láminas A1: los datos del cajetín, revisiones, notas y protecciones (antes era el paso "Lámina")
   const hayLamina = I.paginas.some(x => x.bloques.some(y => y.tipo === 'lamina'));
-  if (pg && (seccionDe(pg) === 'planos' || hayLamina)) {
+  if (pg && !S.plantilla && (seccionDe(pg) === 'planos' || hayLamina)) {
     const R = calcular(S.p), SI = calcStrings(S.p, R);
     h += `<div class="in-lam"><div class="in-lam-t">Datos de las láminas A1 (cajetín, firmas, notas)</div>${panelLamina(S.p, R, SI, { cambio, rerender: panel, repintar: repintarPagina }).replace(/<details class="pp" open>/g, '<details class="pp">')}</div>`;
   }
@@ -135,9 +178,10 @@ function propsBloque(b) {
     <div class="row">${num('tam', 'Letra (pt)', .5)}<label class="f"><span>Ancho columnas (%)</span><input class="in" data-in="b.anchos" value="${esc(b.anchos || '')}" placeholder="35,30"></label></div>
     <div class="row wrap">${chk('cabecera', 'Primera fila es encabezado')}${chk('mayusculas', 'Datos en MAYÚSCULAS')}</div>${sel('cuerpo', 'Estilo', [['', 'Planos (cursiva, como AutoCAD)'], ['normal', 'Documento (texto normal)']])}`;
   if (b.tipo === 'lamina') h += sel('lamina', 'Lámina', [['01', 'Lámina 01 · Planta y unilineal'], ['02', 'Lámina 02 · Cuadros de carga']]) + '<p class="mut">El cajetín, las firmas y las notas se completan abajo, en «Datos de las láminas A1».</p>';
-  if (b.tipo === 'unilineal') h += '<p class="mut">Es el unilineal del proyecto, el mismo de la lámina A1.</p>';
+  if (b.tipo === 'unilineal') h += '<p class="mut">Es el unilineal del proyecto, el mismo de la lámina A1. Se edita en la pestaña «Unilineal» (datos, partes y cualquier texto con un clic).</p>';
   h += `<div class="row">${num('x', 'X (mm)')}${num('y', 'Y (mm)')}</div><div class="row">${num('w', 'Ancho (mm)')}${num('h', 'Alto (mm)')}</div>
     ${b.tipo !== 'lamina' ? chk('borde', 'Con marco') : ''}
+    <label class="chk"><input type="checkbox" data-in="b.fijo" ${esFijo(b) ? 'checked' : ''}> Fijo en la página (el mouse no lo mueve)</label>
     <div class="row wrap"><button class="btn sm" data-act="in-b-orden" data-k="1">Al frente</button><button class="btn sm" data-act="in-b-orden" data-k="-1">Atrás</button><button class="btn sm" data-act="in-b-dup">${ic('copy', 14)} Duplicar</button><button class="btn sm del" data-act="in-b-del">${ic('trash', 14)} Borrar</button></div>`;
   return h;
 }
@@ -148,17 +192,28 @@ export function accionInforme(a, el) {
   const I = informe(), pg = pagAct(), b = bloqueAct();
   const repintar = () => { cambio(); pintar(); };
   switch (a) {
-    case 'in-pag': salirEncuadre(false); S.pag = el.dataset.id; S.sel = null; S.zoom = null; pintar(); break;
+    case 'in-pag': if (S.arrastro) break; salirEncuadre(false); if (S.plantilla) { clearTimeout(tPlantilla); guardarPlantillaEditada(); S.plantilla = null; } S.pag = el.dataset.id; S.sel = null; S.zoom = null; pintar(); break;
     case 'in-nueva': dialogoNueva(el.dataset.k || (pg ? seccionDe(pg) : 'informe')); break;
     case 'in-paquete': agregarPaquete(el.dataset.k); break;
     case 'in-add': { const [W, H] = medida(pg), nb = nuevoBloque(el.dataset.k, 20, 20); if (nb.tipo === 'lamina') { nb.w = W; nb.h = H; nb.x = 0; nb.y = 0; } nb.x = Math.max(0, Math.round((W - nb.w) / 2)); nb.y = Math.max(0, Math.round((H - nb.h) / 2)); pg.bloques.push(nb); S.sel = nb.id; repintar(); break; }
-    case 'in-zoom': { const k = +el.dataset.k; S.zoom = k === 0 ? null : Math.max(.1, Math.min(4, (S.zoom || S.z || 1) * (k > 0 ? 1.25 : .8))); pintar(); break; }
+    case 'in-zoom': { const k = +el.dataset.k; if (k === 0) { S.zoom = null; ajustarZoom(); } else zoomPagina(Math.max(.1, Math.min(8, (S.zoom || S.z || 1) * (k > 0 ? 1.25 : .8)))); break; }
+    case 'in-pl-editar': editarPlantilla(el.dataset.id, !!el.dataset.mia); break;
+    case 'in-pl-salir': salirPlantilla(); break;
+    case 'in-pl-original': { const id = S.plantilla.id; if (!confirm('¿Volver la plantilla a como venía incluida? Se pierden tus cambios en ella.')) break; delete S.editadas[id]; guardarAjuste('plantillasEditadas', S.editadas); clearTimeout(tPlantilla); S.plantilla = null; S.sel = null; S.zoom = null; pintar(); toast('Plantilla original restaurada'); break; }
+    case 'in-pg-a-plantilla': {
+      const id = pg.desde, mia = S.mias.find(x => x.id === id), base = mia || incluida(id); if (!base) break;
+      if (!confirm(`¿Reemplazar la plantilla «${base.nombre}» por esta página? Las páginas nuevas que se armen con ella saldrán así.`)) break;
+      const nueva = { ...JSON.parse(JSON.stringify(pg)), id, nombre: base.nombre, grupo: base.grupo, incluida: !mia, seccion: base.seccion }; delete nueva.desde;
+      if (mia) { S.mias = S.mias.map(x => x.id === id ? { ...nueva, guardada: new Date().toISOString() } : x); guardarAjuste('plantillasPagina', S.mias); }
+      else { S.editadas[id] = nueva; guardarAjuste('plantillasEditadas', S.editadas); }
+      toast('Plantilla actualizada'); panel(); break;
+    }
     case 'in-pdf': imprimir(el.dataset.k); break;
     case 'in-pg-dup': { const c = copiarPagina(pg, { nombre: `${pg.nombre} (copia)` }); I.paginas.splice(I.paginas.indexOf(pg) + 1, 0, c); S.pag = c.id; repintar(); break; }
     case 'in-pg-mover': { const mismas = I.paginas.filter(x => seccionDe(x) === seccionDe(pg)), i = mismas.indexOf(pg), otra = mismas[i + +el.dataset.k]; if (!otra) break; const a1 = I.paginas.indexOf(pg), a2 = I.paginas.indexOf(otra); I.paginas[a1] = otra; I.paginas[a2] = pg; repintar(); break; }
     case 'in-pg-del': { if (!confirm(`¿Borrar la página «${pg.nombre}»?`)) break; const i = I.paginas.indexOf(pg); I.paginas.splice(i, 1); S.pag = I.paginas[Math.max(0, i - 1)]?.id || null; S.sel = null; repintar(); break; }
     case 'in-pg-plantilla': guardarPlantilla(pg); break;
-    case 'in-mia-del': { const m = S.mias.find(x => x.id === el.dataset.id); if (m && confirm(`¿Borrar la plantilla «${m.nombre}»? Las páginas que ya la usan no cambian.`)) { S.mias = S.mias.filter(x => x !== m); guardarAjuste('plantillasPagina', S.mias); panel(); } break; }
+    case 'in-mia-del': { const m = S.mias.find(x => x.id === el.dataset.id); if (m && confirm(`¿Borrar la plantilla «${m.nombre}»? Las páginas que ya la usan no cambian.`)) { S.mias = S.mias.filter(x => x !== m); guardarAjuste('plantillasPagina', S.mias); if (S.plantilla?.id === m.id) { clearTimeout(tPlantilla); S.plantilla = null; S.sel = null; pintar(); } else panel(); } break; }
     case 'in-b-del': borrarBloque(); break;
     case 'in-b-dup': { const c = { ...JSON.parse(JSON.stringify(b)), id: uid('b'), x: b.x + 5, y: b.y + 5 }; pg.bloques.push(c); S.sel = c.id; repintar(); break; }
     case 'in-b-orden': { const i = pg.bloques.indexOf(b); pg.bloques.splice(i, 1); if (+el.dataset.k > 0) pg.bloques.push(b); else pg.bloques.unshift(b); repintar(); break; }
@@ -177,15 +232,34 @@ export function accionInforme(a, el) {
 }
 function borrarBloque() { const pg = pagAct(), b = bloqueAct(); if (!b) return; pg.bloques = pg.bloques.filter(x => x !== b); S.sel = null; cambio(); pintar(); }
 
+/* ---------- Editar el contenido de una plantilla (incluida o propia) ---------- */
+function editarPlantilla(id, mia) {
+  const fuente = mia ? S.mias.find(x => x.id === id) : incluida(id); if (!fuente) return;
+  if (S.plantilla) { clearTimeout(tPlantilla); guardarPlantillaEditada(); }
+  salirEncuadre(false);
+  S.plantilla = { id, mia, pg: JSON.parse(JSON.stringify(fuente)) }; S.sel = null; S.zoom = null; pintar();
+}
+async function guardarPlantillaEditada() {
+  const P = S.plantilla; if (!P || !P.sucio) return;
+  const pg = JSON.parse(JSON.stringify(P.pg));
+  if (P.mia) { S.mias = S.mias.map(x => x.id === P.id ? { ...pg, guardada: new Date().toISOString() } : x); await guardarAjuste('plantillasPagina', S.mias); }
+  else { S.editadas[P.id] = { ...pg, editada: new Date().toISOString() }; await guardarAjuste('plantillasEditadas', S.editadas); }
+}
+function salirPlantilla() {
+  if (!S.plantilla) return; clearTimeout(tPlantilla); guardarPlantillaEditada();
+  const guardo = S.plantilla.sucio; S.plantilla = null; S.sel = null; S.zoom = null; pintar(); if (guardo) toast('Plantilla guardada en este navegador');
+}
+
 function agregarPaquete(id) {
   const q = PAQUETES.find(x => x.id === id); if (!q) return;
-  const nuevas = q.paginas.map(pid => PLANTILLAS_INCLUIDAS.find(x => x.id === pid)).filter(Boolean).map(x => copiarPagina(x, { desde: x.id }));
+  if (S.plantilla) salirPlantilla();
+  const nuevas = q.paginas.map(pid => incluida(pid)).filter(Boolean).map(x => copiarPagina(x, { desde: x.id }));
   informe().paginas.push(...nuevas); S.pag = nuevas[0]?.id || S.pag; S.sel = null; cambio(); pintar();
   toast(`${nuevas.length} páginas de «${q.nombre}» agregadas`);
 }
 function dialogoNueva(seccion = 'informe') {
-  const grupos = {}; for (const x of PLANTILLAS_INCLUIDAS) (grupos[x.grupo] ||= []).push(x);
-  const item = (x, mia) => `<button class="dl-pl" data-pl="${x.id}" data-mia="${mia ? 1 : ''}"><b>${esc(x.nombre)}</b><span>${esc(x.tamano)} ${x.orientacion === 'horizontal' ? 'horizontal' : 'vertical'} · ${x.bloques.length} bloques</span></button>`;
+  const grupos = {}; for (const x of PLANTILLAS_INCLUIDAS) (grupos[x.grupo] ||= []).push(incluida(x.id));
+  const item =(x, mia) => `<button class="dl-pl" data-pl="${x.id}" data-mia="${mia ? 1 : ''}"><b>${esc(x.nombre)}</b><span>${esc(x.tamano)} ${x.orientacion === 'horizontal' ? 'horizontal' : 'vertical'} · ${x.bloques.length} bloques</span></button>`;
   const d = document.createElement('dialog'); d.className = 'dlg dlg-pl';
   d.innerHTML = `<form method="dialog"><h2>Agregar página</h2>
     <label class="f"><span>Agregar a</span><select class="in" name="seccion">${Object.entries(SECCIONES).map(([k, v]) => `<option value="${k}" ${k === seccion ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
@@ -201,7 +275,8 @@ function dialogoNueva(seccion = 'informe') {
     const sec = d.querySelector('[name=seccion]').value;
     let nueva;
     if (t.dataset.blanco) { const [ta, o] = t.dataset.blanco.split('|'); nueva = paginaEnBlanco(ta, o, sec); }
-    else { const fuente = (t.dataset.mia ? S.mias : PLANTILLAS_INCLUIDAS).find(x => x.id === t.dataset.pl); nueva = copiarPagina(fuente, { desde: fuente.id, seccion: sec }); }
+    else { const fuente = t.dataset.mia ? S.mias.find(x => x.id === t.dataset.pl) : incluida(t.dataset.pl); nueva = copiarPagina(fuente, { desde: fuente.id, seccion: sec }); }
+    if (S.plantilla) { clearTimeout(tPlantilla); guardarPlantillaEditada(); S.plantilla = null; }
     const I = informe(), mismas = I.paginas.filter(x => seccionDe(x) === sec), ult = mismas[mismas.length - 1];
     I.paginas.splice(ult ? I.paginas.indexOf(ult) + 1 : (sec === 'informe' ? 0 : I.paginas.length), 0, nueva);
     S.pag = nueva.id; S.sel = null; d.close(); cambio(); pintar();
@@ -369,8 +444,11 @@ document.addEventListener('pointerdown', ev => {
   const b = pagAct()?.bloques.find(x => x.id === bq.dataset.b); if (!b) return;
   ev.preventDefault();
   if (S.sel !== b.id) { S.sel = b.id; seleccionarVisual(); panel(); }
-  D = { b, el: bq, modo: ev.target.classList.contains('bq-h') ? 'tam' : 'mover', sx: ev.clientX, sy: ev.clientY, x: b.x, y: b.y, w: b.w, h: b.h, movio: false };
+  if (esFijo(b)) return;                                           // fijo: solo se selecciona
+  const [PW, PH] = medida(pagAct());
+  D = { b, el: bq, modo: ev.target.classList.contains('bq-h') ? 'tam' : 'mover', sx: ev.clientX, sy: ev.clientY, x: b.x, y: b.y, w: b.w, h: b.h, PW, PH, movio: false };
 });
+const entre = (v, a, b) => Math.max(a, Math.min(b, v));
 document.addEventListener('pointermove', ev => {
   if (!D) return;
   if (D.modo === 'pan') {
@@ -380,8 +458,9 @@ document.addEventListener('pointermove', ev => {
   }
   const k = MM * (S.z || 1), dx = (ev.clientX - D.sx) / k, dy = (ev.clientY - D.sy) / k, paso = ev.shiftKey ? 5 : 1, r = v => Math.round(v / paso) * paso;
   if (Math.abs(dx) + Math.abs(dy) > .5) D.movio = true;
-  if (D.modo === 'mover') { D.b.x = r(D.x + dx); D.b.y = r(D.y + dy); D.el.style.left = D.b.x + 'mm'; D.el.style.top = D.b.y + 'mm'; }
-  else { D.b.w = Math.max(3, r(D.w + dx)); D.b.h = Math.max(3, r(D.h + dy)); D.el.style.width = D.b.w + 'mm'; D.el.style.height = D.b.h + 'mm'; }
+  // dentro de la hoja: un bloque no se puede sacar (ni agrandar) fuera del papel
+  if (D.modo === 'mover') { D.b.x = entre(r(D.x + dx), 0, Math.max(0, D.PW - D.b.w)); D.b.y = entre(r(D.y + dy), 0, Math.max(0, D.PH - D.b.h)); D.el.style.left = D.b.x + 'mm'; D.el.style.top = D.b.y + 'mm'; }
+  else { D.b.w = entre(r(D.w + dx), 3, Math.max(3, D.PW - D.b.x)); D.b.h = entre(r(D.h + dy), 3, Math.max(3, D.PH - D.b.y)); D.el.style.width = D.b.w + 'mm'; D.el.style.height = D.b.h + 'mm'; }
 });
 document.addEventListener('pointerup', () => {
   if (!D) return; const d = D; D = null;
@@ -408,8 +487,41 @@ document.addEventListener('keydown', ev => {
   const b = bloqueAct(); if (!b) return;
   if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); borrarBloque(); return; }
   const m = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
-  if (m) { ev.preventDefault(); const p = ev.shiftKey ? 5 : 1; b.x += m[0] * p; b.y += m[1] * p; const el = S.el.querySelector(`.bq[data-b="${b.id}"]`); if (el) { el.style.left = b.x + 'mm'; el.style.top = b.y + 'mm'; } cambio(); }
+  if (m) { ev.preventDefault(); if (esFijo(b)) return toast('El bloque está fijo: desmárcalo en el panel para moverlo'); const p = ev.shiftKey ? 5 : 1, [PW, PH] = medida(pagAct()); b.x = entre(b.x + m[0] * p, 0, Math.max(0, PW - b.w)); b.y = entre(b.y + m[1] * p, 0, Math.max(0, PH - b.h)); const el = S.el.querySelector(`.bq[data-b="${b.id}"]`); if (el) { el.style.left = b.x + 'mm'; el.style.top = b.y + 'mm'; } cambio(); }
 });
+/* ---------- Ordenar páginas arrastrándolas en la lista (también de una sección a la otra) ---------- */
+let arrastre = null;
+const limpiarDrop = () => S.el?.querySelectorAll('.drop-antes, .drop-despues, .drop-grupo, .arrastrando').forEach(x => x.classList.remove('drop-antes', 'drop-despues', 'drop-grupo', 'arrastrando'));
+function destinoDrop(ev) {
+  const pag = ev.target.closest?.('.inf-pags .inf-pag'), grupo = ev.target.closest?.('.inf-pags .inf-grupo');
+  if (pag && pag.dataset.id !== arrastre) { const r = pag.getBoundingClientRect(); return { el: pag, id: pag.dataset.id, despues: ev.clientY > r.top + r.height / 2, sec: pag.closest('.inf-grupo')?.dataset.sec }; }
+  if (grupo && !pag) return { el: grupo, sec: grupo.dataset.sec };
+  return null;
+}
+document.addEventListener('dragstart', ev => {
+  const b = ev.target.closest?.('.inf-pags .inf-pag'); if (!activo() || !b) return;
+  arrastre = b.dataset.id; ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', b.dataset.id); } catch (e) { /* algunos navegadores */ }
+  b.classList.add('arrastrando');
+});
+document.addEventListener('dragover', ev => {
+  if (!arrastre || !activo()) return; const d = destinoDrop(ev); if (!d) return;
+  ev.preventDefault(); ev.dataTransfer.dropEffect = 'move';
+  S.el.querySelectorAll('.drop-antes, .drop-despues, .drop-grupo').forEach(x => x.classList.remove('drop-antes', 'drop-despues', 'drop-grupo'));
+  d.el.classList.add(d.id ? (d.despues ? 'drop-despues' : 'drop-antes') : 'drop-grupo');
+});
+document.addEventListener('drop', ev => {
+  if (!arrastre || !activo()) return; const d = destinoDrop(ev); if (!d) return;
+  ev.preventDefault();
+  const I = informe(), pg = I.paginas.find(x => x.id === arrastre); if (!pg) return;
+  I.paginas.splice(I.paginas.indexOf(pg), 1);
+  if (d.id) { const i = I.paginas.findIndex(x => x.id === d.id); I.paginas.splice(i + (d.despues ? 1 : 0), 0, pg); }
+  else { const mismas = I.paginas.filter(x => seccionDe(x) === d.sec), ult = mismas[mismas.length - 1]; I.paginas.splice(ult ? I.paginas.indexOf(ult) + 1 : (d.sec === 'informe' ? 0 : I.paginas.length), 0, pg); }
+  if (d.sec && d.sec !== seccionDe(pg)) pg.seccion = d.sec;
+  arrastre = null; S.arrastro = true; setTimeout(() => { S.arrastro = false; }, 0);
+  limpiarDrop(); S.cb.cambio && S.cb.cambio(); pintar();
+});
+document.addEventListener('dragend', () => { arrastre = null; limpiarDrop(); });
+
 function seleccionarVisual() { S.el.querySelectorAll('.inf-lienzo .bq').forEach(x => x.classList.toggle('sel', x.dataset.b === S.sel)); }
 
 /* ---------- Imprimir / PDF: una sección (o todo), cada página con su tamaño ---------- */
