@@ -4,6 +4,7 @@
    ========================================================================== */
 
 import { PANELES_EMAT, INVERSORES_EMAT, OTROS_EMAT } from './equipos-emat.js';
+import { leerAjuste, guardarAjuste } from './ajustes.js';
 export { PANELES_EMAT, INVERSORES_EMAT, OTROS_EMAT };
 
 /* Paneles (salen de js/equipos-emat.js). w = ancho y h = largo en mm, con el panel en vertical. */
@@ -39,17 +40,27 @@ export const EQUIPOS = {
   bat: { n: 'Batería', l: 'BAT', w: 670, h: 150, a: 360, c: '#FF3DFF', huawei: true },
   dcdc: { n: 'Módulo DC/DC', l: 'DC', w: 670, h: 150, a: 240, c: '#FF3DFF', huawei: true },
   sg: { n: 'SmartGuard', l: 'SG', w: 355, h: 150, a: 485, c: '#FF3DFF', huawei: true },
-  sm: { n: 'Smart Power Sensor', l: 'SM', w: 72, h: 80, a: 100, c: '#35D0FF' },
+  sm: { n: 'Smart Power Sensor', l: 'SM', w: 72, h: 66, a: 100, c: '#35D0FF' },
   cdj: { n: 'Caja de derivación', l: 'CD', w: 100, h: 50, a: 100, c: '#FF3DFF', soloReal: true },
   cp: { n: 'Caja de paso', l: '', w: 150, h: 75, a: 150, c: '#00E5FF', soloReal: true },
   ev: { n: 'Cargador EV', l: 'EV', w: 180, h: 145, a: 335, c: '#52C892' },
   bc: { n: 'Bomba de calor', l: 'BC', w: 1000, h: 400, a: 800, c: '#2BB3A3' },
   bpc: { n: 'Bandeja porta conductores', l: '', w: 1500, h: 100, a: 100, c: '#FFE14D', soloReal: true },
+  otro: { n: 'Otro equipo (de Mis equipos)', l: '', w: 400, h: 200, a: 400, c: '#C9D3DB' },
   marca: { n: 'Ubicación propuesta', l: '', w: 800, h: 60, a: 800, c: '#FF2B2B', soloRef: true },
   libre: { n: 'Equipo libre (con texto)', l: '', w: 400, h: 200, a: 300, c: '#FFFFFF', libre: true, soloRef: true }
 };
-/* Modelos que se pueden elegir para cada símbolo (los que tienen medida). */
-export const MODELOS_EQUIPO = k => OTROS_EMAT.filter(x => x.k === (k === 'bpc' ? 'bandeja' : k) && x.ancho);
+/* Mis equipos: los que el equipo de Ops guarda desde el dibujo o desde Configuración → Equipos,
+   con su medida real. Se guardan en este navegador (ajuste 'equiposUsuario') y se cargan al abrir la app.
+   Cada uno: { id, k, item, marca, modelo, ancho, alto, prof, peso, montaje, libre: {arriba, abajo, lados, frente}, fuente, nota, creado } */
+export const EQUIPOS_USUARIO = [];
+export async function cargarEquiposUsuario() { const x = await leerAjuste('equiposUsuario'); EQUIPOS_USUARIO.splice(0, EQUIPOS_USUARIO.length, ...(Array.isArray(x) ? x : [])); return EQUIPOS_USUARIO; }
+export async function guardarEquiposUsuario(lista) { EQUIPOS_USUARIO.splice(0, EQUIPOS_USUARIO.length, ...lista); await guardarAjuste('equiposUsuario', JSON.parse(JSON.stringify(lista))); }
+/* Id con que un equipo dibujado guarda su modelo (e.modelo) */
+export const idModelo = x => x.id || x.sku || x.item;
+export const modeloPorId = id => id ? (EQUIPOS_USUARIO.find(x => x.id === id) || OTROS_EMAT.find(x => idModelo(x) === id || (x.sku || x.item) === id)) : null;
+/* Modelos que se pueden elegir para cada símbolo (los que tienen medida): base EMAT + Mis equipos. */
+export const MODELOS_EQUIPO = k => { const kk = k === 'bpc' ? 'bandeja' : k; return [...OTROS_EMAT.filter(x => x.k === kk && x.ancho), ...EQUIPOS_USUARIO.filter(x => x.k === kk && x.ancho)]; };
 
 /* Tipos de canalización: colores de la simbología de los planos. */
 export const CANAL = {

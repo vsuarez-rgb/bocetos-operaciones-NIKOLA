@@ -4,7 +4,7 @@
    Todas las coordenadas del proyecto están en px de la foto; la escala
    (mm por px) sale de la línea de referencia del paso 1.
    ========================================================================== */
-import { PANELES, INVERSORES, ZONAS, GAP_FILA, GAP_COL, SOL_MIN, T_MIN, CANAL, EQUIPOS, OTROS_EMAT } from './catalogo.js';
+import { PANELES, INVERSORES, ZONAS, GAP_FILA, GAP_COL, SOL_MIN, T_MIN, CANAL, EQUIPOS, OTROS_EMAT, modeloPorId } from './catalogo.js';
 import { dist, rotP, centroid, polyArea, pointInPoly, convexOverlap, distSeg, lerp, polyLen } from './util.js';
 
 export const escala = p => p.ref && p.ref.mm ? p.ref.mm / dist(p.ref.a, p.ref.b) : null;          // mm por px
@@ -29,8 +29,12 @@ export function medidaEquipo(p, e) {
   if (e.mw > 0 && e.mh > 0) return { w: e.mw, h: e.mh, modelo: null, propia: true };      // medida escrita a mano (p. ej. la caja de derivación real)
   const frente = esReal(p, e) || vistaEq(p) === 'elevacion', Q = EQUIPOS[e.k] || EQUIPOS.inv;   // los reales van de frente: ancho × alto
   if (e.k === 'inv') { const I = inversorDe(p); return { w: I.ancho || Q.w, h: frente ? (I.alto || Q.a) : (I.prof || Q.h), modelo: I.modelo }; }
-  const M = e.modelo && OTROS_EMAT.find(x => (x.sku || x.item) === e.modelo);
-  if (e.k === 'bat') { const mods = Math.max(1, e.mods || 3), wB = (M && M.ancho) || Q.w; return { w: wB, h: frente ? 240 + mods * ((M && M.alto) || Q.a) : ((M && M.prof) || Q.h), modelo: M ? M.modelo : null, mods }; }
+  /* Modelo: base EMAT o Mis equipos; si el equipo guardado no está en este navegador, se usa la copia
+     de sus medidas que quedó en el proyecto (e.modeloDatos) */
+  const M = e.modelo && (modeloPorId(e.modelo) || e.modeloDatos);
+  /* Batería en torre: módulo de potencia arriba (S0 = 240 mm, S1 = 150 mm) + n módulos; la torre del modelo si está tabulada */
+  if (e.k === 'bat') { const mods = Math.max(1, e.mods || 3), wB = (M && M.ancho) || Q.w, alto = (M && M.torre && M.torre[mods]) || ((M && M.potencia != null ? M.potencia : 240) + mods * ((M && M.alto) || Q.a));
+    return { w: wB, h: frente ? alto : ((M && M.prof) || Q.h), modelo: M ? M.modelo : null, mods }; }
   if (e.k === 'bpc') { const L = (M && M.alto) || Q.w; return { w: L, h: frente ? ((M && M.prof) || Q.a) : ((M && M.ancho) || Q.h), modelo: M ? M.modelo : null }; }
   if (M && M.ancho) return { w: M.ancho, h: frente ? (M.alto || M.prof) : (M.prof || M.alto), modelo: M.modelo };
   return { w: Q.w, h: frente ? (Q.a || Q.h) : Q.h, modelo: null };
@@ -251,7 +255,8 @@ export const largoM = (p, pts) => { const s = escala(p); return s ? polyLen(pts)
 export function largoTramo(p, filtro) { return p.rutas.filter(filtro).reduce((t, r) => t + largoM(p, r.pts), 0); }
 
 /* Resistividad del cobre (Ω·mm²/m) y caídas de tensión como en los cuadros de carga. */
-export const RHO_CC = 0.0181, RHO_CA = 0.0188, CAIDA_MAX = 3;
+/* Caída de tensión máxima: CA 3 % entre el empalme y la protección RI; CC 1,5 % (RGR N°02/2024, cap. 11, p.26) */
+export const RHO_CC = 0.0181, RHO_CA = 0.0188, CAIDA_MAX = 3, CAIDA_MAX_CC = 1.5;
 
 export const nombreString = st => `A.${st.mppt}.${st.num || 1}`;
 
@@ -274,7 +279,7 @@ export function calcStrings(p, R = calcular(p)) {
     if (n && vocFrio > inv.vdcMax) av.push(`Voc en frío ${vocFrio.toFixed(0)} V supera ${inv.vdcMax} V`);
     if (n && P.isc * (st.paralelo || 1) > inv.isc) av.push(`Isc ${P.isc} A supera ${inv.isc} A de cortocircuito por MPPT`);
     if (mezcla) av.push('Mezcla paneles de distinto modelo');
-    if (dvp > CAIDA_MAX) av.push(`Caída de tensión ${dvp.toFixed(2)} % sobre ${CAIDA_MAX} %`);
+    if (dvp > CAIDA_MAX_CC) av.push(`Caída de tensión CC ${dvp.toFixed(2)} % sobre ${CAIDA_MAX_CC} % (RGR N°02/2024)`);
     const mppts = p.strings.filter(x => x.mppt === st.mppt).length;
     if (st.mppt > inv.mppt) av.push(`El inversor tiene ${inv.mppt} MPPT`);
     if (mppts > (inv.strPorMppt || 1)) av.push(`MPPT ${st.mppt} tiene ${mppts} strings (máx. ${inv.strPorMppt || 1})`);

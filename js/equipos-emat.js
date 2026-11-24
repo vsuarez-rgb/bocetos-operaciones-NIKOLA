@@ -40,14 +40,16 @@ export const PANELES_EMAT = [
    mppt / cadenasPorMppt / dif / vdcMax / vmin / vmax / iscMppt / kw: Backend EMAT.
    imaxMppt: corriente máx. de entrada por MPPT (ficha; null si no se confirmó).
    iac: corriente máx. de salida AC (a 380 V en trifásicos). Medidas con placa de montaje.
-   libre: espacio libre de montaje (mm) — pendiente de leer en el manual de cada familia. */
+   libre: espacio libre de montaje del fabricante (mm): { arriba, abajo, lados, frente }. Leído de las
+   figuras de "Installation space" de los manuales Huawei (Drive Nikola, 04. Información Técnica, 24-11-2026).
+   Donde no se encontró queda vacío y rige el mínimo RGR N°02/2024: 15 cm a cada lado. */
 const L1 = { familia: 'SUN2000-KTL-L1', ancho: 365, alto: 365, prof: 156, peso: 12, imaxMppt: 12.5, fuente: 'https://solar.huawei.com/id/products/SUN2000-3-4-5-6KTL-L1/specs', confianza: 'alta', nota: 'Alto 365 mm según la ficha técnica (el folleto dice 375)' };
-const LB0 = { familia: 'SUN2000-K-LB0', ancho: 425, alto: 376.5, prof: 150, peso: 15, imaxMppt: 16, fuente: 'https://solar.huawei.com/en/products/sun2000-3-368-4-46-5-6k-lb0/specs/', confianza: 'media' };
+const LB0 = { familia: 'SUN2000-K-LB0', ancho: 425, alto: 376.5, prof: 150, peso: 15, imaxMppt: 16, libre: { arriba: 300, abajo: 400, lados: 350 }, fuente: 'https://solar.huawei.com/en/products/sun2000-3-368-4-46-5-6k-lb0/specs/', confianza: 'media' };
 const LC0 = { familia: 'SUN2000-K-LC0', ancho: 425, alto: 376.5, prof: 150, peso: 14.5, imaxMppt: 16, fuente: 'https://solar.huawei.com/admin/asset/v1/pro/view/ada802421c674daa9047aeec9d28a710.pdf', confianza: 'alta' };
 const M1 = { familia: 'SUN2000-KTL-M1', ancho: 525, alto: 470, prof: 146.5, peso: 17, imaxMppt: 11, fuente: 'https://solar.huawei.com/th/products/SUN2000-3-4-5-6-8-10KTL-M1/specs/', confianza: 'alta' };
-const MAP0 = { familia: 'SUN2000-K-MAP0', ancho: 490, alto: 460, prof: 130, peso: 21, imaxMppt: null, fuente: 'https://solar.huawei.com/pk/products/sun2000-5-12k-map0/specs', confianza: 'media' };
+const MAP0 = { familia: 'SUN2000-K-MAP0', ancho: 490, alto: 460, prof: 130, peso: 21, imaxMppt: 16, fuente: 'https://solar.huawei.com/pk/products/sun2000-5-12k-map0/specs', confianza: 'media' };
 const MB0 = { familia: 'SUN2000-K-MB0', ancho: 546, alto: 460, prof: 228, peso: 21, imaxMppt: null, fuente: 'https://solar.huawei.com/en/professionals/all-products/SUN2000-12-15-17-20-25K-MB0/specs', confianza: 'alta' };
-const M3 = { familia: 'SUN2000-KTL-M3', ancho: 640, alto: 530, prof: 270, peso: 43, imaxMppt: null, fuente: 'https://www.photomate.eu/photomate-download/223', confianza: 'alta' };
+const M3 = { familia: 'SUN2000-KTL-M3', ancho: 640, alto: 530, prof: 270, peso: 43, imaxMppt: 30, libre: { arriba: 500, abajo: 600, lados: 300, frente: 1000 }, fuente: 'https://www.photomate.eu/photomate-download/223', confianza: 'alta' };
 const mono = { fase: 'Monofásico', vac: 220, vdcMax: 600 }, tri = { fase: 'Trifásico', vac: 380, vdcMax: 1100 };
 const DIF = {
   m25: 'Interruptor Diferencial 2x25A 100mA Tipo A', m40: 'Interruptor Diferencial 2x40A 100mA Tipo A', m63: 'Legrand INT.DIF. INMUNIZADO 2x63A 300mA Tipo A',
@@ -78,10 +80,10 @@ export const INVERSORES_EMAT = [
   { sku: 'A02008010L013', modelo: 'SUN2000-30KTL-M3', kw: 30, ...tri, ...M3, mppt: 4, cadenasPorMppt: 2, vmin: 200, vmax: 1000, iscMppt: 40, iac: 47.9, dif: DIF.t63 },
   { sku: 'A02008010L014', modelo: 'SUN2000-36KTL-M3', kw: 36, ...tri, ...M3, mppt: 4, cadenasPorMppt: 2, vmin: 200, vmax: 1000, iscMppt: 40, iac: 58.0, dif: DIF.t63 },
   { sku: 'A02008010L004', modelo: 'SUN2000-40KTL-M3', kw: 40, ...tri, ...M3, mppt: 4, cadenasPorMppt: 2, vmin: 200, vmax: 1000, iscMppt: 40, iac: 63.8, dif: DIF.t63 },
-  { sku: 'A02008010L005', modelo: 'SUN2000-50KTL-M3', kw: 50, ...tri, ...M3, peso: 49, mppt: 4, cadenasPorMppt: 2, vmin: 200, vmax: 1000, iscMppt: 40, iac: 79.8, dif: null, fuente: 'https://solar.huawei.com/admin/asset/v1/pro/view/4b99f6268ac4441b8e9286f26a186833.pdf', nota: 'Iac a 400 V. EMAT no define diferencial.' },
-  { sku: 'A02008010L002', modelo: 'SUN2000-100KTL-M2', kw: 100, ...tri, familia: 'SUN2000-KTL-M2', ancho: 1035, alto: 700, prof: 365, peso: 93, imaxMppt: null, mppt: 10, cadenasPorMppt: 2, vmin: 200, vmax: 1000, iscMppt: 40, iac: 160.4, dif: null,
-    libre: { abajo: 600 }, confianza: 'alta', fuente: 'https://cdn.shopify.com/s/files/1/0549/8073/9127/files/EN_Sheet_100KTL-M2.pdf', nota: 'Iac a 400 V. Dejar 600–730 mm libres por debajo.' },
-  { sku: 'A02008010L016', modelo: 'SUN2000-150K-MG0', kw: 150, ...tri, familia: 'SUN2000-K-MG0', ancho: 1000, alto: 710, prof: 395, peso: 96, imaxMppt: null, mppt: 7, cadenasPorMppt: 3, vmin: 200, vmax: 1000, iscMppt: 66, iac: 253.2, dif: null,
+  { sku: 'A02008010L005', modelo: 'SUN2000-50KTL-M3', kw: 50, ...tri, ...M3, peso: 49, mppt: 4, cadenasPorMppt: 2, vmin: 200, vmax: 1000, iscMppt: 40, iac: 84.0, dif: null, fuente: 'https://solar.huawei.com/admin/asset/v1/pro/view/4b99f6268ac4441b8e9286f26a186833.pdf', nota: 'Iac 84,0 A a 380 V (79,8 A a 400 V), según el manual. EMAT no define diferencial.' },
+  { sku: 'A02008010L002', modelo: 'SUN2000-100KTL-M2', kw: 100, ...tri, familia: 'SUN2000-KTL-M2', ancho: 1035, alto: 700, prof: 365, peso: 93, imaxMppt: 30, mppt: 10, cadenasPorMppt: 2, vmin: 200, vmax: 1000, iscMppt: 40, iac: 160.4, dif: null,
+    libre: { arriba: 200, abajo: 600, lados: 600, frente: 1000 }, confianza: 'alta', fuente: 'https://cdn.shopify.com/s/files/1/0549/8073/9127/files/EN_Sheet_100KTL-M2.pdf', nota: 'Iac a 400 V. Dejar 600–730 mm libres por debajo.' },
+  { sku: 'A02008010L016', modelo: 'SUN2000-150K-MG0', kw: 150, ...tri, familia: 'SUN2000-K-MG0', ancho: 1000, alto: 710, prof: 395, peso: 102, imaxMppt: 48, mppt: 7, cadenasPorMppt: 3, vmin: 200, vmax: 1000, iscMppt: 66, iac: 253.2, dif: null,
     confianza: 'alta', fuente: 'https://solar.huawei.com/za/products/sun2000-150k-mg0/specs' }
 ];
 
@@ -89,9 +91,9 @@ export const INVERSORES_EMAT = [
    k = tipo de símbolo en la app (ver EQUIPOS en catalogo.js). */
 export const OTROS_EMAT = [
   // Baterías: la torre se arma con módulo de potencia arriba + n módulos de batería + base de piso.
-  { k: 'bat', sku: 'A02001001L006', item: 'Huawei, Batería LUNA2000 5kWh', modelo: 'LUNA2000-5-E0 (serie S0)', ancho: 670, alto: 360, prof: 150, peso: 50, montaje: 'piso',
+  { k: 'bat', sku: 'A02001001L006', item: 'Huawei, Batería LUNA2000 5kWh', modelo: 'LUNA2000-5-E0 (serie S0)', ancho: 670, alto: 360, prof: 150, peso: 50, montaje: 'piso', potencia: 240,
     torre: { 1: 600, 2: 960, 3: 1320 }, confianza: 'alta', fuente: 'https://solar.huawei.com/en/products/LUNA2000-5-10-15-S0/specs/', nota: 'Torre = 240 (potencia) + 360 × n baterías, con base.' },
-  { k: 'bat', sku: 'A02001001L011', item: 'Huawei, Batería LUNA2000 7kWh', modelo: 'LUNA2000-7-E1 (serie S1)', ancho: 590, alto: 360, prof: 255, peso: 68, montaje: 'piso',
+  { k: 'bat', sku: 'A02001001L011', item: 'Huawei, Batería LUNA2000 7kWh', modelo: 'LUNA2000-7-E1 (serie S1)', ancho: 590, alto: 360, prof: 255, peso: 68, montaje: 'piso', potencia: 150,
     torre: { 1: 510, 2: 870, 3: 1230 }, confianza: 'alta', fuente: 'https://solar.huawei.com/en/products/LUNA2000-7-14-21-S1/specs/', nota: 'No se mezcla con S0. Torre = 150 (potencia) + 360 × n.' },
   { k: 'dcdc', sku: 'A02001001L007', item: 'Huawei, Módulo DC/DC 5kW', modelo: 'LUNA2000-5KW-C0', ancho: 670, alto: 240, prof: 150, peso: 12, montaje: 'torre', confianza: 'alta', fuente: 'https://solar.huawei.com/en/products/LUNA2000-5-10-15-S0/specs/' },
   { k: 'dcdc', sku: 'A02001001L010', item: 'Huawei, Módulo DC/DC 10kW', modelo: 'LUNA2000-10KW-C1', ancho: 590, alto: 150, prof: 255, peso: 10, montaje: 'torre', confianza: 'alta', fuente: 'https://solar.huawei.com/en/products/LUNA2000-7-14-21-S1/specs/' },
@@ -100,12 +102,18 @@ export const OTROS_EMAT = [
   // Cargadores EV
   { k: 'ev', sku: 'A02005000L001', item: 'Huawei, SCharger-7KS-S0', modelo: 'SCharger-7KS-S0 (7,4 kW, 1F)', ancho: 180, alto: 335, prof: 145, peso: 3.0, montaje: 'muro', confianza: 'alta', fuente: 'https://solar.huawei.com/en/products/SCharger-7KS-S0-22KT-S0/specs/' },
   { k: 'ev', sku: 'A02005000L002', item: 'Huawei, SCharger-22KT-S0', modelo: 'SCharger-22KT-S0 (22 kW, 3F)', ancho: 180, alto: 335, prof: 145, peso: 3.1, montaje: 'muro', confianza: 'alta', fuente: 'https://solar.huawei.com/en/products/SCharger-7KS-S0-22KT-S0/specs/' },
+  // Cargadores que no vienen de EMAT: medidas del datasheet o manual del fabricante (Drive Nikola, 04. Información Técnica)
+  { k: 'ev', sku: null, id: 'ev-beny-7', item: 'Beny BCP-A2N-P / B2N-P 7,4 kW (OCPP)', modelo: 'Beny BCP-A2N-P / B2N-P (7,4 kW, 1F)', ancho: 169, alto: 380, prof: 151, peso: null, montaje: 'muro', confianza: 'alta', fuente: 'Datasheet Beny OCPP AC Charger', nota: 'Prof. 151 con cable fijo, 201 con socket. Autorizado SEC (Res. Ex. 27571/2024), no apto para bienes nacionales de uso público.' },
+  { k: 'ev', sku: null, id: 'ev-beny-22', item: 'Beny BCP-AT2N-P / BT2N-P 22 kW (OCPP)', modelo: 'Beny BCP-AT2N-P / BT2N-P (22 kW, 3F)', ancho: 169, alto: 380, prof: 151, peso: null, montaje: 'muro', confianza: 'alta', fuente: 'Datasheet Beny OCPP AC Charger', nota: 'Prof. 151 con cable fijo, 201 con socket.' },
+  { k: 'ev', sku: null, id: 'ev-teltocharge', item: 'Teltonika TeltoCharge EVC1 (7,4 / 11 / 22 kW)', modelo: 'TeltoCharge EVC1', ancho: 170, alto: 341, prof: 97, peso: 2.8, montaje: 'muro', confianza: 'alta', fuente: 'Manual EVC1 (especificaciones generales)', nota: 'Pide diferencial tipo B 30 mA externo.' },
+  { k: 'ev', sku: null, id: 'ev-goodwe-hca', item: 'GoodWe HCA 7 / 11 / 22 kW', modelo: 'GoodWe GW7K/11K/22K-HCA', ancho: 208, alto: 450, prof: 150, peso: 6, montaje: 'muro', confianza: 'alta', fuente: 'Datasheet GoodWe HCA' },
+  { k: 'ev', sku: null, id: 'ev-duosida-ses', item: 'Duosida SES-32 / SES-16 (22 / 11 kW)', modelo: 'Duosida SES', ancho: 237, alto: 343, prof: 115, peso: 6.5, montaje: 'muro', confianza: 'alta', fuente: 'Manual Duosida', nota: 'El fabricante pide 1,40–1,60 m al borde inferior: con eso el conector queda sobre 1,3 m (RIC N°15). Manda la norma.' },
   // SmartGuard (respaldo)
   { k: 'sg', sku: 'A02008004L015', item: 'Huawei, SmartGuard-63A-S0', modelo: 'SmartGuard-63A-S0 (1F)', ancho: 355, alto: 485, prof: 150, peso: 14, montaje: 'muro', confianza: 'alta', fuente: 'https://solar.huawei.com/en/products/HUAWEI-SmartGuard/specs/' },
   { k: 'sg', sku: 'A02008006L002', item: 'Huawei, SmartGuard-63A T0', modelo: 'SmartGuard-63A-T0 (3F)', ancho: 490, alto: 600, prof: 170, peso: 17, montaje: 'muro', confianza: 'alta', fuente: 'https://solar.huawei.com/ch/products/HUAWEI-SmartGuard-63A-T0-AUT0/specs/' },
   // Medidores (van dentro del tablero, en riel DIN)
   { k: 'sm', sku: 'A02008008L007', item: 'Huawei, Smart Power Sensor Monofásico, 100A', modelo: 'SmartPS-100A-S0 (DDSU666-H / DDSU71)', ancho: 36, alto: 100, prof: 66, peso: 0.2, montaje: 'riel DIN', modulosDin: 2, confianza: 'alta', fuente: 'https://solar.huawei.com/admin/asset/v1/pro/view/0965d912ee1b48c0ad60da1f7452b73b.pdf' },
-  { k: 'sm', sku: 'A02008006L001', item: 'Huawei, Smart Power Sensor Trifásico, 250A', modelo: 'SmartPS-250A-T0 (DTSU666-H 250A/50mA)', ancho: 72, alto: 100, prof: 80, peso: 1.5, montaje: 'riel DIN', modulosDin: 4, confianza: 'alta', fuente: 'https://solar.huawei.com/admin/asset/v1/pro/view/0965d912ee1b48c0ad60da1f7452b73b.pdf' },
+  { k: 'sm', sku: 'A02008006L001', item: 'Huawei, Smart Power Sensor Trifásico, 250A', modelo: 'SmartPS-250A-T0 (DTSU666-H 250A/50mA)', ancho: 72, alto: 100, prof: 65.5, peso: 0.8, montaje: 'riel DIN', modulosDin: 4, confianza: 'alta', fuente: 'https://solar.huawei.com/admin/asset/v1/pro/view/0965d912ee1b48c0ad60da1f7452b73b.pdf' },
   // Dongles (van enchufados al inversor; no se dibujan aparte)
   { k: null, sku: 'A02008008L003', item: 'Huawei, Smart Dongle WLAN-FE', modelo: 'SDongleA-05', ancho: 146, alto: 48, prof: 33, peso: 0.09, montaje: 'inversor', confianza: 'alta', fuente: 'https://solar.huawei.com/en/products/CI-SmartDongle-WLAN-FE/specs/' },
   { k: null, sku: 'A02008008L001', item: 'Huawei, Smart Dongle 4G', modelo: 'SDongleB-06', ancho: 162, alto: 48, prof: 28, peso: null, montaje: 'inversor', confianza: 'alta', fuente: 'https://solar.huawei.com/en/products/SmartDongle-4G/specs' },

@@ -4,13 +4,14 @@
    = mover la vista, F3 refent., F7 rejilla, F8 orto, Esc cancela, Enter termina.
    ========================================================================== */
 import { $, $$, esc, fmt, parseNum, uid, clone, dist, lerp, rotP, centroid, pointInPoly, distSeg, edgeAngle, anguloBordeCercano, ic, toast, descargar } from './util.js';
-import { PANELES, INVERSORES, ZONAS, EQUIPOS, CANAL, CAPAS, ESTADOS, COLORES_STRING, GAP_FILA, MODELOS_EQUIPO } from './catalogo.js';
+import { PANELES, INVERSORES, ZONAS, EQUIPOS, CANAL, CAPAS, ESTADOS, COLORES_STRING, GAP_FILA, MODELOS_EQUIPO, idModelo, modeloPorId, cargarEquiposUsuario } from './catalogo.js';
 import { esReal, simboloCuadrado, nPanelesFig, inclPanelesDe, vistaEq, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo, tamEquipoPx, altoTextoPx, perfilesDe, rielesDe } from './geom.js';
 import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota, lineaDoble, mediaPerfil } from './render.js';
 import { vistaUnilineal, panelUnilineal, accionUnilineal } from './unilineal.js';
 import { CONJUNTOS_INCLUIDOS, insertarConjunto, conjuntoDeHoja } from './conjuntos.js';
 import { leerAjuste, guardarAjuste } from './ajustes.js';
-import { cargarNormas, guardarNormas, revisarNormas, TIPOS_NORMA, NORMAS_BASE } from './normas.js';
+import { cargarNormas, revisarNormas, contextoProyecto, checklist, textoFuente } from './normas.js';
+import { paginaConfig, dialogoEquipo } from './config.js';
 import { nuevoTecho, guardar } from './store.js';
 import { vistaLamina, panelLamina, accionLamina } from './lamina.js';
 import { vistaFicha, panelFicha, accionFicha } from './ficha/ficha.js';
@@ -46,6 +47,7 @@ export function abrirEditor(p, volver) {
     fotoAlpha: .85, guardado: true, R: null, SI: null, abiertas: new Map() };
   E.tool = HERR_DEF[E.step];
   cargarNormas().then(n => { if (E) { E.normas = n; if (E.step === 'equipos') { panel(); dibujarTodo(); } } });
+  cargarEquiposUsuario().then(() => { if (E && E.step === 'equipos') { panel(); dibujarTodo(); } });
   leerAjuste('conjuntosEquipos').then(x => { if (E) { E.conjuntos = x || []; if (E.step === 'equipos') panel(); } });
   render();
   cargarImg(E.p.img).then(() => { ajustarVista(); dibujarTodo(); });
@@ -109,7 +111,7 @@ function render() {
     <span id="guardEstado" class="guard">Guardado</span>
     <button class="tb-btn" data-act="exportar" title="Exportar proyecto (.json)">${ic('download')}</button>
   </header>
-  <div class="ribbon-wrap"><nav class="ribbon" aria-label="Pasos">${pasosVisibles().map(([k, n, i], idx) => `<button class="paso ${pasoOk(k) ? 'ok' : ''}" data-act="paso" data-k="${k}" aria-pressed="${E.step === k}"><i>${pasoOk(k) ? ic('check', 13) : idx + 1}</i>${ic(i, 16)}<span>${nombrePaso(k, n)}</span></button>`).join('')}<button class="paso cfg" data-act="config" title="Configuración: normas que se revisan en la vista de frente"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Configuración</span></button></nav>${barraPaso()}</div>
+  <div class="ribbon-wrap"><nav class="ribbon" aria-label="Pasos">${pasosVisibles().map(([k, n, i], idx) => `<button class="paso ${pasoOk(k) ? 'ok' : ''}" data-act="paso" data-k="${k}" aria-pressed="${E.step === k}"><i>${pasoOk(k) ? ic('check', 13) : idx + 1}</i>${ic(i, 16)}<span>${nombrePaso(k, n)}</span></button>`).join('')}<button class="paso cfg" data-act="config" title="Configuración: normas y medidas de los equipos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Configuración</span></button></nav>${barraPaso()}</div>
   <div class="ed-body ${esPagina() ? 'es-lamina' : ''}">
     ${esPagina() ? '' : `<aside class="tools" aria-label="Herramientas">${herramientas()}</aside>`}
     <main class="model" id="model">
@@ -277,7 +279,7 @@ document.addEventListener('toggle', ev => { const d = ev.target; if (!E || !d.ma
 const fotoOp = () => E.p.fotoOpac ?? .85;
 /* Marca en rojo lo que no cumple una norma (y no fue marcado como revisado) */
 function avisosNormas(g) {
-  revisarNormas(E.p, E.normas).filter(a => !a.revisada).forEach(a => {
+  revisarNormas(E.p, E.normas, contextoProyecto(E.proyecto)).filter(a => !a.revisada).forEach(a => {
     let q = [];
     if (a.t === 'equipo') { const e = E.p.equipos.find(x => x.id === a.id); if (!e) return; const Q = tamEquipoPx(E.p, e); q = [[e.x - Q.w / 2, e.y - Q.h / 2], [e.x + Q.w / 2, e.y + Q.h / 2]]; }
     else { const r = E.p.rutas.find(x => x.id === a.id); if (!r) return; q = r.pts; }
@@ -807,38 +809,29 @@ function barraHojas() {
     <button class="hoja-mas" data-act="hoja-nueva" title="Agregar una hoja de diseño: otra foto con su escala y sus dibujos">${ic('plus', 14)}<span>Nueva hoja</span></button>
     <span class="tb-sp"></span><button class="hoja-ed" data-act="hoja-renombrar" title="Cambiar el nombre de la hoja activa (también: doble clic en la pestaña)">Cambiar nombre</button><button class="hoja-ed" data-act="hoja-duplicar" title="Hacer una copia de la hoja activa con su foto y sus dibujos">Duplicar hoja</button><button class="hoja-ed" data-act="hoja-editar" title="Tipo, nombre o borrar la hoja activa">Editar hoja</button></nav>`;
 }
-/* ---------- Configuración: normas (se guardan en este navegador) ---------- */
-function dialogoConfig() {
-  let normas = JSON.parse(JSON.stringify(E.normas || NORMAS_BASE));
-  const d = document.createElement('dialog'); d.className = 'dlg dlg-cfg';
-  const eqs = Object.entries(EQUIPOS).filter(([k, Q]) => !Q.soloRef), cans = Object.entries(CANAL).filter(([k, C]) => !C.riel && !C.libre);
-  const fila = (n, i) => `<div class="cfg-n" data-i="${i}">
-      <div class="row"><label class="chk"><input type="checkbox" data-n="activa" ${n.activa !== false ? 'checked' : ''}> Activa</label><span class="tb-sp"></span><button class="btn sm del" data-cfg="borrar" title="Borrar norma">${ic('trash', 14)}</button></div>
-      <label class="f"><span>Nombre</span><input class="in" data-n="nombre" value="${esc(n.nombre || '')}"></label>
-      <div class="row"><label class="f"><span>Qué revisa</span><select class="in" data-n="tipo">${Object.entries(TIPOS_NORMA).map(([k, t]) => `<option value="${k}" ${n.tipo === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
-      <div class="row"><label class="f mini"><span>Mínimo</span><span class="fi"><input class="in" data-n="min" value="${n.min ?? ''}" inputmode="decimal"><em>m</em></span></label>
-        ${n.tipo === 'alturaSup' ? `<label class="f mini"><span>Máximo</span><span class="fi"><input class="in" data-n="max" value="${n.max ?? ''}" inputmode="decimal"><em>m</em></span></label>` : ''}
-        ${n.tipo === 'alturaInf' ? `<label class="f mini"><span>Solo tableros</span><select class="in" data-n="ubic"><option value="">Cualquiera</option><option value="armario" ${n.ubic === 'armario' ? 'selected' : ''}>En armario</option><option value="intemperie" ${n.ubic === 'intemperie' ? 'selected' : ''}>A la intemperie</option></select></label>` : ''}</div>
-      <div class="cfg-chips">${n.tipo === 'canalMin' ? cans.map(([k, C]) => `<label><input type="checkbox" data-lista="canal" value="${k}" ${(n.canal || []).includes(k) ? 'checked' : ''}> ${esc(C.corto)}</label>`).join('') : eqs.map(([k, Q]) => `<label><input type="checkbox" data-lista="equipos" value="${k}" ${(n.equipos || []).includes(k) ? 'checked' : ''}> ${esc(Q.n)}</label>`).join('')}</div>
-    </div>`;
-  const pintar = () => { d.innerHTML = `<form method="dialog"><h2>Configuración</h2>
-      <h3 class="cfg-t">Normas</h3><p class="mut">Se revisan en la vista de frente de los equipos con medida real, midiendo desde el nivel de piso de cada hoja. Solo dan advertencias, que el ingeniero puede marcar como revisadas. Quedan guardadas en este navegador.</p>
-      <div class="cfg-lista">${normas.map(fila).join('')}</div>
-      <div class="row wrap"><button class="btn sm" data-cfg="nueva">${ic('plus', 14)} Agregar norma</button><button class="btn sm" data-cfg="base">Volver a las normas iniciales</button></div>
-      <div class="row end"><button class="btn" value="cancel">Cancelar</button><button class="btn pri" value="ok">Guardar</button></div></form>`; };
-  const leer = () => d.querySelectorAll('.cfg-n').forEach(el => { const n = normas[+el.dataset.i];
-    el.querySelectorAll('[data-n]').forEach(i => { const k = i.dataset.n; if (i.type === 'checkbox') n[k] = i.checked; else if (k === 'min' || k === 'max') { const v = parseNum(i.value); if (v != null) n[k] = v; else delete n[k]; } else if (k === 'ubic') { if (i.value) n.ubic = i.value; else delete n.ubic; } else n[k] = i.value; });
-    const ls = el.querySelectorAll('[data-lista]'); if (ls.length) { const campo = ls[0].dataset.lista; n[campo] = [...ls].filter(x => x.checked).map(x => x.value); } });
-  pintar(); document.body.appendChild(d); d.showModal();
-  d.addEventListener('change', ev => { if (ev.target.dataset.n === 'tipo') { leer(); pintar(); } });
-  d.addEventListener('click', ev => {
-    const b = ev.target.closest('[data-cfg]'); if (!b) return; ev.preventDefault(); leer();
-    if (b.dataset.cfg === 'nueva') normas.push({ id: 'n' + Date.now().toString(36), nombre: 'Nueva norma', tipo: 'alturaSup', equipos: ['inv'], min: 0.6, max: 2, activa: true });
-    if (b.dataset.cfg === 'borrar') normas.splice(+b.closest('.cfg-n').dataset.i, 1);
-    if (b.dataset.cfg === 'base' && confirm('¿Volver a las normas iniciales? Se pierden las que agregaste o cambiaste.')) normas = JSON.parse(JSON.stringify(NORMAS_BASE));
-    pintar();
-  });
-  d.addEventListener('close', () => { if (d.returnValue === 'ok') { leer(); E.normas = normas; guardarNormas(normas); toast('Normas guardadas'); panel(); dibujarTodo(); } d.remove(); });
+/* ---------- Guardar un equipo del dibujo en Mis equipos, con su medida real ---------- */
+/* Copia de las medidas del modelo que queda en el proyecto (sirve si se abre en otro navegador) */
+const datosModelo = M => JSON.parse(JSON.stringify({ item: M.item, modelo: M.modelo, ancho: M.ancho, alto: M.alto, prof: M.prof, potencia: M.potencia, torre: M.torre, libre: M.libre }));
+async function guardarComoEquipo() {
+  const p = E.p, e = E.sel && p.equipos.find(x => x.id === E.sel.id); if (!e) return;
+  const M = e.modelo && (modeloPorId(e.modelo) || e.modeloDatos), s = escala(p), md = medidaEquipo(p, e), real = esReal(p, e);
+  /* medida propuesta: la escrita o la del modelo; si es un símbolo en una hoja con escala, la que tiene dibujada */
+  let ancho = e.mw || (M && M.ancho) || null, alto = e.mh || (M && M.alto) || null, prof = (M && M.prof) || (!['libre', 'marca'].includes(e.k) && EQUIPOS[e.k] ? EQUIPOS[e.k].h : null);
+  if (!M && real && !e.mw) { ancho = md.w; alto = md.h; }
+  if (!real && s && !md.simbolo) { ancho = Math.round(md.w); }
+  if (!real && s && md.simbolo && (e.mw || e.f)) { const Q = tamEquipoPx(p, e); ancho = Math.round(Q.w * s); alto = Math.round(Q.h * s); }
+  const r = await dialogoEquipo({ k: ['libre', 'marca'].includes(e.k) ? 'otro' : e.k, item: e.rotulo || (e.txt || '').replace(/\n/g, ' ') || (M && M.item) || '', ancho, alto, prof, libre: M && M.libre });
+  if (!r || !E) return;
+  antes();
+  if (e.k === 'libre') { delete e.modo; delete e.txt; delete e.color; }
+  e.k = r.k; e.modelo = r.id; e.modeloDatos = datosModelo(r); delete e.mw; delete e.mh; delete e.f;
+  if (!e.rotulo) e.rotulo = r.item;
+  despues(); render();
+}
+/* ---------- Configuración: normas y equipos (página aparte; se vuelve al mismo proyecto) ---------- */
+function abrirConfig(tab) {
+  const P = E.proyecto, volver = alSalir;
+  guardarYa().then(() => { cerrarEditor(); paginaConfig(() => { history.replaceState(null, '', '#p=' + P.id); abrirEditor(P, volver); }, tab); });
 }
 function renombrarHoja() {
   const h = hojaActiva(), P = E.proyecto, actual = h ? h.nombre : nombrePrincipal(P);
@@ -1015,12 +1008,12 @@ function panel() {
   }
   if (E.step === 'equipos') {
     h += propiedades();
-    const avisos = E.normas ? revisarNormas(p, E.normas) : [], pend = avisos.filter(a => !a.revisada);
-    h += caja(`Normas${p.suelo != null ? (pend.length ? ` · ${pend.length} advertencia(s)` : ' · sin advertencias') : ''}`, p.suelo == null
-      ? `<p class="mut">Para revisar las normas (alturas de equipos y canalizaciones) marca el nivel de piso en la foto.</p><button class="btn sm" data-act="tool" data-k="piso">Marcar nivel de piso</button>`
-      : `${avisos.length ? `<div class="normas">${avisos.map(a => `<label class="norma${a.revisada ? ' ok' : ''}"><input type="checkbox" data-act="norma-ok" data-k="${esc(a.key)}" ${a.revisada ? 'checked' : ''}><span>${esc(a.texto)}<em>${esc(a.norma.nombre)}</em></span></label>`).join('')}</div>
-        <p class="mut">Si ya lo revisaste y está bien, marca la casilla y desaparece del dibujo.</p>` : `<div class="aviso ok">${ic('check', 16)}<span>Todo cumple las normas activas.</span></div>`}
-        <div class="row wrap"><button class="btn sm" data-act="tool" data-k="piso">Marcar el piso de nuevo</button><button class="btn sm" data-act="piso-quitar">Quitar nivel de piso</button><button class="btn sm" data-act="config">Normas…</button></div>`);
+    const avisos = E.normas ? revisarNormas(p, E.normas, contextoProyecto(E.proyecto)) : [], pend = avisos.filter(a => !a.revisada);
+    const chk = E.normas ? checklist(E.proyecto, E.normas) : [], chkOk = chk.filter(c => c.ok).length;
+    h += caja(`Normas en el dibujo${pend.length ? ` · ${pend.length} advertencia(s)` : ''}`, `${p.suelo == null && (vistaEq(p) === 'elevacion' || p.equipos.some(x => esReal(p, x))) ? `<p class="mut">Para revisar alturas y espacios libres marca el nivel de piso en la foto (vista de frente).</p><button class="btn sm" data-act="tool" data-k="piso">Marcar nivel de piso</button>` : ''}
+      ${avisos.length ? `<div class="normas">${avisos.map(a => `<label class="norma${a.revisada ? ' ok' : ''}"><input type="checkbox" data-act="norma-ok" data-k="${esc(a.key)}" ${a.revisada ? 'checked' : ''}><span>${esc(a.texto)}<em title="${esc(textoFuente(a.norma))}">${esc(a.norma.nombre)} · ${esc(textoFuente(a.norma))}</em></span></label>`).join('')}</div>
+        <p class="mut">Si ya lo revisaste y está bien, marca la casilla y desaparece del dibujo.</p>` : p.suelo != null || escala(p) ? `<div class="aviso ok">${ic('check', 16)}<span>Todo cumple las normas activas.</span></div>` : ''}
+      <div class="row wrap">${p.suelo != null ? '<button class="btn sm" data-act="tool" data-k="piso">Marcar el piso de nuevo</button><button class="btn sm" data-act="piso-quitar">Quitar nivel de piso</button>' : ''}<button class="btn sm" data-act="config" data-k="normas">Normas…</button></div>`);
     h += caja('Equipos', `${p.equipos.length ? '' : '<p class="mut">Usa «Insertar» en la barra de arriba para poner equipos o un conjunto ya armado.</p>'}
       <label class="f"><span>Cantidad de inversores</span><input class="in" data-campo="cantInv" value="${p.cantInv || 1}" inputmode="numeric"></label>
       <label class="chk"><input type="checkbox" data-campo="hoja.verMedidas" ${p.verMedidas ? 'checked' : ''}> Mostrar las medidas de los equipos con medida real (mm)</label>
@@ -1030,6 +1023,9 @@ function panel() {
         return `<button class="li" data-act="sel-ruta" data-id="${r.id}" aria-pressed="${E.sel && E.sel.id === r.id}"><i class="ln" style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i><b>${C.corto}${tr ? ' · ' + esc(tr) : ''}</b><em>${s ? fmt(largoM(p, r.pts), 1) + ' m' : '—'}</em></button>`; }).join('')}</div>
       <p class="mut">El largo de cada tramo pasa a los cuadros de la lámina.</p>` : '<p class="mut">Elige un tipo en «Trazar» (barra de arriba) y haz clic en cada punto del recorrido. Enter o doble clic termina.</p>');
   }
+  if (E.step === 'equipos' && E.normas) { const chk = checklist(E.proyecto, E.normas), chkOk = chk.filter(c => c.ok).length;
+    if (chk.length) h += caja(`Checklist de normas · ${chkOk} de ${chk.length}`, `<details class="chk-d" ${E.chkAbierto ? 'open' : ''}><summary>${chkOk === chk.length ? 'Todo revisado' : `Faltan ${chk.length - chkOk} por revisar`}</summary><div class="normas chk-l">${chk.map(c => `<label class="norma${c.ok ? ' ok' : ''}"><input type="checkbox" data-act="chk-ok" data-k="${esc(c.key)}" ${c.ok ? 'checked' : ''}><span>${esc(c.norma.nombre)}<em>${esc(textoFuente(c.norma))}</em></span></label>`).join('')}</div>
+      <p class="mut">Lo que no se puede medir en el dibujo. Es del proyecto completo (todas las hojas) y queda como respaldo de la revisión.</p></details>`); }
   h += `<div class="pp-pie"><button class="btn pri" data-act="siguiente">Siguiente paso →</button></div>`;
   el.innerHTML = h;
   refrescarBarra();
@@ -1051,7 +1047,7 @@ function propsSel(s, { num, rango, seg }) {
       <input class="in" data-campo="zona.det" placeholder="Detalle (opcional)" value="${esc(z.det || '')}">${del}`; }
   if (s.t === 'equipo') { const e = p.equipos.find(x => x.id === s.id); if (!e) return '';
     return `<label class="f"><span>Tipo</span><select class="in" data-campo="eq.k">${Object.entries(EQUIPOS).map(([k, Q]) => `<option value="${k}" ${e.k === k ? 'selected' : ''}>${Q.n}</option>`).join('')}</select></label>
-      ${e.k === 'inv' ? `<dl class="dl"><dt>Modelo</dt><dd>${esc(inversorDe(p).modelo)}</dd></dl><p class="mut">El modelo se elige en el paso Strings.</p>` : MODELOS_EQUIPO(e.k).length ? `<label class="f"><span>Modelo</span><select class="in" data-campo="eq.modelo"><option value="">Genérico</option>${MODELOS_EQUIPO(e.k).map(x => `<option value="${esc(x.sku || x.item)}" ${e.modelo === (x.sku || x.item) ? 'selected' : ''}>${esc(x.item)}</option>`).join('')}</select></label>` : ''}
+      ${e.k === 'inv' ? `<dl class="dl"><dt>Modelo</dt><dd>${esc(inversorDe(p).modelo)}</dd></dl><p class="mut">El modelo se elige en el paso Strings.</p>` : MODELOS_EQUIPO(e.k).length ? `<label class="f"><span>Modelo</span><select class="in" data-campo="eq.modelo"><option value="">Genérico</option>${MODELOS_EQUIPO(e.k).map(x => `<option value="${esc(idModelo(x))}" ${e.modelo === idModelo(x) ? 'selected' : ''}>${esc(x.item)}${x.id && x.id.startsWith('mq') ? ' (Mis equipos)' : ''}</option>`).join('')}${e.modelo && !modeloPorId(e.modelo) && e.modeloDatos ? `<option value="${esc(e.modelo)}" selected>${esc(e.modeloDatos.item || e.modelo)} (guardado en el proyecto)</option>` : ''}</select></label>` : ''}
       ${e.k === 'libre' ? `<label class="f"><span>Texto adentro</span><textarea class="in" rows="2" data-campo="eq.txt" placeholder="Escribe lo que es (Enter = otra línea)">${esc(e.txt || '')}</textarea></label>
         <div class="f"><span>Color</span><div class="colores">${['#FFFFFF', '#FFE14D', '#FF3DFF', '#00E5FF', '#52C892', '#FF2B2B', '#3D6BFF', '#FF8A00'].map(c => `<button data-act="set" data-campo="eq.color" data-v="${c}" aria-pressed="${(e.color || '#FFFFFF') === c}" style="--c:${c}" title="${c}"></button>`).join('')}</div></div>` : ''}
       ${!EQUIPOS[e.k]?.soloReal && !EQUIPOS[e.k]?.soloRef ? seg('eq.modo', esReal(p, e) ? 'real' : 'ref', [['ref', 'Símbolo de referencia'], ['real', 'Medida real (de frente)']]) : ''}
@@ -1063,6 +1059,7 @@ function propsSel(s, { num, rango, seg }) {
       ${e.k === 'bat' ? `<div class="f"><span>Módulos de batería</span><span class="row">${stepper('eq.mods', e.mods || 3)} módulos (de frente se apilan)</span></div>` : ''}
       ${['tg', 'tfv'].includes(e.k) ? `<div class="f"><span>Ubicación del tablero</span>${seg('eq.ubic', e.ubic || 'armario', [['armario', 'En armario'], ['intemperie', 'A la intemperie']])}</div>` : ''}
       <div class="f"><span>Relleno</span>${seg('eq.relleno', e.relleno || '', [['', 'Sin'], ['solido', 'Pintado'], ['diag', '/ / /'], ['cruz', 'x x x'], ['horiz', '≡']])}</div>
+      ${!['inv', 'marca', 'bpc'].includes(e.k) ? `<button class="btn sm" data-act="eq-guardar" title="Guardarlo en Mis equipos con su medida real, para usarlo en otros proyectos">${ic('save', 14)} Guardar como equipo…</button>` : ''}
       <label class="f"><span>Rótulo</span><input class="in" data-campo="eq.rotulo" value="${esc(e.rotulo || '')}" placeholder="${esc(EQUIPOS[e.k].n)}"></label>${rango('eq.ang', Math.round(e.ang || 0), -180, 180, 'Giro')}${del}`; }
   if (s.t === 'ruta') { const r = p.rutas.find(x => x.id === s.id); if (!r) return '';
     const tramos = CANAL[r.k]?.dc ? p.strings.map((st, i) => [st.id, `String ${i + 1} (${nombreString(st)})`]) : ['tie', 'riel', 'otra', 'perfil'].includes(r.k) ? [] : [['inv-tg', 'Inversor – TGFV'], ['tg-emp', 'TG – Empalme']];
@@ -1175,7 +1172,7 @@ document.addEventListener('click', ev => {
     case 'linea-color': E.lineaColor = b.dataset.v; E.rutaK = 'otra'; E.tool = 'ruta'; E.temp = null; render(); pista(); break;
     case 'linea-dash': E.lineaDash = !E.lineaDash; E.rutaK = 'otra'; E.tool = 'ruta'; E.temp = null; render(); pista(); break;
     case 'piso-quitar': antes(); delete p.suelo; despues(); break;
-    case 'config': dialogoConfig(); break;
+    case 'config': abrirConfig(b.dataset.k || 'normas'); break;
     case 'relleno': E.rellenoK = k; E.tool = 'relleno'; E.temp = null; render(); pista(); break;
     case 'guia-quitar': { const t = E.sel && p.textos.find(x => x.id === E.sel.id); if (t) { antes(); delete t.guia; despues(); } break; }
     case 'medidas-todas': { antes(); const on = b.dataset.k === '1'; p.verMedidas = on; p.equipos.forEach(x => delete x.verMed); despues(); break; }
@@ -1191,6 +1188,7 @@ document.addEventListener('click', ev => {
     case 'hoja-duplicar': duplicarHoja(); break;
     case 'etq-reset': { const ow = duenoEtq(E.sel); if (ow && ow.etq) { antes(); delete ow.etq.dx; delete ow.etq.dy; despues(); } break; }
     case 'etq-quitar': borrarSel(); break;
+    case 'eq-guardar': guardarComoEquipo(); break;
     case 'eq-tam0': { const e = E.sel && p.equipos.find(x => x.id === E.sel.id); if (e) { antes(); delete e.mw; delete e.mh; delete e.f; despues(); } break; }
     case 'cota-escala': { const c = E.sel && p.cotas.find(x => x.id === E.sel.id), m = c && parseNum(c.txt); if (!(m > 0)) break; antes(); p.ref = { a: [...c.a], b: [...c.b], mm: m * 1000 }; p.sinEscala = false; delete c.txt; log(`Escala desde la cota: 1 px = ${fmt(escala(p), 1)} mm`); despues(); render(); toast('La hoja ya tiene escala: ahora los equipos salen a su tamaño real'); break; }
     case 'str-new': antes(); nuevoString(); E.tool = 'str'; despues(); render(); break;
@@ -1203,6 +1201,7 @@ document.addEventListener('click', ev => {
 document.addEventListener('change', ev => {
   if (!E) return; const t = ev.target;
   if (t.dataset.act === 'foto' && t.files[0]) { subirFoto(t.files[0]); return; }
+  if (t.dataset.act === 'chk-ok') { E.chkAbierto = true; const P = E.proyecto, key = t.dataset.k; P.normasOk = { ...(P.normasOk || {}) }; if (t.checked) P.normasOk[key] = true; else delete P.normasOk[key]; E.guardado = false; estadoGuardado(); programarGuardado(); panel(); return; }
   if (t.dataset.act === 'norma-ok') { const p = E.p, key = t.dataset.k; p.normasOk = { ...(p.normasOk || {}) }; if (t.checked) p.normasOk[key] = true; else delete p.normasOk[key]; E.guardado = false; estadoGuardado(); programarGuardado(); panel(); dibujarTodo(); return; }
   if (esPagina()) return;
   if (t.dataset.campo) aplicar(t.dataset.campo, t.type === 'checkbox' ? t.checked : t.value, true);
@@ -1243,6 +1242,7 @@ function aplicar(campo, v, desdeChange, vivo) {
     else if (k === 'mw' || k === 'mh') { if (n > 0) e[k] = Math.round(n); else delete e[k]; }
     else if (k === 'f') e.f = Math.max(.1, +v / 100);
     else if (k === 'verMed') e.verMed = !!v;
+    else if (k === 'modelo') { if (v) e.modelo = v; else delete e.modelo; const M = modeloPorId(v); if (M) e.modeloDatos = datosModelo(M); else if (!v) delete e.modeloDatos; }
     else e[k] = k === 'ang' ? +v : v; }
   else if (pre === 'cota') { const c = s && p.cotas.find(x => x.id === s.id); if (!c) return; const t = String(v).trim(); if (t) c.txt = t; else delete c.txt; }
   else if (pre === 'hoja' && ['verMedidas', 'tamSimb'].includes(k)) { if (k === 'verMedidas') { p.verMedidas = !!v; if (v) p.equipos.forEach(x => delete x.verMed); } else if (k === 'tamSimb') p.tamSimb = Math.max(.2, +v / 100); }

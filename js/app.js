@@ -12,6 +12,8 @@ import { abrirLibroBytes } from './xlsx/libro.js';
 import { importarCamposAutocad, datosProyectoDesdeFicha } from './ficha/importar.js';
 import { cargarDatosFicha } from './ficha/datos.js';
 import { paginaPlantilla } from './ficha/pagina-plantilla.js';
+import { paginaConfig } from './config.js';
+import { cargarEquiposUsuario } from './catalogo.js';
 
 const L = { proyectos: [], q: '', filtro: 'todos' };
 
@@ -21,7 +23,9 @@ function tema(t) { document.documentElement.dataset.theme = t; try { localStorag
 async function boot() {
   try { L.proyectos = await listar(); } catch (e) { L.proyectos = []; toast('Este navegador no deja guardar datos (¿modo privado?)'); }
   if (!L.proyectos.length) { const p = await armarEjemplo(); L.proyectos = [p]; }
+  try { await cargarEquiposUsuario(); } catch (e) { }
   if (location.hash === '#plantilla') return paginaPlantilla(() => lista());
+  if (location.hash === '#config') return paginaConfig(() => lista());
   const id = new URLSearchParams(location.hash.slice(1)).get('p');
   const p = id && L.proyectos.find(x => x.id === id);
   if (p) abrir(p); else lista();
@@ -52,6 +56,7 @@ function lista() {
   $('#app').innerHTML = `
   <header class="l-top"><img src="assets/nikola-logo-blanco.svg" alt="NIKOLA" class="l-logo"><span class="l-app">Diseño Ops</span><div class="tb-sp"></div>
     <button class="tb-btn tb-txt" data-l="plantilla" title="Con qué versión de Campos Autocad calcula la app, y qué pasa si cambia">${ic('sheet')}<span>Plantilla</span></button>
+    <button class="tb-btn tb-txt" data-l="config" title="Normas con su fuente y medidas reales de los equipos">${ic('ruler')}<span>Configuración</span></button>
     <button class="tb-btn" data-l="tema" title="${oscuro ? 'Modo claro' : 'Modo oscuro'}">${ic(oscuro ? 'sun' : 'moon')}</button></header>
   <div class="proto"><b>PROTOTIPO</b> Los proyectos se guardan en este navegador. Exporta el .json para compartirlos.</div>
   <main class="l-main">
@@ -107,6 +112,7 @@ document.addEventListener('click', async ev => {
   if (a === 'abrir' && p) abrir(p);
   if (a === 'nuevo') nuevo();
   if (a === 'plantilla') paginaPlantilla(() => lista());
+  if (a === 'config') paginaConfig(async () => { L.proyectos = await listar(); lista(); });
   if (a === 'filtro') { L.filtro = b.dataset.k; lista(); }
   if (a === 'tema') { tema(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'); lista(); }
   if (a === 'duplicar' && p) { const c = clone(p); c.id = uid('p'); c.codigo = (p.codigo || '') + ' (copia)'; c.creado = new Date().toISOString(); await guardar(c); L.proyectos.push(c); lista(); toast('Proyecto duplicado'); }

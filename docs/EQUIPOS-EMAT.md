@@ -93,13 +93,31 @@ Medidas con placa de montaje, en el orden de Huawei: ancho × alto × prof. Iac 
 | LUNA2000 S0 (5 kWh por módulo) | 600 mm | 960 mm | 1.320 mm | 240 (módulo de potencia) + 360 × n |
 | LUNA2000 S1 (7 kWh por módulo) | 510 mm | 870 mm | 1.230 mm | 150 (módulo de potencia) + 360 × n |
 
+## Actualización 24-11-2026 (fichas y manuales del Drive, 04. Información Técnica)
+
+- **Espacios libres de montaje** (mm, de las figuras de los manuales) cargados en `libre`:
+  - SUN2000-K-LB0: arriba 300, abajo 400, lados 350.
+  - SUN2000-KTL-M3 (30–50 kW): arriba 500, abajo 600, lados 300, frente 1000.
+  - SUN2000-100KTL-M2: arriba 200, abajo 600, lados 600, frente 1000.
+  - Sin dato todavía: L1, LC0, M1, MAP0, MB0, MG0 (rige el mínimo de RGR N°02/2024: 15 cm a cada lado).
+- **Imax por MPPT**: MAP0 16 A, M3 30 A, 100KTL-M2 30 A, 150K-MG0 48 A. Falta MB0.
+- **50KTL-M3**: Iac 84,0 A a 380 V (antes 79,8 A, que era a 400 V).
+- **150K-MG0**: 102 kg según la ficha del Drive.
+- **Trina 720 W**: Imp 17,44 A confirmado.
+- **Smart Power Sensor trifásico (DTSU666-H)**: 72 × 100 × 65,5 mm, 0,8 kg.
+- **Torre de baterías**: el dibujo usa la torre tabulada del modelo (antes sumaba siempre 240 mm de potencia, que es S0; S1 lleva 150 mm).
+- **Cargadores agregados** (no son de EMAT): Beny OCPP 7,4 / 22 kW (169 × 380 × 151), TeltoCharge EVC1 (170 × 341 × 97), GoodWe HCA (208 × 450 × 150), Duosida SES (237 × 343 × 115).
+
 ## Pendientes
 
-1. **Espacios libres de montaje de los inversores** (arriba, abajo, lados y frente). En los manuales de Huawei solo aparecen en las figuras de "Installation space / Clearance requirements" (capítulo 4 de cada manual). Solo está confirmado el 100KTL-M2: 600 mm libres por debajo.
-2. **Tableros IP65 / IP40 sobrepuestos**: la medida depende de la marca que compre EMAT. Hay que completarla con la ficha del proveedor.
-3. **Corriente máxima de entrada por MPPT** (MAP0, MB0, M3, M2 y MG0): falta confirmarla en la ficha. Los valores de L1 (12,5 A), LB0 y LC0 (16 A) y M1 (11 A) sí están cargados.
-4. **Trina 720 W**: verificar el Imp (17,44 A) en la ficha.
-5. **Jinko 585 W**: la ficha F4 da un marco de 35 mm, pero los lotes nuevos traen 30 mm.
+1. Espacios libres de L1, LC0, M1, MAP0, MB0 y MG0 (manuales que no están en el Drive).
+2. Medidas de Wallbox Pulsar Plus, Tesla Wall Connector y EVA (están en la plantilla Campos Autocad pero no hay ficha en el Drive): agregarlas en Configuración → Equipos.
+3. Tableros IP65 / IP40 sobrepuestos: medida según la marca que compre EMAT.
+4. Fichas de modelos que aparecen en la Coordinación EMAT y no están en la app: Canadian 590 / 705 W, Huawei M5 (12–25 kW).
+
+## Mis equipos
+
+Desde el 24-11-2026 Operaciones puede agregar equipos con su medida real sin tocar el código: en el dibujo («Guardar como equipo…» en las propiedades) o en Configuración → Equipos. Se guardan en el navegador (ajuste `equiposUsuario`) y cada equipo dibujado guarda una copia de sus medidas (`e.modeloDatos`), para que el proyecto se vea igual en otro navegador.
 
 ## Cómo se usa en la app
 
