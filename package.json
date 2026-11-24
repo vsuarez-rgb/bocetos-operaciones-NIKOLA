@@ -11,6 +11,6 @@
     "diccionario": "node scripts/extraer-diccionario.mjs",
     "plantilla": "node scripts/extraer-plantilla.mjs",
     "validar": "node scripts/validar-motor.mjs",
-    "test": "node scripts/probar-formulas.mjs && node scripts/probar-diccionario.mjs"
+    "test": "node scripts/probar-formulas.mjs && node scripts/probar-diccionario.mjs && node scripts/probar-estructura.mjs"
   }
 }

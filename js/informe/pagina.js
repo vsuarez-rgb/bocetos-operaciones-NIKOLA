@@ -4,7 +4,7 @@
    sale en el PDF.
    ========================================================================== */
 import { esc } from '../util.js';
-import { calcular, calcStrings, escala } from '../geom.js';
+import { calcular, calcStrings, escala, cubicacionMontaje, notaMontaje, nombreMontaje, textoIncl } from '../geom.js';
 import { dibujar, cargarImg } from '../render.js';
 import { vistaHoja, resolverHoja, TIPOS_HOJA } from '../hojas.js';
 import { lamina01, lamina02, unilinealSVG } from '../lamina.js';
@@ -46,9 +46,26 @@ export async function datosInforme(p) {
     proyectista: L.proyectista || out['PROYECTISTA'] || '', ingeniero: L.jefe || L.ingeniero || out['PROYECTISTA'] || '', instalador: L.instalador || out['INSTALADOR(A) Nombre'] || '',
     fecha: new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })
   };
+  Object.assign(extra, camposMontaje(p, R, fmt));
   for (const [k, v] of Object.entries(extra)) if (!(k in out)) out[k] = v == null ? null : String(v);
   const conocidos = new Set([...Object.keys(out), ...(dic?.campos || []).filter(c => c.tipo === 'campo').flatMap(c => [c.id, ...(c.propiedadDWG || [])])]);
   return { valores: out, dic, extras: Object.keys(extra), conocidos };
+}
+
+/* {MONTAJE …}: nota automática y cubicación de la estructura (totales y por techo: {MONTAJE T1 Bases delanteras}…) */
+export function camposMontaje(p, R, fmt = v => String(v)) {
+  const C = cubicacionMontaje(p, R), m = v => fmt(Math.round(v / 100) / 10), o = { 'MONTAJE Nota': notaMontaje(p, R) };
+  const poner = (pre, t) => { o[`${pre} Bases delanteras`] = String(t.delanteras); o[`${pre} Bases traseras`] = String(t.traseras); o[`${pre} Metros perfil`] = m(t.mmPerfil); o[`${pre} Metros riel`] = m(t.mmRiel); o[`${pre} Anclajes`] = String(t.anclajes); };
+  poner('MONTAJE', C);
+  C.techos.forEach(t => { poner(`MONTAJE T${t.i + 1}`, t); o[`MONTAJE T${t.i + 1} Tipo`] = t.tipos.map(nombreMontaje).join(' + '); o[`MONTAJE T${t.i + 1} Inclinación`] = textoIncl(t.r); });
+  return o;
+}
+/* Tabla "Cubicación de estructura": una fila por techo con los {MONTAJE T… } (los valores quedan vivos) */
+export function filasTablaMontaje(p, R = calcular(p)) {
+  const C = cubicacionMontaje(p, R);
+  return [['**Techo**', '**Montaje**', '**Bases del. / tras.**', '**Perfil [m]**', '**Riel [m]**', '**Anclajes**'],
+    ...C.techos.map(t => { const k = `MONTAJE T${t.i + 1}`; return [`Techo ${t.i + 1}`, `{${k} Tipo} {${k} Inclinación}`, `{${k} Bases delanteras} / {${k} Bases traseras}`, `{${k} Metros perfil}`, `{${k} Metros riel}`, `{${k} Anclajes}`]; }),
+    ...(C.techos.length > 1 ? [['**Total**', '', '{MONTAJE Bases delanteras} / {MONTAJE Bases traseras}', '{MONTAJE Metros perfil}', '{MONTAJE Metros riel}', '{MONTAJE Anclajes}']] : [])];
 }
 
 /* Texto con {Campos} y un formato mínimo: **negrita**, [rojo](texto), líneas que empiezan con "• " */

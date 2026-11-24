@@ -4,7 +4,7 @@
    Todas las coordenadas del proyecto están en px de la foto; la escala
    (mm por px) sale de la línea de referencia del paso 1.
    ========================================================================== */
-import { PANELES, INVERSORES, ZONAS, GAP_FILA, GAP_COL, SOL_MIN, T_MIN, CANAL, EQUIPOS, OTROS_EMAT } from './catalogo.js';
+import { PANELES, INVERSORES, ZONAS, GAP_FILA, GAP_COL, SOL_MIN, T_MIN, CANAL, EQUIPOS, OTROS_EMAT, MONTAJES, MONTAJE_DEF } from './catalogo.js';
 import { dist, rotP, centroid, polyArea, pointInPoly, convexOverlap, distSeg, lerp, polyLen } from './util.js';
 
 export const escala = p => p.ref && p.ref.mm ? p.ref.mm / dist(p.ref.a, p.ref.b) : null;          // mm por px
@@ -79,9 +79,11 @@ export function geomTecho(p, r, s) {
 export function sombraMm(b, beta, gamma) { const B = beta * Math.PI / 180, G = gamma * Math.PI / 180; return Math.ceil((b * Math.sin(G + B) / Math.sin(G) - b * Math.cos(B)) / 10) * 10; }
 export function geomBloque(p, G, b) {
   const o = b.orient || G.o, otra = o !== G.o, wB = otra ? G.hmm : G.wmm, hB = otra ? G.wmm : G.hmm;
-  // inclinación del bloque: la suya, o la de los paneles del techo; sin ninguna, sobrepuesto al techo
-  const inc = b.incl != null ? b.incl : G.inclPan, propia = inc != null, vert = ['abajo', 'arriba'].includes(b.baja || G.baja);
-  let fx = G.fx, fy = G.fy;
+  // inclinación del bloque: la suya, o la de los paneles del techo; sin ninguna, sobrepuesto al techo.
+  // Un bloque con montaje 'riel' va sobrepuesto aunque el techo tenga estructura.
+  const sobre = b.montaje && b.montaje.tipo === 'riel';
+  const inc = sobre ? null : b.incl != null ? b.incl : G.inclPan, propia = inc != null, vert = ['abajo', 'arriba'].includes(b.baja || G.baja);
+  let fx = sobre ? G.fxT : G.fx, fy = sobre ? G.fyT : G.fy;
   if (propia) { const cs = Math.cos(inc * Math.PI / 180); fx = vert ? G.s : G.s / cs; fy = vert ? G.s / cs : G.s; }
   const sombra = propia && inc > 0 && b.sombra !== false ? sombraMm(vert ? hB : wB, inc, p.solMin ?? SOL_MIN) : null;
   const pw = wB / fx, ph = hB / fy;
@@ -103,7 +105,7 @@ export function panelesDibujados(p) {
 export function calcular(p) {
   const out = { panels: [], bloques: [], sombras: [], filas: {}, porTecho: p.roofs.map(() => ({ n: 0, area: 0, wp: 0 })), n: 0, kwp: 0, area: 0 };
   const PD = panelesDibujados(p); out.nDibujados = PD.n;
-  const s = escala(p); if (!s) { out.validos = []; out.porKey = new Map(); out.rieles = { lineas: [], mm: 0, filas: 0, porTecho: [] }; out.n = PD.n; out.kwp = PD.kwp; return out; }   // sin escala (hojas que no la necesitan): listas vacías
+  const s = escala(p); if (!s) { out.validos = []; out.porKey = new Map(); out.rieles = { lineas: [], mm: 0, filas: 0, porTecho: [] }; out.estructura = { lineas: [], perfiles: [], bases: [], flechas: [], mPerfil: 0, porTecho: [] }; out.n = PD.n; out.kwp = PD.kwp; return out; }   // sin escala (hojas que no la necesitan): listas vacías
   const bloquean = p.zonas.filter(z => (ZONAS[z.k] || ZONAS.obs).bloquea).map(zonaPoly);
   p.roofs.forEach((r, ri) => {
     if (!r.closed || r.poly.length < 3) return;
@@ -174,8 +176,143 @@ export function calcular(p) {
   out.validos = out.panels.filter(vale);
   out.porKey = new Map(out.validos.map(pn => [pn.key, pn]));
   out.rieles = calcRieles(p, out);
+  out.estructura = calcEstructura(p, out);
   return out;
 }
+
+/* ---------- Tipo de montaje ----------
+   r.montaje = { tipo, angMin, sepBases, sobresale, d, largo, anclaje }; b.montaje lo reemplaza en un bloque.
+   El ángulo no se repite: fija y perfil usan r.inclPan (b.incl); ajustable guarda angMax en r.inclPan.
+   El lado que sube es el contrario de r.baja (b.baja). Sin r.montaje el tipo se deduce de los campos de siempre. */
+export function montajeDe(r, b) {
+  const m = b && b.montaje && b.montaje.tipo ? b.montaje : (r.montaje && r.montaje.tipo ? r.montaje : null);
+  const ang = b && b.incl != null && !(b.montaje && b.montaje.tipo === 'riel') ? b.incl : r.inclPan;
+  let tipo = m ? m.tipo : null;
+  if (!tipo) {
+    const rl = (b && b.rieles && b.rieles.modo) ? b.rieles : (r.rieles || {});
+    tipo = rl.modo === 'perfil' ? 'perfil' : (b && b.incl != null) || r.inclPan != null ? 'fija' : 'riel';
+  }
+  const viejo = (r.rieles && r.rieles.modo === 'perfil') ? r.rieles : {};   // perfiles de antes (rieles.modo 'perfil')
+  const M = m || {};
+  return {
+    tipo, ang: tipo === 'riel' ? (r.incl || 0) : (ang ?? r.incl ?? 0), angMin: tipo === 'ajustable' ? (M.angMin ?? 0) : null,
+    sepBases: M.sepBases ?? MONTAJE_DEF.sepBases, sobresale: M.sobresale ?? viejo.sob ?? MONTAJE_DEF.sobresale,
+    d: M.d ?? viejo.d ?? null, largo: M.largo || 'bloque', anclaje: M.anclaje || '', propio: !!(b && b.montaje && b.montaje.tipo),
+    baja: (b && b.baja) || bajaDe(r)
+  };
+}
+/* Texto de la inclinación: "10º" o, si es ajustable, "15–30º" */
+export const textoIncl = (r, b) => { const M = montajeDe(r, b); return M.tipo === 'ajustable' ? `${M.angMin}–${M.ang}º` : `${M.ang}º`; };
+
+/* Estructura bajo los paneles, por tramo continuo de cada fila (la fila corre perpendicular a la pendiente):
+     fija / ajustable · líneas en el sentido de la pendiente, una en cada extremo y una cada sepBases;
+                        sobresalen "sobresale" del panel y tienen una base en cada punta (delantera = lado que baja)
+     perfil           · 2 perfiles a lo largo de la fila que sobresalen "sobresale" (largo 'bloque'),
+                        llegan al borde del techo (largo 'techo') o se dibujan a mano (largo 'manual')
+     riel             · sin estructura (siguen los rieles de calcRieles)
+   Devuelve { lineas, perfiles, bases:[{x,y,pos}], flechas:[[a,b]], mPerfil, porTecho:[{delanteras, traseras, mmPerfil, anclajes, tipos}] } */
+export function calcEstructura(p, out) {
+  const res = { lineas: [], perfiles: [], bases: [], flechas: [], mPerfil: 0, porTecho: p.roofs.map(() => ({ delanteras: 0, traseras: 0, mmPerfil: 0, anclajes: 0, tipos: [] })) };
+  const grupos = new Map(), conjuntos = new Map();
+  (out.validos || []).forEach(pn => {
+    const r = p.roofs[pn.ri], b = pn.bi != null ? (r.bloques || [])[pn.bi] : null, M = montajeDe(r, b);
+    const T = res.porTecho[pn.ri]; if (!T.tipos.includes(M.tipo)) T.tipos.push(M.tipo);
+    if (M.tipo === 'riel') return;
+    const vert = ['abajo', 'arriba'].includes(M.baja), man = pn.bi != null;
+    const kc = man ? `${pn.ri}|b${pn.bi}` : `${pn.ri}|a`;
+    if (!conjuntos.has(kc)) conjuntos.set(kc, { M, vert, pans: [] }); conjuntos.get(kc).pans.push(pn);
+    if (M.tipo === 'perfil' && M.largo === 'manual') return;   // los perfiles se dibujan a mano
+    // la fila (perpendicular a la pendiente) y el orden dentro de ella
+    const k = man ? `${pn.ri}|b${pn.bi}|${vert ? pn.i : pn.j}` : `${pn.ri}|a|${vert ? pn.row : pn.xcm}`;
+    if (!grupos.has(k)) grupos.set(k, { M, vert, man, ri: pn.ri, pans: [] }); grupos.get(k).pans.push(pn);
+  });
+  const uni = (a, b) => { const L = dist(a, b) || 1; return [(b[0] - a[0]) / L, (b[1] - a[1]) / L]; };
+  const mas = (o, v, t) => [o[0] + v[0] * t, o[1] + v[1] * t];
+  const proy = (q, o, v) => (q[0] - o[0]) * v[0] + (q[1] - o[1]) * v[1];
+  grupos.forEach(({ M, vert, man, ri, pans }) => {
+    const orden = pn => man ? (vert ? pn.j : pn.i) : (vert ? pn.xcm : pn.row);
+    pans.sort((A, B) => orden(A) - orden(B));
+    const paso = pn => man ? 1 : (pn.wmm + GAP_COL) / 10 + 3;
+    const tramos = []; let act = [pans[0]];
+    for (let i = 1; i < pans.length; i++) { const a = pans[i - 1], b = pans[i]; if (orden(b) - orden(a) <= paso(a)) act.push(b); else { tramos.push(act); act = [b]; } }
+    tramos.push(act);
+    const T = res.porTecho[ri];
+    tramos.forEach(tr => {
+      const A = tr[0], O = A.q[0];
+      // U = a lo largo de la fila; S = eje de la pendiente (local) y el lado que sube
+      const U = vert ? uni(A.q[0], A.q[1]) : uni(A.q[0], A.q[3]), S = vert ? uni(A.q[0], A.q[3]) : uni(A.q[0], A.q[1]);
+      const mmU = vert ? A.wmm : A.hmm, mmS = vert ? A.hmm : A.wmm;
+      const pxU = dist(A.q[0], vert ? A.q[1] : A.q[3]) / mmU, pxS = dist(A.q[0], vert ? A.q[3] : A.q[1]) / mmS;
+      const L = Math.max(...tr.flatMap(pn => pn.q.map(q => proy(q, O, U)))), H = mmS * pxS;
+      const subeMas = M.baja === 'arriba' || M.baja === 'izq';   // el lado alto queda hacia +S
+      if (M.tipo === 'perfil') {
+        const d = M.d ?? Math.round(mmS / 2), t0 = Math.max(.04, Math.min(.46, .5 - d / 2 / mmS)), r = p.roofs[ri];
+        [t0, 1 - t0].forEach(t => {
+          const a = mas(O, S, H * t), b = mas(a, U, L);
+          let e0 = M.sobresale * pxU, e1 = e0;
+          if (M.largo === 'techo') { e0 = rayoPoligono(a, [-U[0], -U[1]], r.poly) ?? e0; e1 = rayoPoligono(b, U, r.poly) ?? e1; }
+          res.perfiles.push([mas(a, U, -e0), mas(b, U, e1)]);
+          const mm = (L + e0 + e1) / pxU; res.mPerfil += mm / 1000; T.mmPerfil += mm;
+        });
+        return;
+      }
+      // fija / ajustable: líneas en el sentido de la pendiente, repartidas a lo largo del tramo
+      const Lmm = L / pxU, n = Math.max(2, Math.ceil(Lmm / Math.max(100, M.sepBases)) + 1), sob = M.sobresale * pxS;
+      for (let i = 0; i < n; i++) {
+        const base = mas(O, U, L * i / (n - 1)), a = mas(base, S, -sob), b = mas(base, S, H + sob);
+        res.lineas.push([a, b]);
+        const [del, tra] = subeMas ? [a, b] : [b, a];
+        res.bases.push({ x: del[0], y: del[1], pos: 'delantera' }, { x: tra[0], y: tra[1], pos: 'trasera' });
+        T.delanteras++; T.traseras++; T.anclajes += 2 * MONTAJE_DEF.anclajesPorBase;
+        const mm = mmS + 2 * M.sobresale; res.mPerfil += mm / 1000; T.mmPerfil += mm;
+      }
+    });
+  });
+  // Flecha corta "sube" al costado de cada bloque (o de los paneles automáticos de un techo)
+  conjuntos.forEach(({ M, vert, pans }) => {
+    const A = pans[0], O = A.q[0], U = vert ? uni(A.q[0], A.q[1]) : uni(A.q[0], A.q[3]), S = vert ? uni(A.q[0], A.q[3]) : uni(A.q[0], A.q[1]);
+    const us = pans.flatMap(pn => pn.q.map(q => proy(q, O, U))), ss = pans.flatMap(pn => pn.q.map(q => proy(q, O, S)));
+    const u0 = Math.min(...us), s0 = Math.min(...ss), s1 = Math.max(...ss), alto = Math.min(s1 - s0, dist(A.q[0], A.q[3]) * 1.2);
+    const subeMas = M.baja === 'arriba' || M.baja === 'izq', m = (s0 + s1) / 2, pie = mas(mas(O, U, u0 - alto * .35), S, m + (subeMas ? -alto / 2 : alto / 2));
+    res.flechas.push([pie, mas(pie, S, subeMas ? alto : -alto)]);
+  });
+  return res;
+}
+/* Distancia desde o (en la dirección v, unitaria) hasta el primer borde del polígono; null si no lo cruza */
+export function rayoPoligono(o, v, poly) {
+  let best = null;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length], ex = b[0] - a[0], ey = b[1] - a[1], den = v[0] * ey - v[1] * ex;
+    if (Math.abs(den) < 1e-9) continue;
+    const t = ((a[0] - o[0]) * ey - (a[1] - o[1]) * ex) / den, s = ((a[0] - o[0]) * v[1] - (a[1] - o[1]) * v[0]) / den;
+    if (t > 1e-6 && s >= 0 && s <= 1 && (best == null || t < best)) best = t;
+  }
+  return best;
+}
+
+/* Cubicación de la estructura por techo (para el panel lateral, la tabla del informe y los {MONTAJE …}) */
+export function cubicacionMontaje(p, R = calcular(p)) {
+  const E = R.estructura || { porTecho: [] }, rl = R.rieles || { porTecho: [] };
+  const techos = p.roofs.map((r, i) => ({ i, r, n: R.porTecho[i]?.n || 0, ...(E.porTecho[i] || { delanteras: 0, traseras: 0, mmPerfil: 0, anclajes: 0, tipos: [] }), mmRiel: rl.porTecho[i] || 0 }))
+    .filter(t => t.r.closed && t.n);
+  const suma = k => techos.reduce((a, t) => a + t[k], 0);
+  return { techos, delanteras: suma('delanteras'), traseras: suma('traseras'), mmPerfil: suma('mmPerfil'), mmRiel: suma('mmRiel'), anclajes: suma('anclajes') };
+}
+/* Nota automática del montaje: "Los paneles del techo 2 se instalan sobre estructura ajustable 15–30°, anclada con …" */
+export function notaMontaje(p, R = calcular(p)) {
+  const frases = [];
+  p.roofs.forEach((r, i) => {
+    if (!r.closed || !(R.porTecho[i] && R.porTecho[i].n)) return;
+    const bl = r.modo === 'manual' ? (r.bloques || []) : [], Ms = bl.length ? bl.map(b => montajeDe(r, b)) : [montajeDe(r)];
+    const vistos = new Map(); Ms.forEach(M => { const k = `${M.tipo}|${M.angMin}|${M.ang}|${M.anclaje}`; if (!vistos.has(k)) vistos.set(k, M); });
+    vistos.forEach(M => {
+      const que = { riel: 'rieles, sobrepuestos al techo', fija: `estructura fija de ${M.ang}°`, ajustable: `estructura ajustable ${M.angMin}–${M.ang}°`, perfil: `perfiles de estructura (losa plana) a ${M.ang}°` }[M.tipo];
+      frases.push(`Los paneles del techo ${i + 1} se instalan sobre ${que}${M.anclaje ? `, ${M.tipo === 'riel' ? 'anclados' : 'anclada'} con ${M.anclaje}` : ''}.`);
+    });
+  });
+  return frases.join(' ');
+}
+export const nombreMontaje = t => MONTAJES[t] || t;
 
 /* Rieles de los paneles (r.rieles = { modo, d } por techo; un bloque puede tener los suyos en b.rieles).
      modo 'perp' · perpendiculares a los paneles: 2 rieles a lo largo de cada fila (como el CONJUNTO 1 de los planos)
@@ -184,26 +321,13 @@ export function calcular(p) {
 export const DEF_RIEL = (modo, pn) => modo === 'paral' ? Math.round(pn.wmm / 2) : Math.round(pn.hmm / 2);
 export function calcRieles(p, out) {
   const res = { lineas: [], mm: 0, filas: 0, porTecho: p.roofs.map(() => 0), perfiles: [], mmPerfil: 0 };
-  const grupos = new Map(), cols = new Map();
+  const grupos = new Map();
   (out.validos || []).forEach(pn => {
     const r = p.roofs[pn.ri], b = pn.bi != null ? (r.bloques || [])[pn.bi] : null, conf = (b && b.rieles && b.rieles.modo) ? b.rieles : (r.rieles || {});
-    if (!conf.modo || conf.modo === 'no') return;
-    if (conf.modo === 'perfil') {   // losa plana: perfiles por columna de paneles (de la primera a la última fila)
-      const kc = pn.bi != null ? `${pn.ri}|b${pn.bi}|${pn.j}` : `${pn.ri}|a|${Math.round(pn.xcm / ((pn.wmm + GAP_COL) / 10))}`;
-      if (!cols.has(kc)) cols.set(kc, { conf, pans: [] }); cols.get(kc).pans.push(pn); return;
-    }
+    // 'perfil' (losa plana) ya no es un riel: es el montaje 'perfil' y lo dibuja calcEstructura
+    if (!conf.modo || conf.modo === 'no' || conf.modo === 'perfil') return;
     const k = pn.bi != null ? `${pn.ri}|b${pn.bi}|${pn.i}` : `${pn.ri}|a|${pn.row}`;
     if (!grupos.has(k)) grupos.set(k, { conf, pans: [] }); grupos.get(k).pans.push(pn);
-  });
-  cols.forEach(({ conf, pans }) => {
-    pans.sort((A, B) => (A.bi != null ? A.i - B.i : A.row - B.row));
-    const A = pans[0], B = pans[pans.length - 1], d = conf.d ?? Math.round(A.wmm / 2), sob = conf.sob ?? 150;
-    const pxMm = dist(A.q[0], A.q[3]) / A.hmm, t0 = Math.max(.04, Math.min(.46, .5 - d / 2 / A.wmm));
-    [t0, 1 - t0].forEach(t => {
-      const a = lerp(A.q[0], A.q[1], t), b = lerp(B.q[3], B.q[2], t), L = dist(a, b) || 1, ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, ext = sob * pxMm;
-      res.perfiles.push([[a[0] - ux * ext, a[1] - uy * ext], [b[0] + ux * ext, b[1] + uy * ext]]);
-      res.mmPerfil += L / pxMm + 2 * sob;
-    });
   });
   const fr = (d, largo) => { const t = Math.max(.04, Math.min(.46, .5 - d / 2 / largo)); return [t, 1 - t]; };
   grupos.forEach(({ conf, pans }) => {

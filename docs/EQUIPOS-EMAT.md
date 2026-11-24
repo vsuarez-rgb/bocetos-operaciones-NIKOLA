@@ -100,6 +100,15 @@ Medidas con placa de montaje, en el orden de Huawei: ancho × alto × prof. Iac 
 3. **Corriente máxima de entrada por MPPT** (MAP0, MB0, M3, M2 y MG0): falta confirmarla en la ficha. Los valores de L1 (12,5 A), LB0 y LC0 (16 A) y M1 (11 A) sí están cargados.
 4. **Trina 720 W**: verificar el Imp (17,44 A) en la ficha.
 5. **Jinko 585 W**: la ficha F4 da un marco de 35 mm, pero los lotes nuevos traen 30 mm.
+6. **Estructura de los paneles (tipo de montaje)**: valores por defecto que **no** son de fabricante ni de norma. Se dejan así hasta revisar las restricciones y normas; se cambian en *Configuración* (para todos los proyectos de ese navegador) y en cada techo o bloque. Están en `MONTAJE_DEF` (`js/catalogo.js`).
+   | Valor | Por defecto | Pendiente |
+   |---|---|---|
+   | Distancia entre bases (fija y ajustable) | 1.000 mm | sí |
+   | Cuánto sobresale la estructura del panel o el perfil del bloque | 150 mm (el que ya usaban los perfiles de losa) | sí |
+   | Anclajes por base | 1 | sí |
+   | Ángulos al elegir "ajustable" | 15–30° (ejemplo; se cambian en el techo) | sí |
+   | Distancia entre los 2 perfiles | la mitad del panel (igual que los rieles) | sí |
+   En el DXF los perfiles salen como rectángulos de 40 mm de ancho y las bases como círculos de 60 mm: es solo representación, no medida real.
 
 ## Cómo se usa en la app
 

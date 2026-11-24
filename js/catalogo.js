@@ -59,7 +59,7 @@ export const CANAL = {
   sub: { n: 'Subterránea en CA', corto: 'Subterránea CA', c: '#FF3B3B', dash: [], cond: 'RVK 3x8,37 mm²', ducto: 'PVC 32' },
   tie: { n: 'Línea de tierra', corto: 'Tierra', c: '#9DB0BD', dash: [], cond: 'Cu desnudo 16 mm²', ducto: '—' },
   otra: { n: 'Otra línea (color a elección)', corto: 'Línea', c: '#FFFFFF', dash: [], cond: '—', ducto: '—', libre: true },
-  perfil: { n: 'Perfil de estructura (losa plana)', corto: 'Perfil', c: '#FF3B3B', dash: [], cond: '—', ducto: '—', riel: true, doble: true },
+  perfil: { n: 'Perfil de estructura (dibujo libre)', corto: 'Perfil', c: '#FF3B3B', dash: [], cond: '—', ducto: '—', riel: true, doble: true },
   riel: { n: 'Riel (dibujo libre)', corto: 'Riel', c: '#FF9E3D', dash: [], cond: '—', ducto: '—', riel: true }
 };
 
@@ -73,6 +73,7 @@ export const CAPAS = [
   { id: 'zonas', n: 'ZONAS', c: '#FF5A5A' },
   { id: 'paneles', n: 'PANELES', c: '#2FD06B' },
   { id: 'rieles', n: 'RIELES', c: '#FF9E3D' },
+  { id: 'estructura', n: 'ESTRUCTURA', c: '#FF3B3B' },
   { id: 'strings', n: 'STRINGS', c: '#00E5FF' },
   { id: 'canal', n: 'CANALIZACION', c: '#3D6BFF' },
   { id: 'equipos', n: 'EQUIPOS', c: '#FF3DFF' },
@@ -93,3 +94,13 @@ export const ESTADOS = { pendiente: 'Pendiente', diseno: 'En diseño', revision:
 export const GAP_FILA = 20;     // mm entre filas por defecto
 export const GAP_COL = 20;      // mm entre columnas
 export const SOL_MIN = 30;      // altura mínima del sol para separar filas inclinadas
+
+/* Tipo de montaje de los paneles (r.montaje / b.montaje). Ver calcEstructura en geom.js.
+     riel      · sobrepuestos al techo, sobre rieles (sin estructura)
+     fija      · estructura inclinada de ángulo fijo (r.inclPan)
+     ajustable · estructura de ángulo regulable: angMin–angMax (angMax se guarda en r.inclPan: la sombra usa el peor caso)
+     perfil    · losa plana: 2 perfiles por fila (r.inclPan) */
+export const MONTAJES = { riel: 'Sobre rieles (sobrepuestos)', fija: 'Estructura fija', ajustable: 'Estructura ajustable', perfil: 'Perfiles (losa plana)' };
+/* Valores por defecto: PENDIENTES (no son datos de fabricante ni de norma; se revisan al final con las
+   restricciones y normas). Se pueden cambiar en Configuración y en cada techo o bloque. Ver docs/EQUIPOS-EMAT.md. */
+export const MONTAJE_DEF = { sepBases: 1000, sobresale: 150, anclajesPorBase: 1, pendiente: true };
