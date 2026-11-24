@@ -49,6 +49,9 @@ const path = (g, pts, close) => { g.beginPath(); pts.forEach((q, i) => i ? g.lin
 export function dibujar(g, p, V, o) {
   const k = V.k, T = q => [q[0] * k - V.ox, q[1] * k - V.oy], u = o.u || 1, plot = !!o.plot, R = o.R, vis = id => !o.capas || o.capas.has(id);
   const s = escala(p);
+  /* Unidad de las etiquetas: si cambian de tamaño con el zoom (lo normal), su lugar por defecto también es parte del
+     dibujo (proporcional a la foto), así salen en el mismo lugar en el editor, el informe y las láminas */
+  const uE = et => et && et.escala === false ? u : (p.w || 1000) / 1210 * k;
   // Foto
   const im = imgDe(p.img);
   if (im && vis('foto')) { g.save(); g.globalAlpha = o.fotoAlpha ?? (plot ? .55 : .85); g.drawImage(im, -V.ox, -V.oy, p.w * k, p.h * k); g.restore(); }
@@ -73,7 +76,7 @@ export function dibujar(g, p, V, o) {
     // (en manual, cada bloque muestra la suya junto a él)
     const iv = ['techos', 'elementos'].includes(o.step) ? (r.incl || 0) : r.modo === 'manual' ? null : inclPanelesDe(r);
     const vI = r.poly.length ? r.poly.reduce((m, q) => q[0] < m[0] ? q : m, r.poly[0]) : null;
-    if (r.closed && iv && (plot || o.rotulos)) { const q = T(vI); etiqueta(g, o, { p, of: 'incl', id: r.id, et: r.etq, txt: r.etqTxt || `${iv}º`, anchorF: vI, attach: () => q, def: [q[0] - 6 * u, q[1] - 4 * u], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#fff' }); }
+    if (r.closed && iv && (plot || o.rotulos)) { const q = T(vI); etiqueta(g, o, { p, of: 'incl', id: r.id, et: r.etq, txt: r.etqTxt || `${iv}º`, anchorF: vI, attach: () => q, def: [q[0] - 6 * uE(r.etq), q[1] - 4 * uE(r.etq)], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#fff' }); }
     else if (r.closed && iv && ['techos', 'elementos', 'paneles'].includes(o.step)) {
       const q = T(vI);
       texto(g, `${iv}º`, q[0] - 6 * u, q[1] - 4 * u, { size: 13 * u, color: plot ? '#111' : '#fff', halo: plot ? null : 'rgba(0,0,0,.7)', align: 'right' });
@@ -90,7 +93,7 @@ export function dibujar(g, p, V, o) {
     g.restore(); path(g, pts, true); g.setLineDash([5 * u, 4 * u]); g.lineWidth = (sel ? 2.4 : 1.4) * u; g.strokeStyle = sel ? '#FAB704' : Z.c; g.stroke(); g.setLineDash([]);
     // Nombre del elemento: solo si se pidió en el paso Cotas, etiquetas y textos (z.etq.ver)
     if (z.etq && z.etq.ver && (plot || o.rotulos !== false)) { const cF = [z.x + z.w / 2, z.y + z.h / 2], cP = T(cF);
-      etiqueta(g, o, { p, of: 'zona', id: z.id, et: z.etq, txt: z.etqTxt || Z.n, anchorF: cF, attach: () => cP, def: [cP[0] + 10 * u, cP[1] - 12 * u], k, V, u, plot, color: plot ? '#111' : '#fff' }); }
+      etiqueta(g, o, { p, of: 'zona', id: z.id, et: z.etq, txt: z.etqTxt || Z.n, anchorF: cF, attach: () => cP, def: [cP[0] + 10 * uE(z.etq), cP[1] - 12 * uE(z.etq)], k, V, u, plot, color: plot ? '#111' : '#fff' }); }
   });
 
   // Paneles (achurados verdes como en los planos)
@@ -120,7 +123,7 @@ export function dibujar(g, p, V, o) {
     if (R.bloques && (plot || o.rotulos || o.step === 'paneles')) R.bloques.forEach(B => {
       const r = p.roofs[B.ri], bl = r && (r.bloques || [])[B.bi]; if (!bl) return; const iv = bl.incl != null ? bl.incl : inclPanelesDe(r); if (!iv) return;
       const q = B.q.map(T), v = q.reduce((m, x) => x[0] + x[1] < m[0] + m[1] ? x : m, q[0]), vf = B.q.reduce((m, x) => x[0] + x[1] < m[0] + m[1] ? x : m, B.q[0]);
-      if ((plot || o.rotulos) && bl.id) etiqueta(g, o, { p, of: 'inclb', id: bl.id, et: bl.etq, txt: bl.etqTxt || `${iv}º`, anchorF: vf, attach: () => v, def: [v[0] - 4 * u, v[1] - 4 * u], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#fff' });
+      if ((plot || o.rotulos) && bl.id) etiqueta(g, o, { p, of: 'inclb', id: bl.id, et: bl.etq, txt: bl.etqTxt || `${iv}º`, anchorF: vf, attach: () => v, def: [v[0] - 4 * uE(bl.etq), v[1] - 4 * uE(bl.etq)], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#fff' });
       else if (!plot && o.step === 'paneles') texto(g, `${iv}º`, v[0] - 4 * u, v[1] - 4 * u, { size: 12 * u, color: '#fff', halo: 'rgba(0,0,0,.75)', align: 'right' });
     });
     if (!plot && o.step === 'paneles' && o.selBloque) { const B = R.bloques.find(b => b.ri === o.selBloque.ri && b.bi === o.selBloque.bi); if (B) { path(g, B.q.map(T), true); g.setLineDash([6, 4]); g.lineWidth = 1.6; g.strokeStyle = '#FAB704'; g.stroke(); g.setLineDash([]); grips(g, B.q.map(T)); } }
@@ -152,7 +155,7 @@ export function dibujar(g, p, V, o) {
     });
     if (top && o.rotulos !== false) {
       const tf = [(top[0] + V.ox) / k, (top[1] + V.oy) / k];
-      etiqueta(g, o, { p, of: 'string', id: x.st.id, et: x.st.etq, txt: x.st.etqTxt || `String ${i + 1}`, anchorF: tf, attach: () => top, def: [top[0] - 20 * u, top[1] - 23 * u], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#fff' });
+      etiqueta(g, o, { p, of: 'string', id: x.st.id, et: x.st.etq, txt: x.st.etqTxt || `String ${i + 1}`, anchorF: tf, attach: () => top, def: [top[0] - 20 * uE(x.st.etq), top[1] - 23 * uE(x.st.etq)], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#fff' });
     }
   });
 
@@ -167,7 +170,7 @@ export function dibujar(g, p, V, o) {
     if (sel) grips(g, pts);
     // etiqueta propia (se mueve, cambia de tamaño, se fija o se quita)
     if (o.rotulos !== false) { const m = Math.floor((rt.pts.length - 1) / 2), mid = lerp(rt.pts[m], rt.pts[m + 1], .5), a = T(mid);
-      etiqueta(g, o, { p, of: 'ruta', id: rt.id, et: rt.etq, txt: rt.etqTxt || C.corto, anchorF: mid, attach: () => a, def: [a[0] + 8 * u, a[1] - 10 * u], k, V, u, plot, color: plot ? (C.cPlot || C.c) : C.c }); }
+      etiqueta(g, o, { p, of: 'ruta', id: rt.id, et: rt.etq, txt: rt.etqTxt || C.corto, anchorF: mid, attach: () => a, def: [a[0] + 8 * uE(rt.etq), a[1] - 10 * uE(rt.etq)], k, V, u, plot, color: plot ? (C.cPlot || C.c) : C.c }); }
   });
 
   // Equipos (a escala, con rótulo al costado como en los planos)
@@ -197,10 +200,10 @@ export function dibujar(g, p, V, o) {
     // marco de color y rótulo
     if (o.rotulos !== false) {
       // por defecto: inversor, batería y cargadores rotulan a la izquierda; tableros y medidor a la derecha (así no se tapan)
-      const der = ['tg', 'tfv', 'med', 'cdj'].includes(e.k), sg = der ? 1 : -1, ex = c[0] + sg * (w / 2 + 5 * u), ey = c[1] - h / 2 - 5 * u;
-      const caja = [c[0] - w / 2 - 5 * u, c[1] - h / 2 - 5 * u, c[0] + w / 2 + 5 * u, c[1] + h / 2 + 5 * u];
+      const ue = uE(e.etq), der = ['tg', 'tfv', 'med', 'cdj'].includes(e.k), sg = der ? 1 : -1, ex = c[0] + sg * (w / 2 + 5 * ue), ey = c[1] - h / 2 - 5 * ue;
+      const caja = [c[0] - w / 2 - 5 * ue, c[1] - h / 2 - 5 * ue, c[0] + w / 2 + 5 * ue, c[1] + h / 2 + 5 * ue];
       const abajo = e.k === 'bpc' || e.k === 'marca';
-      etiqueta(g, o, { p, of: 'equipo', id: e.id, et: e.etq, txt: e.rotulo || E.n, anchorF: [e.x, e.y], def: abajo ? [c[0] - 30 * u, c[1] + h / 2 + 22 * u] : [ex + sg * 4 * u, ey - 12 * u], izqDef: abajo ? false : !der, k, V, u, plot, color: plot ? '#111' : '#fff',
+      etiqueta(g, o, { p, of: 'equipo', id: e.id, et: e.etq, txt: e.rotulo || E.n, anchorF: [e.x, e.y], def: abajo ? [c[0] - 30 * ue, c[1] + h / 2 + 22 * ue] : [ex + sg * 4 * ue, ey - 12 * ue], izqDef: abajo ? false : !der, k, V, u, plot, color: plot ? '#111' : '#fff',
         attach: L => [L[0] < c[0] ? caja[0] : caja[2], L[1] < c[1] ? caja[1] : caja[3]] });
     }
     if (sel) grips(g, [[c[0] - w / 2, c[1] - h / 2], [c[0] + w / 2, c[1] - h / 2], [c[0] + w / 2, c[1] + h / 2], [c[0] - w / 2, c[1] + h / 2], c]);
@@ -276,11 +279,12 @@ function etiqueta(g, o, { p, of, id, et = {}, txt, anchorF, def, izqDef, attach,
   const size = et.escala !== false ? Math.max(3, ((p && p.w) || 1000) / 110 * k * (et.tam || 1) * gen) : (plot ? 8 : 11) * u * (et.tam || 1) * gen;
   const L = et.dx != null ? Tp([anchorF[0] + et.dx, anchorF[1] + et.dy]) : def;
   g.font = fuente(size);
-  const wt = g.measureText(txt).width + 4 * u, A = attach(L), izq = et.dx != null ? L[0] < A[0] : !!izqDef;
+  const ue = et.escala !== false ? ((p && p.w) || 1000) / 1210 * k : u;   // márgenes del texto, en la misma unidad que el texto
+  const wt = g.measureText(txt).width + 4 * ue, A = attach(L), izq = et.dx != null ? L[0] < A[0] : !!izqDef;
   const x0 = izq ? L[0] - wt : L[0], x1 = izq ? L[0] : L[0] + wt;
   g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(L[0], L[1]); g.lineTo(izq ? x0 : x1, L[1]); g.strokeStyle = plot ? '#222' : '#fff'; g.lineWidth = .8 * u; g.stroke();
-  texto(g, txt, izq ? x1 - 2 * u : x0 + 2 * u, L[1] - 3 * u, { size, color, halo: plot ? null : 'rgba(0,0,0,.75)', align: izq ? 'right' : 'left' });
-  const caja = [x0 - 2, L[1] - size - 4 * u, x1 + 2, L[1] + 3];
+  texto(g, txt, izq ? x1 - 2 * ue : x0 + 2 * ue, L[1] - 3 * ue, { size, color, halo: plot ? null : 'rgba(0,0,0,.75)', align: izq ? 'right' : 'left' });
+  const caja = [x0 - 2, L[1] - size - 4 * ue, x1 + 2, L[1] + 3];
   if (o.hits) o.hits.push({ t: 'etq', of, id, caja, anchor: anchorF, pos: [(L[0] + V.ox) / k, (L[1] + V.oy) / k] });
   if (!plot && o.sel && o.sel.t === 'etq' && o.sel.of === of && o.sel.id === id) { g.setLineDash([4, 3]); g.strokeStyle = et.fijo ? '#9DB0BD' : '#FAB704'; g.lineWidth = 1; g.strokeRect(caja[0], caja[1], caja[2] - caja[0], caja[3] - caja[1]); g.setLineDash([]); }
 }
