@@ -23,7 +23,7 @@ R = calcular(proyecto({ modo: 'perfil', largo: 'techo' }));
 prueba('hasta el techo: 10 m cada uno', cerca(R.rieles.mmPerfil, 4 * 10000, 2), `(${R.rieles.mmPerfil})`);
 
 R = calcular(proyecto({ modo: 'perfil', largo: 'manual' }));
-prueba('a mano: sin perfiles automáticos', R.rieles.perfiles.length === 0 && R.rieles.mmPerfil === 0);
+prueba('largo "a mano" de antes = sobresalen', R.rieles.perfiles.length === 4 && cerca(R.rieles.mmPerfil, 4 * (largoFila + 300), 2));
 
 R = calcular(proyecto({ modo: 'perp' }));
 prueba('rieles perpendiculares siguen igual', R.rieles.lineas.length === 4 && cerca(R.rieles.mm, 4 * largoFila), `(${R.rieles.mm})`);

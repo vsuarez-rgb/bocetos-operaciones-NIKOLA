@@ -6,7 +6,7 @@
 import { $, $$, esc, fmt, parseNum, uid, clone, dist, lerp, rotP, centroid, pointInPoly, distSeg, edgeAngle, anguloBordeCercano, ic, toast, descargar } from './util.js';
 import { PANELES, INVERSORES, ZONAS, EQUIPOS, CANAL, CAPAS, ESTADOS, COLORES_STRING, GAP_FILA, MODELOS_EQUIPO } from './catalogo.js';
 import { esReal, simboloCuadrado, nPanelesFig, inclPanelesDe, vistaEq, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo, tamEquipoPx, altoTextoPx, perfilesDe, rielesDe } from './geom.js';
-import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota } from './render.js';
+import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota, lineaDoble } from './render.js';
 import { vistaUnilineal, panelUnilineal, accionUnilineal } from './unilineal.js';
 import { CONJUNTOS_INCLUIDOS, insertarConjunto, conjuntoDeHoja } from './conjuntos.js';
 import { leerAjuste, guardarAjuste } from './ajustes.js';
@@ -96,7 +96,7 @@ function render() {
     <span id="guardEstado" class="guard">Guardado</span>
     <button class="tb-btn" data-act="exportar" title="Exportar proyecto (.json)">${ic('download')}</button>
   </header>
-  <div class="ribbon-wrap"><nav class="ribbon" aria-label="Pasos">${pasosVisibles().map(([k, n, i], idx) => `<button class="paso ${pasoOk(k) ? 'ok' : ''}" data-act="paso" data-k="${k}" aria-pressed="${E.step === k}"><i>${pasoOk(k) ? ic('check', 13) : idx + 1}</i>${ic(i, 16)}<span>${nombrePaso(k, n)}</span></button>`).join('')}<button class="paso cfg" data-act="config" title="Configuración: normas que se revisan en la vista de frente"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Configuración</span></button></nav>${E.step === 'equipos' ? barraLineas() : E.step === 'etiquetas' ? barraEtiquetas() : ''}</div>
+  <div class="ribbon-wrap"><nav class="ribbon" aria-label="Pasos">${pasosVisibles().map(([k, n, i], idx) => `<button class="paso ${pasoOk(k) ? 'ok' : ''}" data-act="paso" data-k="${k}" aria-pressed="${E.step === k}"><i>${pasoOk(k) ? ic('check', 13) : idx + 1}</i>${ic(i, 16)}<span>${nombrePaso(k, n)}</span></button>`).join('')}<button class="paso cfg" data-act="config" title="Configuración: normas que se revisan en la vista de frente"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Configuración</span></button></nav>${E.step === 'equipos' ? barraLineas() : E.step === 'etiquetas' ? barraEtiquetas() : E.step === 'paneles' ? barraPaneles() : ''}</div>
   <div class="ed-body ${esPagina() ? 'es-lamina' : ''}">
     ${esPagina() ? '' : `<aside class="tools" aria-label="Herramientas">${herramientas()}</aside>`}
     <main class="model" id="model">
@@ -150,6 +150,15 @@ function barraLineas() {
     <button class="sb-b" data-act="linea-dash" aria-pressed="${!!E.lineaDash}" title="Línea segmentada">- - -</button>
     <span class="sb-sep"></span><span class="subbar-t">Rellenar</span>
     ${[['solido', 'Pintar el área con su color (tarro de pintura)', '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 11l7-7 8 8-7 7z" fill="currentColor" fill-opacity=".35"/><path d="M11 4L8.5 1.5"/><path d="M20 15c0 1.5 1 2.5 1 3.5a1.5 1.5 0 0 1-3 0c0-1 1-2 2-3.5z" fill="currentColor"/></svg>'], ['diag', 'Achurado diagonal (sombreado, como el Hatch de AutoCAD)', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 9.5l8-8M1.5 14.5l13-13M6.5 14.5l8-8"/></svg>'], ['cruz', 'Achurado cruzado', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 9.5l8-8M1.5 14.5l13-13M6.5 14.5l8-8M1.5 6.5l8 8M1.5 1.5l13 13M6.5 1.5l8 8"/></svg>'], ['horiz', 'Achurado horizontal', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 5h13M1.5 8h13M1.5 11h13"/></svg>'], ['quitar', 'Quitar el relleno o el achurado', '✕']].map(([k, t, i]) => `<button class="sb-b sb-ico" data-act="relleno" data-k="${k}" aria-pressed="${E.tool === 'relleno' && E.rellenoK === k}" title="${t}">${i}</button>`).join('')}</div>`;
+}
+/* Barra bajo los pasos en "Paneles": dibujo a mano de rieles, perfiles y paneles */
+function barraPaneles() {
+  const act = k => E.tool === 'ruta' && E.rutaK === k;
+  return `<div class="subbar"><span class="subbar-t">Dibujar a mano</span>
+    <button class="sb-b" data-act="rutaK" data-k="riel" aria-pressed="${act('riel')}" title="Riel a mano: clic en cada punto, Enter o doble clic termina"><i style="border-top:3px solid ${CANAL.riel.c}"></i>Riel</button>
+    <button class="sb-b" data-act="rutaK" data-k="perfil" aria-pressed="${act('perfil')}" title="Perfil a mano: clic en el inicio y en el final (se dibuja como rectángulo)"><i class="sb-perfil"></i>Perfil</button>
+    <span class="sb-sep"></span>
+    <button class="sb-b" data-act="tool" data-k="figpan" aria-pressed="${E.tool === 'figpan'}" title="Paneles dibujados a mano (hojas sin escala o en perspectiva)">${ic('grid', 14)} Paneles a mano</button></div>`;
 }
 /* Barra bajo los pasos en "Cotas, etiquetas y textos" */
 function barraEtiquetas() {
@@ -286,7 +295,8 @@ function temporal(g, T) {
   const t = E.temp, m = E.mouse ? cursorFoto() : null;
   const linea = (pts, col, dash = []) => { g.beginPath(); pts.forEach((q, i) => { const a = T(q); i ? g.lineTo(a[0], a[1]) : g.moveTo(a[0], a[1]); }); g.setLineDash(dash); g.strokeStyle = col; g.lineWidth = 1.5; g.stroke(); g.setLineDash([]); };
   const etiqueta = (a, b) => { const s = escala(E.p); if (!s) return; const q = T(lerp(a, b, .5)), txt = `${fmt(dist(a, b) * s / 1000, 2)} m`; g.font = "12px 'Archivo Narrow', Arial"; g.fillStyle = 'rgba(0,0,0,.75)'; const w = g.measureText(txt).width; g.fillRect(q[0] + 6, q[1] - 16, w + 8, 16); g.fillStyle = '#FAB704'; g.fillText(txt, q[0] + 10, q[1] - 4); };
-  if (t && t.tipo === 'poly' && m) { const pts = [...t.pts, m]; linea(pts, t.col || '#FAB704', t.dash || [6, 4]); if (t.pts.length) etiqueta(t.pts[t.pts.length - 1], m); }
+  if (t && t.tipo === 'poly' && m && E.tool === 'ruta' && E.rutaK === 'perfil') { lineaDoble(g, [T(t.pts[0]), T(m)], CANAL.perfil.c); etiqueta(t.pts[0], m); }   // el perfil se ve como rectángulo mientras se dibuja
+  else if (t && t.tipo === 'poly' && m) { const pts = [...t.pts, m]; linea(pts, t.col || '#FAB704', t.dash || [6, 4]); if (t.pts.length) etiqueta(t.pts[t.pts.length - 1], m); }
   if (t && t.tipo === 'linea' && m) { linea([t.a, m], '#FAB704', [6, 4]); etiqueta(t.a, m); }
   if (E.D && (E.D.kind === 'ventana' || E.D.kind === 'ventanaSel')) { const a = T(E.D.a), b = T(E.D.b), izq = E.D.b[0] >= E.D.a[0]; g.fillStyle = izq ? 'rgba(61,123,255,.15)' : 'rgba(47,208,107,.15)'; g.fillRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.setLineDash(izq ? [] : [6, 4]); g.strokeStyle = izq ? '#3D7BFF' : '#2FD06B'; g.strokeRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.setLineDash([]); }
   if (E.D && E.D.kind === 'nuevaZona') { const z = zonaDeArrastre(E.D.a, E.D.b), pts = zonaPoly(z).map(T); g.beginPath(); pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); g.strokeStyle = ZONAS[E.zonaK].c; g.setLineDash([5, 4]); g.lineWidth = 1.5; g.stroke(); g.setLineDash([]); }
@@ -404,7 +414,7 @@ function down(ev) {
   }
   if (E.tool === 'ruta') {
     if (!E.temp) { E.temp = { tipo: 'poly', pts: [q], col: CANAL[E.rutaK].libre ? E.lineaColor : CANAL[E.rutaK].c, dash: CANAL[E.rutaK].libre ? (E.lineaDash ? [10, 6] : []) : CANAL[E.rutaK].dash }; prompt(`${CANAL[E.rutaK].corto}  Precise el siguiente punto (Enter o doble clic termina):`); }
-    else E.temp.pts.push(q);
+    else { E.temp.pts.push(q); if (E.rutaK === 'perfil') { terminar(); prompt('Perfil  Precise el primer punto (Esc para terminar):'); return; } }   // un perfil es recto: 2 clics
     dibujarTodo(); return;
   }
   if (E.tool === 'relleno') {
@@ -902,15 +912,15 @@ function panel() {
           ${num('roof.sepFila', fmt((r.sepFila ?? GAP_FILA) / 10, 0), { l: sobre ? 'Espacio entre filas' : 'Espacio mínimo entre filas', u: 'cm' })}
           ${(r.off || []).length ? `<button class="btn sm" data-act="devolver">Devolver ${r.off.length} panel(es) sacados</button>` : ''}`}
         ${r.modo === 'manual' && R.panels.some(pn => pn.rid === r.id && pn.bad) ? `<div class="aviso warn">${ic('alert', 16)}<span>Hay paneles en rojo (fuera del techo, en el retiro, sobre una zona o en sombra). No se cuentan.</span></div>` : ''}`);
-      const rl = rielesDe(r), rm = rl.modo || 'no', pf = perfilesDe(r), pl = pf.largo || 'bloque';
+      const rl = rielesDe(r), rm = rl.modo || 'no', pf = perfilesDe(r), pl = pf.largo === 'techo' ? 'techo' : 'bloque';
       h += sec(`Rieles del techo ${ri + 1}`, `${seg('riel.modo', rm, [['no', 'Sin rieles'], ['perp', 'Perpendiculares'], ['paral', 'Paralelos']])}
         ${rm !== 'no' ? num('riel.d', rl.d ? fmt(rl.d / 10, 0) : '', { l: 'Distancia entre los 2 rieles', u: 'cm' }, `placeholder="${fmt((rm === 'paral' ? panelDe(p, r).w : panelDe(p, r).h) / 20, 0)} (la mitad del panel)"`) : ''}
         ${R.rieles && R.rieles.porTecho[ri] ? `<dl class="dl"><dt>Metros de riel (techo)</dt><dd>${fmt(R.rieles.porTecho[ri] / 1000, 1)} m</dd></dl>` : ''}`);
       h += sec(`Perfiles del techo ${ri + 1} (losa plana)`, `<label class="chk"><input type="checkbox" data-campo="perf.on" ${pf.on ? 'checked' : ''}> Poner perfiles (se pueden usar junto con los rieles)</label>
-        ${pf.on ? `<label class="f"><span>Largo de los perfiles</span>${seg('perf.largo', pl, [['bloque', 'Sobresalen'], ['techo', 'Hasta el techo'], ['manual', 'A mano']])}</label>
+        ${pf.on ? `<label class="f"><span>Largo de los perfiles</span>${seg('perf.largo', pl, [['bloque', 'Sobresalen'], ['techo', 'Hasta el techo']])}</label>
           ${pl === 'bloque' ? num('perf.sob', pf.sob != null ? fmt(pf.sob / 10, 0) : '', { l: 'Cuánto sobresalen del bloque', u: 'cm' }, 'placeholder="15"') : ''}
-          ${pl !== 'manual' ? num('perf.d', pf.d ? fmt(pf.d / 10, 0) : '', { l: 'Distancia entre los 2 perfiles', u: 'cm' }, `placeholder="${fmt(panelDe(p, r).h / 20, 0)} (la mitad del panel)"`) : ''}
-          <p class="mut">${pl === 'manual' ? 'Dibuja cada perfil con «Dibujar perfil» (sección Rieles y perfiles a mano).' : 'Van en rojo: dos por cada fila de paneles, a lo largo de la fila.'}</p>` : ''}
+          ${num('perf.d', pf.d ? fmt(pf.d / 10, 0) : '', { l: 'Distancia entre los 2 perfiles', u: 'cm' }, `placeholder="${fmt(panelDe(p, r).h / 20, 0)} (la mitad del panel)"`)}
+          <p class="mut">Van en rojo: dos por cada fila de paneles, a lo largo de la fila. Para dibujar uno suelto usa «Perfil» en la barra de arriba.</p>` : ''}
         ${R.rieles && R.rieles.mmPerfil ? `<dl class="dl"><dt>Metros de perfil (proyecto)</dt><dd>${fmt(R.rieles.mmPerfil / 1000, 1)} m</dd></dl>` : ''}`);
     }
   }
@@ -920,7 +930,7 @@ function panel() {
       ${seg('_figForma', E.figForma, [['grid', 'Cuadrícula (4 esquinas)'], ['poly', 'Figura libre']])}
       ${E.figForma === 'grid' ? `<div class="f"><span>Nueva cuadrícula</span><span class="row">${stepper('fig.nf', E.figFC.f)} filas × ${stepper('fig.nc', E.figFC.c)} col.</span></div>` : ''}
       <button class="btn sm" data-act="tool" data-k="figpan">${ic('grid', 14)} Dibujar paneles</button>${figs.some(x => x.contar) ? `<dl class="dl"><dt>Se suman al proyecto</dt><dd>${figs.filter(x => x.contar).reduce((t, x) => t + nPanelesFig(x), 0)} paneles</dd></dl>` : '<p class="mut">Para que cuenten, elige la figura y marca «Sumar estos paneles al proyecto».</p>'}${figs.length ? `<p class="mut">${figs.length} figura(s) en esta hoja.</p>` : ''}`);
-    h += sec('Rieles y perfiles a mano', `<p class="mut">Para casos en perspectiva o sin cálculo automático: dibuja cada riel o perfil como una línea. ${s ? 'Se miden solos con la escala.' : 'Sin escala, escribe su largo en Propiedades.'}</p>
+    h += sec('Rieles y perfiles a mano', `<p class="mut">Para casos en perspectiva o sin cálculo automático. El riel es una línea (clic en cada punto); el perfil, un rectángulo (clic en el inicio y en el final). También están en la barra de arriba. ${s ? 'Se miden solos con la escala.' : 'Sin escala, escribe su largo en Propiedades.'}</p>
       <div class="row wrap"><button class="btn sm" data-act="rutaK" data-k="riel">${ic('pline', 14)} Dibujar riel</button><button class="btn sm" data-act="rutaK" data-k="perfil">${ic('pline', 14)} Dibujar perfil</button></div>
       ${rielesL.length ? `<dl class="dl"><dt>Rieles dibujados</dt><dd>${rielesL.length}</dd><dt>Total aprox.</dt><dd>${fmt(rielesL.reduce((t, r) => t + largoRuta(p, r), 0), 1)} m</dd></dl>` : ''}
       ${perfilesL.length ? `<dl class="dl"><dt>Perfiles dibujados</dt><dd>${perfilesL.length}</dd><dt>Total aprox.</dt><dd>${fmt(perfilesL.reduce((t, r) => t + largoRuta(p, r), 0), 1)} m</dd></dl>` : ''}`);
@@ -1076,11 +1086,11 @@ function propsSel(s, { num, rango, seg }) {
       ${seg('riel.bModo', (b.rieles && b.rieles.modo !== 'perfil' && b.rieles.modo) || 'hereda', [['hereda', 'Del techo'], ['no', 'Sin'], ['perp', 'Perp.'], ['paral', 'Paral.']])}
       ${b.rieles && ['perp', 'paral'].includes(b.rieles.modo) ? num('riel.bD', b.rieles.d ? fmt(b.rieles.d / 10, 0) : '', { l: 'Distancia entre rieles', u: 'cm' }) : ''}
       <div class="sub">Perfiles (losa plana)</div>
-      ${(() => { const bp = b.perfiles || (b.rieles && b.rieles.modo === 'perfil' ? { on: true, largo: b.rieles.largo, sob: b.rieles.sob, d: b.rieles.d } : null), est = bp ? (bp.on ? 'si' : 'no') : 'hereda', bl = (bp && bp.largo) || 'bloque';
+      ${(() => { const bp = b.perfiles || (b.rieles && b.rieles.modo === 'perfil' ? { on: true, largo: b.rieles.largo, sob: b.rieles.sob, d: b.rieles.d } : null), est = bp ? (bp.on ? 'si' : 'no') : 'hereda', bl = bp && bp.largo === 'techo' ? 'techo' : 'bloque';
         return `${seg('perf.bEstado', est, [['hereda', `Del techo (${perfilesDe(r).on ? 'con' : 'sin'})`], ['no', 'Sin'], ['si', 'Con perfiles']])}
-        ${est === 'si' ? `${seg('perf.bLargo', bl, [['bloque', 'Sobresalen'], ['techo', 'Hasta el techo'], ['manual', 'A mano']])}
+        ${est === 'si' ? `${seg('perf.bLargo', bl, [['bloque', 'Sobresalen'], ['techo', 'Hasta el techo']])}
           ${bl === 'bloque' ? num('perf.bSob', bp.sob != null ? fmt(bp.sob / 10, 0) : '', { l: 'Cuánto sobresalen', u: 'cm' }, 'placeholder="15"') : ''}
-          ${bl !== 'manual' ? num('perf.bD', bp.d ? fmt(bp.d / 10, 0) : '', { l: 'Distancia entre perfiles', u: 'cm' }) : ''}` : ''}`; })()}
+          ${num('perf.bD', bp.d ? fmt(bp.d / 10, 0) : '', { l: 'Distancia entre perfiles', u: 'cm' })}` : ''}`; })()}
       <label class="chk"><input type="checkbox" data-campo="b.inclHereda" ${b.incl == null ? 'checked' : ''}> Inclinación de los paneles del techo (${inclPanelesDe(r)}°)</label>
       ${b.incl != null ? rango('b.incl', b.incl, 0, 60, 'Inclinación de este bloque') : ''}
       ${num('b.sep', fmt((b.sep ?? GAP_FILA) / 10, 0), { l: 'Entre filas', u: 'cm' })}

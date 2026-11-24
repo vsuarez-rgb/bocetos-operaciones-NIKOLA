@@ -183,7 +183,7 @@ export function calcular(p) {
    d = distancia entre los 2 rieles (mm). Metros de riel = suma de las 2 líneas de cada fila, en todas las filas.
    Perfiles de losa plana, aparte de los rieles (se pueden poner los dos): r.perfiles = { on, largo, sob, d }
    (b.perfiles lo reemplaza en un bloque). 2 perfiles rojos a lo largo de cada fila; sob = cuánto sobresalen (mm),
-   largo 'techo' = hasta el borde del techo, 'manual' = se dibujan a mano (herramienta Perfil).
+   largo 'techo' = hasta el borde del techo (cualquier otro valor = sobresalen). Los perfiles sueltos se dibujan a mano (ruta k 'perfil').
    Antes los perfiles eran rieles.modo 'perfil': esos proyectos se leen igual (perfilesDe). */
 export const DEF_RIEL = (modo, pn) => modo === 'paral' ? Math.round(pn.wmm / 2) : Math.round(pn.hmm / 2);
 const perfilViejo = x => x && x.rieles && x.rieles.modo === 'perfil' ? { on: true, largo: x.rieles.largo, sob: x.rieles.sob, d: x.rieles.d } : null;
@@ -196,8 +196,8 @@ export function calcRieles(p, out) {
     const r = p.roofs[pn.ri], b = pn.bi != null ? (r.bloques || [])[pn.bi] : null, k = pn.bi != null ? `${pn.ri}|b${pn.bi}|${pn.i}` : `${pn.ri}|a|${pn.row}`;
     const poner = (kk, conf) => { if (!grupos.has(kk)) grupos.set(kk, { conf, pans: [] }); grupos.get(kk).pans.push(pn); };
     const cr = rielesDe(r, b); if (cr.modo && cr.modo !== 'no') poner('r|' + k, cr);
-    // perfiles por fila; con largo 'manual' se dibujan a mano
-    const cp = perfilesDe(r, b); if (cp.on && cp.largo !== 'manual') poner('p|' + k, { ...cp, modo: 'perfil' });
+    // perfiles por fila (los sueltos se dibujan a mano con la herramienta Perfil)
+    const cp = perfilesDe(r, b); if (cp.on) poner('p|' + k, { ...cp, modo: 'perfil' });
   });
   const fr = (d, largo) => { const t = Math.max(.04, Math.min(.46, .5 - d / 2 / largo)); return [t, 1 - t]; };
   grupos.forEach(({ conf, pans }) => {

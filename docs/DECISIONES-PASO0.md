@@ -50,7 +50,8 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 ## Perfiles de losa plana (lo que quedó)
 - Van **aparte de los rieles**, porque el ingeniero puede poner los dos o solo uno: `r.perfiles = { on, largo, sob, d }` en el techo y `b.perfiles` en un bloque ("Del techo / Sin / Con perfiles"). Antes eran `rieles.modo = 'perfil'`: esos proyectos se leen igual (`perfilesDe` en `js/geom.js`) y pasan al campo nuevo cuando se editan sus rieles o perfiles.
 - Ahora van **2 por fila**, a lo largo de la fila (antes eran 2 por columna), y se dibujan como un **rectángulo angosto**: aunque se vean 2 líneas, es un solo perfil.
-- Largo (`rieles.largo`): *sobresalen* del bloque (`rieles.sob`, 15 cm por defecto, como antes), *hasta el borde del techo* (`'techo'`) o *a mano* (`'manual'`, se dibujan con el botón **Dibujar perfil**, igual que los rieles a mano).
+- Largo (`perfiles.largo`): *sobresalen* del bloque (`sob`, 15 cm por defecto, como antes) o *hasta el borde del techo* (`'techo'`). La opción "a mano" se quitó porque no dibujaba nada; un `'manual'` guardado se lee como "sobresalen".
+- Perfiles sueltos: herramienta **Perfil** (barra de arriba del paso Paneles, junto a Riel y Paneles a mano). Se dibujan con 2 clics, inicio y final, y se ven como rectángulo desde el primer clic.
 - Los proyectos guardados con perfiles cambian de dibujo: de columnas a filas.
 
 ## Otros cambios de la misma tanda
