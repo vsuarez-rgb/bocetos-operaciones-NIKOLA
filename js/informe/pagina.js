@@ -76,23 +76,23 @@ export function ventanaAuto(v, wmm, hmm, encuadre) {
   if (encuadre === 'dibujo') {
     const pts = [];
     (v.roofs || []).forEach(r => pts.push(...r.poly)); (v.equipos || []).forEach(e => pts.push([e.x, e.y])); (v.rutas || []).forEach(r => pts.push(...r.pts));
-    (v.cotas || []).forEach(c => pts.push(c.a, c.b)); (v.textos || []).forEach(t => pts.push(t.p)); (v.figPaneles || []).forEach(f => pts.push(...f.pts)); if (v.norte) pts.push([v.norte.x, v.norte.y]);
+    (v.cotas || []).forEach(c => pts.push(c.a, c.b)); (v.textos || []).forEach(t => pts.push(t.p)); (v.detalles || []).forEach(d => pts.push(d.c, d.p)); (v.figPaneles || []).forEach(f => pts.push(...f.pts)); if (v.norte) pts.push([v.norte.x, v.norte.y]);
     if (pts.length > 1) { x0 = Math.min(...pts.map(q => q[0])); x1 = Math.max(...pts.map(q => q[0])); y0 = Math.min(...pts.map(q => q[1])); y1 = Math.max(...pts.map(q => q[1])); const m = Math.max(x1 - x0, y1 - y0) * .1; x0 -= m; x1 += m; y0 -= m; y1 += m; }
   }
   const asp = wmm / hmm; let bw = x1 - x0, bh = y1 - y0;
   if (bw / bh > asp) { const nh = bw / asp; y0 -= (nh - bh) / 2; } else { const nw = bh * asp; x0 -= (nw - bw) / 2; bw = nw; }
   return { x0, y0, bw };
 }
-export async function imagenHoja(p, id, wmm, hmm, { encuadre, foto, ventana, borrador } = {}) {
+export async function imagenHoja(p, id, wmm, hmm, { encuadre, foto, ventana, borrador, bn } = {}) {
   const v = id ? vistaHoja(p, id) : p;
   if (!v.img) return null;
   const W = ventana && ventana.bw > 0 ? ventana : ventanaAuto(v, wmm, hmm, encuadre);
-  const clave = [id, Math.round(wmm), Math.round(hmm), foto, W.x0.toFixed(1), W.y0.toFixed(1), W.bw.toFixed(1), borrador ? 'b' : ''].join('|');
+  const clave = [id, Math.round(wmm), Math.round(hmm), foto, W.x0.toFixed(1), W.y0.toFixed(1), W.bw.toFixed(1), borrador ? 'b' : '', bn ? 'bn' : ''].join('|');
   if (cacheVistas.has(clave)) return cacheVistas.get(clave);
   await cargarImg(v.img);
   const R = calcular(v), SI = calcStrings(v, R);
   const PX = borrador ? 700 : Math.max(800, Math.min(4200, Math.round(wmm * 16)));    // ~400 ppp
-  const im = vistaNitida(v, W, wmm, hmm, PX, { R, SI, fotoAlpha: (foto ?? 100) / 100, borrador });
+  const im = vistaNitida(v, W, wmm, hmm, PX, { R, SI, fotoAlpha: (foto ?? 100) / 100, borrador, bn });
   const res = { url: im.foto, capa: im.capa, ventana: { ...W }, escala: escala(v) };
   if (!borrador) cacheVistas.set(clave, res);
   return res;
@@ -113,7 +113,7 @@ async function interior(b, ctx) {
     case 'vista': {
       const h = resolverHoja(p, b.hoja);
       if (!h.existe) return editor ? `<div class="bq-vacio">Vista de hoja<b>Falta la hoja «${esc(h.falta)}»</b><span>Créala en el editor o elige otra hoja</span></div>` : '';
-      const r = await imagenHoja(p, h.id, b.w, b.h, { encuadre: b.encuadre, foto: b.foto, ventana: b.ventana });
+      const r = await imagenHoja(p, h.id, b.w, b.h, { encuadre: b.encuadre, foto: b.foto, ventana: b.ventana, bn: b.bn });
       if (!r) return editor ? `<div class="bq-vacio">Vista de hoja<b>La hoja no tiene foto</b><span>Súbela en el paso de la foto de esa hoja</span></div>` : '';
       if (ctx.ventanas) ctx.ventanas[b.id] = { ...r.ventana, escala: r.escala, hojaId: h.id };
       return `<div class="bq-vista"><img class="bq-img" src="${r.url}" alt="" draggable="false">${r.capa ? `<img class="bq-capa" src="${r.capa}" alt="" draggable="false">` : ''}</div>`;

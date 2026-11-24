@@ -46,6 +46,11 @@ function texto(g, txt, x, y, { size = 12, color = '#fff', halo = null, align = '
   if (halo) { g.lineWidth = Math.max(1.5, size / 6); g.strokeStyle = halo; g.lineJoin = 'round'; g.strokeText(txt, x, y); }
   g.fillStyle = color; g.fillText(txt, x, y);
 }
+/* Color de un texto: sin color propio es blanco en pantalla y negro al imprimir (como el color 7 de AutoCAD);
+   con color elegido sale de ese color en los dos. */
+export const INTERLINEA = 1.45;
+export const colorTexto = (c, plot) => c || (plot ? '#111' : '#fff');
+const haloDe = c => { const h = /^#([0-9a-f]{6})$/i.exec(c || ''); if (!h) return 'rgba(0,0,0,.7)'; const n = parseInt(h[1], 16), l = .3 * (n >> 16) + .59 * ((n >> 8) & 255) + .11 * (n & 255); return l < 90 ? 'rgba(255,255,255,.65)' : 'rgba(0,0,0,.7)'; };
 const path = (g, pts, close) => { g.beginPath(); pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); if (close) g.closePath(); };
 
 /**
@@ -241,14 +246,34 @@ export function dibujar(g, p, V, o) {
   // Textos (alto en mm reales, como TEXT de AutoCAD)
   if (vis('textos')) p.textos.forEach(tx => {
     const q = T(tx.p), size = Math.max(1, altoTextoPx(p, tx) * k), sel = esSel(o, 'texto', tx.id);
-    if (tx.guia) {                                         // línea de referencia: del elemento al texto, subrayándolo
-      g.font = fuente(size); const wt = g.measureText(tx.s).width, A = T(tx.guia), izq = A[0] > q[0] + wt / 2;
+    const col = colorTexto(tx.c, plot), lineas = String(tx.s).split('\n'), ih = size * INTERLINEA;
+    g.font = fuente(size); const wt = Math.max(...lineas.map(l => g.measureText(l).width));
+    if (tx.guia) {                                         // línea de referencia: del elemento al texto, subrayando la primera línea
+      const A = T(tx.guia), izq = A[0] > q[0] + wt / 2;
       const xb = izq ? q[0] + wt + 3 * UD : q[0] - 3 * UD, yb = q[1] + 3 * UD;
-      g.strokeStyle = plot ? '#222' : (tx.c || '#fff'); g.lineWidth = .9 * u; g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(xb, yb); g.lineTo(izq ? q[0] - 3 * UD : q[0] + wt + 3 * UD, yb); g.stroke();
-      g.beginPath(); g.arc(A[0], A[1], 2.2 * UD, 0, Math.PI * 2); g.fillStyle = plot ? '#222' : (tx.c || '#fff'); g.fill();
+      g.strokeStyle = col; g.lineWidth = .9 * u; g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(xb, yb); g.lineTo(izq ? q[0] - 3 * UD : q[0] + wt + 3 * UD, yb); g.stroke();
+      g.beginPath(); g.arc(A[0], A[1], 2.2 * UD, 0, Math.PI * 2); g.fillStyle = col; g.fill();
     }
-    texto(g, tx.s, q[0], q[1], { size, color: plot ? '#111' : (tx.c || '#fff'), halo: plot ? null : 'rgba(0,0,0,.7)' });
-    if (sel) { g.font = fuente(size); const w = g.measureText(tx.s).width; g.strokeStyle = '#FAB704'; g.setLineDash([4, 3]); g.strokeRect(q[0] - 3, q[1] - size, w + 6, size + 5); g.setLineDash([]); grips(g, [q]); }
+    g.save(); g.translate(q[0], q[1]); if (!tx.guia && tx.ang) g.rotate(-tx.ang * Math.PI / 180);   // giro como en AutoCAD (antihorario)
+    lineas.forEach((l, i) => texto(g, l, 0, i * ih, { size, color: col, halo: plot ? null : haloDe(col) }));
+    if (sel) { g.strokeStyle = '#FAB704'; g.lineWidth = 1; g.setLineDash([4, 3]); g.strokeRect(-3, -size, wt + 6, size + 5 + (lineas.length - 1) * ih); g.setLineDash([]); }
+    g.restore(); if (sel) grips(g, [q]);
+  });
+
+  // Burbujas de detalle: un círculo que muestra ampliada una parte del dibujo, con línea hasta el lugar
+  if (!o.sinDetalles && vis('textos')) (p.detalles || []).forEach(d => {
+    const z = d.z || 3, C = T(d.p), S = T(d.c), rs = d.r * k, Rb = d.r * z * k, sel = esSel(o, 'det', d.id), ud = UD;
+    const col = sel ? '#FAB704' : plot ? '#111' : '#fff', dd = Math.hypot(C[0] - S[0], C[1] - S[1]) || 1, ux = (C[0] - S[0]) / dd, uy = (C[1] - S[1]) / dd;
+    g.strokeStyle = col; g.lineWidth = .9 * u;
+    if (dd > rs + Rb) { g.beginPath(); g.moveTo(S[0] + ux * rs, S[1] + uy * rs); g.lineTo(C[0] - ux * Rb, C[1] - uy * Rb); g.stroke(); }
+    g.beginPath(); g.arc(S[0], S[1], rs, 0, 7); g.stroke();
+    g.save(); g.beginPath(); g.arc(C[0], C[1], Rb, 0, 7); g.clip(); g.fillStyle = plot ? '#fff' : '#1b232b'; g.fill();
+    const k2 = k * z, capas = new Set(o.capas || CAPAS.map(x => x.id));
+    if (o.bn) capas.delete('foto'); else capas.add('foto');      // la burbuja lleva su foto (en blanco y negro, solo el dibujo)
+    dibujar(g, p, { k: k2, ox: d.c[0] * k2 - C[0], oy: d.c[1] * k2 - C[1] }, { ...o, sinDetalles: true, soloFoto: false, sel: null, hits: null, temp: null, capas });
+    g.restore(); UD = ud;
+    g.beginPath(); g.arc(C[0], C[1], Rb, 0, 7); g.strokeStyle = col; g.lineWidth = 1.3 * u; g.stroke();
+    if (sel) grips(g, [S]);
   });
 
   // Norte
@@ -329,9 +354,15 @@ export function panelDibujo(g, pts, { plot, u = 1, sel } = {}) {
    W = ventana { x0, y0, bw } en px de la foto; wmm × hmm = tamaño en la hoja; PX = ancho en px.
    GROSOR: grosor de línea por mm de hoja (líneas finas, como un plot de AutoCAD). */
 export const GROSOR = .22;
-export function vistaNitida(p, W, wmm, hmm, PX, { R, SI, fotoAlpha = 1, borrador } = {}) {
+/* Blanco y negro: todo lo dibujado pasa a negro (lo blanco queda blanco), sin tocar la transparencia */
+function monocromo(c) {
+  const g = c.getContext('2d'), im = g.getImageData(0, 0, c.width, c.height), d = im.data;
+  for (let i = 0; i < d.length; i += 4) { if (!d[i + 3]) continue; const blanco = d[i] > 235 && d[i + 1] > 235 && d[i + 2] > 235; const v = blanco ? 255 : 17; d[i] = d[i + 1] = d[i + 2] = v; }
+  g.putImageData(im, 0, 0);
+}
+export function vistaNitida(p, W, wmm, hmm, PX, { R, SI, fotoAlpha = 1, borrador, bn } = {}) {
   const asp = wmm / hmm, k = PX / W.bw, V = { k, ox: W.x0 * k, oy: W.y0 * k }, H = Math.round(PX / asp);
-  const o = { plot: true, R, SI, u: PX / wmm * GROSOR, step: 'lamina', fotoAlpha };
+  const o = { plot: true, R, SI, u: PX / wmm * GROSOR, step: 'lamina', fotoAlpha, bn: !!bn };
   const c = document.createElement('canvas'); c.width = PX; c.height = H;
   const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, PX, H);
   if (borrador) { dibujar(g, p, V, o); return { foto: c.toDataURL('image/jpeg', .75), capa: null }; }
@@ -339,6 +370,7 @@ export function vistaNitida(p, W, wmm, hmm, PX, { R, SI, fotoAlpha = 1, borrador
   const foto = c.toDataURL('image/jpeg', .9);
   const c2 = document.createElement('canvas'); c2.width = PX; c2.height = H;
   dibujar(c2.getContext('2d'), p, V, { ...o, capas: new Set(CAPAS.map(x => x.id).filter(id => id !== 'foto')) });
+  if (bn) monocromo(c2);
   return { foto, capa: c2.toDataURL('image/png') };
 }
 /* Celdas de una figura de 4 esquinas (filas × columnas), repartidas en perspectiva */
@@ -370,7 +402,7 @@ export function dibujarNorte(g, c, angDeg, L, plot, sel) {
   for (let i = 0; i < 8; i++) {
     const t = i * Math.PI / 4 - Math.PI / 2, R = i % 2 ? r * .9 : r * 1.5, t1 = t - Math.PI / 8, t2 = t + Math.PI / 8;
     g.beginPath(); g.moveTo(Math.cos(t) * R, Math.sin(t) * R); g.lineTo(Math.cos(t1) * r * .25, Math.sin(t1) * r * .25); g.lineTo(0, 0); g.closePath(); g.fillStyle = col; g.fill();
-    g.beginPath(); g.moveTo(Math.cos(t) * R, Math.sin(t) * R); g.lineTo(Math.cos(t2) * r * .25, Math.sin(t2) * r * .25); g.lineTo(0, 0); g.closePath(); g.fillStyle = plot ? '#fff' : '#2a1010'; g.fill(); g.strokeStyle = col; g.lineWidth = .8; g.stroke();
+    g.beginPath(); g.moveTo(Math.cos(t) * R, Math.sin(t) * R); g.lineTo(Math.cos(t2) * r * .25, Math.sin(t2) * r * .25); g.lineTo(0, 0); g.closePath(); g.fillStyle = plot ? '#1a1a1a' : '#2a1010'; g.fill(); g.strokeStyle = plot ? '#1a1a1a' : col; g.lineWidth = .8; g.stroke();
   }
   g.strokeStyle = sel ? '#FAB704' : (plot ? '#222' : '#fff'); g.lineWidth = 1.2; g.beginPath(); g.moveTo(0, -r * 1.5); g.lineTo(0, -L); g.stroke();
   g.restore();

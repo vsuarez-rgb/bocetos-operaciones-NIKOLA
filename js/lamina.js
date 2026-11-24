@@ -427,7 +427,7 @@ function dxf(p, R, SI) {
   const capas = [['TECHOS', 7], ['ZONAS', 1], ['PANELES', 3], ['STRINGS', 4], ['CANAL-CC', 5], ['CANAL-CA', 1], ['CANAL-SUB', 30], ['TIERRA', 8], ['EQUIPOS', 6], ['COTAS', 2], ['TEXTOS', 7]];
   let e = '';
   const poly = (pts, capa, cerrar = true, color) => { e += `0\nPOLYLINE\n8\n${capa}\n${color ? `62\n${color}\n` : ''}66\n1\n70\n${cerrar ? 1 : 0}\n`; pts.forEach(q => { e += `0\nVERTEX\n8\n${capa}\n10\n${X(q)}\n20\n${Y(q)}\n30\n0\n`; }); e += '0\nSEQEND\n'; };
-  const txt = (q, h, t, capa, c = false) => { e += `0\nTEXT\n8\n${capa}\n10\n${X(q)}\n20\n${Y(q)}\n30\n0\n40\n${h}\n1\n${String(t).replace(/\n/g, ' ')}\n${c ? `72\n1\n11\n${X(q)}\n21\n${Y(q)}\n31\n0\n` : ''}`; };
+  const txt = (q, h, t, capa, c = false, ang = 0) => { e += `0\nTEXT\n8\n${capa}\n10\n${X(q)}\n20\n${Y(q)}\n30\n0\n40\n${h}\n1\n${String(t).replace(/\n/g, ' ')}\n${ang ? `50\n${ang}\n` : ''}${c ? `72\n1\n11\n${X(q)}\n21\n${Y(q)}\n31\n0\n` : ''}`; };
   p.roofs.filter(r => r.closed).forEach(r => poly(r.poly, 'TECHOS'));
   p.zonas.forEach(z => poly(zonaPoly(z), 'ZONAS'));
   const strDe = new Map(); SI.lista.forEach(x => x.st.panels.forEach(k => strDe.set(k, x)));
@@ -437,7 +437,8 @@ function dxf(p, R, SI) {
   p.rutas.forEach(r => poly(r.pts, { cc: 'CANAL-CC', ca: 'CANAL-CA', sub: 'CANAL-SUB', tie: 'TIERRA' }[r.k] || 'CANAL-CA', false));
   p.equipos.forEach(q => { const Q = EQUIPOS[q.k] || EQUIPOS.inv, md = medidaEquipo(p, q), w = md.w / s, h = md.h / s, a = (q.ang || 0) * Math.PI / 180; const pts = [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]].map(v => [q.x + v[0] * Math.cos(a) - v[1] * Math.sin(a), q.y + v[0] * Math.sin(a) + v[1] * Math.cos(a)]); poly(pts, 'EQUIPOS'); txt([q.x + w / 2 + 100 / s, q.y], 200, q.rotulo || Q.n, 'EQUIPOS'); });
   p.cotas.forEach(c => { poly([c.a, c.b], 'COTAS', false); txt([(c.a[0] + c.b[0]) / 2, (c.a[1] + c.b[1]) / 2], 200, `${fmt(dist(c.a, c.b) * s / 1000, 2)} m`, 'COTAS', true); });
-  p.textos.forEach(t => txt(t.p, t.h || 400, t.s, 'TEXTOS'));
+  p.textos.forEach(t => { const h = t.h || 400, ang = t.guia ? 0 : (t.ang || 0), a = ang * Math.PI / 180, d = h / s * 1.45;   // un TEXT por renglón, con su giro
+    String(t.s).split('\n').forEach((l, i) => txt([t.p[0] + i * d * Math.sin(a), t.p[1] + i * d * Math.cos(a)], h, l, 'TEXTOS', false, ang)); });
   const tabla = capas.map(([n, c]) => `0\nLAYER\n2\n${n}\n70\n0\n62\n${c}\n6\nCONTINUOUS\n`).join('');
   return `0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1009\n9\n$INSUNITS\n70\n4\n0\nENDSEC\n0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLAYER\n70\n${capas.length}\n${tabla}0\nENDTAB\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n${e}0\nENDSEC\n0\nEOF\n`;
 }

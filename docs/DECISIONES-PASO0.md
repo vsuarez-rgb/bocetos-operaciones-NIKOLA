@@ -89,3 +89,17 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - Las líneas al imprimir son más finas: el grosor por mm de hoja (`GROSOR`) pasó de 0,30 a 0,22.
 - Los paneles en los planos van con borde negro y achurado verde oscuro más tupido, como los planos de referencia.
 - Las fotos nuevas se guardan hasta 4096 px (antes 2600) en JPEG de calidad 0,92. Las fotos ya subidas no cambian.
+
+## Planos profesionales · Fase B: textos como en AutoCAD, burbuja de detalle y blanco y negro
+
+- **Textos**:
+  - pueden tener varias líneas (Enter en el cuadro de texto; interlineado 1,45);
+  - se pueden girar (en grados, antihorario como en AutoCAD; no aplica a los textos con línea guía);
+  - pueden tener color propio (`tx.c`).
+  - Sin color, el texto es blanco en pantalla y negro al imprimir, como el color 7 de AutoCAD. Con color elegido sale de ese color en los dos.
+  - En el DXF cada renglón es un TEXT con su giro.
+- **Burbuja de detalle** (`p.detalles`, en cada hoja): `{ c: centro de lo que se amplía, p: centro de la burbuja, r: radio de la zona (px de la foto), z: aumento }`.
+  - El círculo muestra esa zona ampliada (foto y dibujo), con una línea hasta el círculo chico del lugar.
+  - Se crea con «Detalle» en Cotas, etiquetas y textos; el punto azul mueve la zona.
+- **Vista en blanco y negro** (opción del bloque Vista del informe): todo el dibujo pasa a negro y lo blanco queda blanco. La foto no cambia. En las burbujas se ve solo el dibujo.
+- **Norte**: al imprimir, la rosa de los vientos queda roja y negra, como en los planos de referencia.
