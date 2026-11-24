@@ -106,6 +106,7 @@ function render() {
       <div class="vctl"><button data-act="zin" title="Acercar">${ic('zoomin', 16)}</button><button data-act="zout" title="Alejar">${ic('zoomout', 16)}</button><button data-act="zext" title="Zoom extensión (Z)">${ic('ext', 16)}</button></div>
       <div class="hint" id="hint"></div>`}
     </main>
+    ${esPagina() ? '' : '<aside class="pop-bl" id="popBloque" hidden></aside>'}
     <aside class="props" id="props"></aside>
   </div>
   ${esPagina() ? '' : barraHojas()}
@@ -284,6 +285,14 @@ function formu() {
   const rango = (campo, val, min, max, l, u = '°') => `<label class="f"><span>${l}</span><span class="fr"><input type="range" min="${min}" max="${max}" step="1" value="${val}" data-campo="${campo}" data-u="${u}"><output>${val}${u}</output></span></label>`;
   const seg = (campo, val, ops) => `<div class="seg">${ops.map(([k, n]) => `<button data-act="set" data-campo="${campo}" data-v="${k}" aria-pressed="${String(val) === String(k)}">${n}</button>`).join('')}</div>`;
   return { num, rango, seg };
+}
+/* ---------- Ventana del bloque de paneles: columna fija junto al panel derecho (se cierra con ✕ o Esc) ---------- */
+function ventanaBloque() {
+  const pop = $('#popBloque'), body = $('.ed-body'); if (!pop || !body) return;
+  const ver = E.step === 'paneles' && E.sel && E.sel.t === 'bloque' && bloqueSel(), antes = body.classList.contains('con-bloque');
+  pop.hidden = !ver; body.classList.toggle('con-bloque', !!ver);
+  if (ver) pop.innerHTML = `<div class="pop-bl-t"><b>Bloque ${E.sel.bi + 1}</b><span>Techo ${E.sel.ri + 1}</span><button data-act="pop-cerrar" title="Cerrar (Esc)">${ic('close', 14)}</button></div><div class="pop-bl-b">${propsSel(E.sel, formu())}</div>`;
+  if (antes !== !!ver) requestAnimationFrame(() => dibujarTodo());   // el dibujo cambia de ancho
 }
 function dibujarTodo() {
   const cv = $('#cv'); if (!cv || !E) return;
@@ -916,8 +925,7 @@ function panel() {
       ${R.rieles && (R.rieles.mm || R.rieles.mmPerfil || p.rutas.some(x => x.k === 'riel' || x.k === 'perfil')) ? `<dl class="dl">${R.rieles.mm || p.rutas.some(x => x.k === 'riel') ? `<dt>Riel</dt><dd>${fmt((R.rieles.mm / 1000) + p.rutas.filter(x => x.k === 'riel').reduce((t, x) => t + largoRuta(p, x), 0), 1)} m</dd>` : ''}${R.rieles.mmPerfil || p.rutas.some(x => x.k === 'perfil') ? `<dt>Perfil</dt><dd>${fmt((R.rieles.mmPerfil / 1000) + p.rutas.filter(x => x.k === 'perfil').reduce((t, x) => t + largoRuta(p, x), 0), 1)} m</dd>` : ''}${nFig ? `<dt>Paneles dibujados que se suman</dt><dd>${nFig}</dd>` : ''}</dl>` : nFig ? `<dl class="dl"><dt>Paneles dibujados que se suman</dt><dd>${nFig}</dd></dl>` : ''}
       <div class="lista">${p.roofs.filter(t => t.closed).map(t => { const i = p.roofs.indexOf(t); return `<button class="li" data-act="sel-roof" data-id="${t.id}" aria-pressed="${r && r.id === t.id}"><b>Techo ${i + 1}</b><span>${R.porTecho[i].n} paneles · ${t.modo === 'manual' ? `bloques (${(t.bloques || []).length})` : `automático, ${inclPanelesDe(t)}°`}</span></button>`; }).join('') || '<p class="mut">Dibuja un techo primero (paso Techos).</p>'}</div>
       ${!r && p.roofs.some(t => t.closed) ? '<p class="mut">Elige un techo (en la lista o con un clic en el dibujo) para poner sus paneles.</p>' : ''}`);
-    // Bloque elegido: sus propiedades (antes era una ventana flotante)
-    if (sl && sl.t === 'bloque' && bloqueSel()) h += caja(`Bloque ${sl.bi + 1} · Techo ${sl.ri + 1}`, propsSel(sl, { num, rango, seg }), 'pp-prop');
+    // El bloque elegido se edita en su ventana, junto a este panel (ventanaBloque)
     if (r) {
       const bajaTxt = { abajo: '↓', arriba: '↑', izq: '←', der: '→' }[r.baja || 'abajo'], sobre = r.inclPan == null;
       const rl = rielesDe(r), rm = rl.modo || 'no', pf = perfilesDe(r), pl = pf.largo === 'techo' ? 'techo' : 'bloque';
@@ -976,6 +984,7 @@ function panel() {
       ${p.strings.length ? `<label class="chk"><input type="checkbox" data-campo="hoja.encerrar" ${p.encerrarStrings !== false ? 'checked' : ''}> Encerrar los strings (contorno de color)</label>` : ''}
       ${grupo('equipo', 'Equipos', p.equipos, nEq)}${grupo('ruta', 'Canalizaciones', p.rutas, nRt)}${grupo('string', 'Strings', p.strings, nSt)}
       ${grupo('zona', 'Elementos (su nombre, si quieres ponerlo)', p.zonas, x => x.etqTxt || (ZONAS[x.k] || ZONAS.obs).n)}
+      ${p.zonas.length ? `<label class="chk"><input type="checkbox" data-campo="hoja.nombreDentro" ${p.nombreDentro ? 'checked' : ''}> Nombre dentro del área, en su color (si cabe; si no, va como etiqueta)</label>` : ''}
       ${grupo('incl', 'Inclinación de los paneles (techos automáticos)', p.roofs.filter(r => r.closed && r.modo !== 'manual' && inclPanelesDe(r)), x => x.etqTxt || `Techo ${p.roofs.indexOf(x) + 1} · ${inclPanelesDe(x)}º`)}
       ${grupo('inclb', 'Inclinación de cada bloque', p.roofs.flatMap(r => (r.bloques || []).filter(b => b.id && (b.incl != null ? b.incl : inclPanelesDe(r))).map(b => ({ id: b.id, etq: b.etq, etqTxt: b.etqTxt, incl: b.incl, _r: r }))), x => x.etqTxt || `Bloque · ${x.incl != null ? x.incl : inclPanelesDe(x._r)}º`)}
       ${!p.equipos.length && !p.rutas.length && !p.strings.length ? '<p class="mut">Esta hoja no tiene equipos, canalizaciones ni strings.</p>' : ''}`);
@@ -1005,6 +1014,7 @@ function panel() {
   h += `<div class="pp-pie"><button class="btn pri" data-act="siguiente">Siguiente paso →</button></div>`;
   el.innerHTML = h;
   refrescarBarra();
+  ventanaBloque();
 }
 const largoRuta = (p, r) => escala(p) ? largoM(p, r.pts) : (r.mManual || 0);
 const stepper = (campo, val) => `<span class="stp"><button data-act="stp" data-campo="${campo}" data-d="-1">−</button><b>${val}</b><button data-act="stp" data-campo="${campo}" data-d="1">+</button></span>`;
@@ -1141,6 +1151,7 @@ document.addEventListener('click', ev => {
     case 'blk-paralelo': { const bl = bloqueSel(), r = techoAct(); if (bl && r) { antes(); bl.ang = anguloBordeCercano(r.poly, [bl.x, bl.y]); despues(); } break; }
     case 'blk-rep': { const r = p.roofs[E.sel.ri], bl = bloqueSel(), s = escala(p); if (!bl || !s) break; antes(); const G = geomTecho(p, r, s), g = geomBloque(p, G, bl); const d = girarV(k === 'der' ? [g.BW + g.gx, 0] : [0, g.BH + g.sep], g.a); r.bloques.push({ ...clone(bl), id: uid('b'), x: bl.x + d[0], y: bl.y + d[1] }); E.sel = { ...E.sel, bi: r.bloques.length - 1 }; despues(); break; }
     case 'borrar': borrarSel(); break;
+    case 'pop-cerrar': E.sel = null; panel(); dibujarTodo(); break;
     case 'conj': E.conjunto = k; E.tool = 'conjunto'; E.temp = null; render(); pista(); break;
     case 'conj-del': { const cj = (E.conjuntos || []).find(x => x.id === k); if (cj && confirm(`¿Borrar el conjunto «${cj.nombre}»?`)) { E.conjuntos = E.conjuntos.filter(x => x !== cj); guardarAjuste('conjuntosEquipos', E.conjuntos); panel(); } break; }
     case 'conj-guardar': { const n = (window.prompt('Nombre del conjunto (queda guardado en este navegador para otros proyectos):', 'Mi zona de equipos') || '').trim(); if (!n) break; const cj = conjuntoDeHoja(p, n); if (!cj) break; E.conjuntos = [...(E.conjuntos || []), cj]; guardarAjuste('conjuntosEquipos', E.conjuntos); toast(`Conjunto «${n}» guardado`); panel(); break; }
@@ -1224,6 +1235,7 @@ function aplicar(campo, v, desdeChange, vivo) {
   else if (pre === 'hoja' && ['tamEtq', 'tamCotas'].includes(k)) { p[k] = Math.max(.2, +v / 100); }
   else if (pre === 'hoja' && k === 'vista') { p.vistaEquipos = v; }
   else if (pre === 'hoja' && k === 'encerrar') { if (v) delete p.encerrarStrings; else p.encerrarStrings = false; }
+  else if (pre === 'hoja' && k === 'nombreDentro') { if (v) p.nombreDentro = true; else delete p.nombreDentro; }
   else if (pre === 'hoja' && k === 'contornos') { if (v) delete p.ocultarContornos; else p.ocultarContornos = true; }
   else if (pre === 'ruta' && k === 'etqVer') { const rt = obj.ruta(); if (!rt) return; (rt.etq ||= {}).oculta = !v; }
   else if (pre === 'eq' && k === 'etqVer') { const e = obj.eq(); if (!e) return; (e.etq ||= {}).oculta = !v; }

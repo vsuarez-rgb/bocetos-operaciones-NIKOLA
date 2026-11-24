@@ -541,6 +541,24 @@ select.fi-ctl { background: #1C2228; border-color: var(--ed-line); cursor: point
 .pp-fijo > .pp-h { padding: 8px 14px; font: 600 10.5px var(--f-disp); letter-spacing: .06em; text-transform: uppercase; color: var(--ed-ink); background: var(--ed-bar2); }
 .pp-prop > .pp-h { color: var(--nk-amarillo); }
 .sw-mini { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+/* Ventana del bloque de paneles: columna fija junto al panel derecho, letra chica */
+.ed-body.con-bloque { grid-template-columns: 64px minmax(0, 1fr) 260px 380px; }
+.pop-bl { background: var(--ed-bar); color: var(--ed-ink); border-left: 1px solid var(--ed-line); overflow-y: auto; font-size: 10.5px; min-height: 0; box-shadow: inset 0 2px 0 var(--nk-amarillo); }
+.pop-bl-t { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--ed-bar2, #1C2228); border-bottom: 1px solid var(--ed-line); }
+.pop-bl-t b { font: 700 11.5px var(--f-disp); color: var(--nk-amarillo); } .pop-bl-t span { color: var(--ed-mut); flex: 1; }
+.pop-bl-t button { background: none; border: 0; color: var(--ed-mut); cursor: pointer; display: inline-flex; padding: 3px; } .pop-bl-t button:hover { color: var(--ed-ink); }
+.pop-bl-b { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.pop-bl .sub { font-size: 9px; margin-top: 2px; }
+.pop-bl .f { font-size: 10px; gap: 2px; }
+.pop-bl .in { font-size: 10.5px; height: 26px; padding: 0 8px; }
+.pop-bl .fi em, .pop-bl .fr output { font-size: 10px; }
+.pop-bl .btn { font-size: 10.5px; height: 26px; padding: 0 8px; }
+.pop-bl .seg button { font-size: 10px; padding: 4px 2px; line-height: 1.2; }
+.pop-bl .chk { font-size: 10.5px; gap: 6px; } .pop-bl .chk input { width: 14px; height: 14px; }
+.pop-bl .mut, .pop-bl .dl { font-size: 10px; }
+.pop-bl .stp button { width: 22px; height: 22px; font-size: 13px; }
+@media (max-width: 1100px) { .ed-body.con-bloque { grid-template-columns: 56px minmax(0, 1fr) 230px 290px; } }
+@media (max-width: 760px) { .ed-body.con-bloque { grid-template-columns: 1fr; } .pop-bl { position: fixed; left: 0; right: 0; bottom: 40vh; height: 35vh; z-index: 5; } }
 /* Capas: lista flotante sobre la barra de estado */
 .capas-pop { position: fixed; bottom: 32px; left: 200px; z-index: 40; background: var(--ed-bar); border: 1px solid var(--ed-line); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,.5); padding: 8px 10px; min-width: 190px; }
 

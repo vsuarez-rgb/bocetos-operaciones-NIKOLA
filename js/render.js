@@ -93,7 +93,7 @@ export function dibujar(g, p, V, o) {
     g.restore(); path(g, pts, true); g.setLineDash([5 * u, 4 * u]); g.lineWidth = (sel ? 2.4 : 1.4) * u; g.strokeStyle = sel ? '#FAB704' : Z.c; g.stroke(); g.setLineDash([]);
     // Nombre del elemento: solo si se pidió en el paso Cotas, etiquetas y textos (z.etq.ver)
     if (z.etq && z.etq.ver && (plot || o.rotulos !== false)) { const cF = [z.x + z.w / 2, z.y + z.h / 2], cP = T(cF);
-      etiqueta(g, o, { p, of: 'zona', id: z.id, et: z.etq, txt: z.etqTxt || Z.n, anchorF: cF, attach: () => cP, def: [cP[0] + 10 * uE(z.etq), cP[1] - 12 * uE(z.etq)], k, V, u, plot, color: plot ? '#111' : '#fff' }); }
+      if (!(p.nombreDentro && nombreDentro(g, z.etqTxt || Z.n, z, cP, k, Z.c, p, plot))) etiqueta(g, o, { p, of: 'zona', id: z.id, et: z.etq, txt: z.etqTxt || Z.n, anchorF: cF, attach: () => cP, def: [cP[0] + 10 * uE(z.etq), cP[1] - 12 * uE(z.etq)], k, V, u, plot, color: plot ? '#111' : '#fff' }); }
   });
 
   // Paneles (achurados verdes como en los planos)
@@ -287,6 +287,21 @@ function etiqueta(g, o, { p, of, id, et = {}, txt, anchorF, def, izqDef, attach,
   const caja = [x0 - 2, L[1] - size - 4 * ue, x1 + 2, L[1] + 3];
   if (o.hits) o.hits.push({ t: 'etq', of, id, caja, anchor: anchorF, pos: [(L[0] + V.ox) / k, (L[1] + V.oy) / k] });
   if (!plot && o.sel && o.sel.t === 'etq' && o.sel.of === of && o.sel.id === id) { g.setLineDash([4, 3]); g.strokeStyle = et.fijo ? '#9DB0BD' : '#FAB704'; g.lineWidth = 1; g.strokeRect(caja[0], caja[1], caja[2] - caja[0], caja[3] - caja[1]); g.setLineDash([]); }
+}
+/* Nombre de un elemento (zona) escrito dentro de su área, en su color, en hasta 3 líneas. Busca el tamaño más
+   grande que quepa (desde el de las etiquetas hasta menos de la mitad); si no cabe, devuelve false (va como etiqueta). */
+function nombreDentro(g, txt, z, c, k, color, p, plot) {
+  const fc = z.forma === 'circ' ? .7 : .9, W = z.w * k * fc, H = z.h * k * fc;
+  const base = Math.max(3, (p.w || 1000) / 110 * k * (p.tamEtq || 1) * ((z.etq && z.etq.tam) || 1)), pal = String(txt).split(/\s+/).filter(Boolean);
+  for (let size = base; size >= Math.max(3, base * .45); size *= .9) {
+    g.font = fuente(size); const lineas = []; let l = '';
+    pal.forEach(w => { const t = l ? l + ' ' + w : w; if (l && g.measureText(t).width > W) { lineas.push(l); l = w; } else l = t; }); if (l) lineas.push(l);
+    if (lineas.length > 3 || lineas.length * size * 1.15 > H || lineas.some(x => g.measureText(x).width > W)) continue;
+    g.save(); g.translate(c[0], c[1]); g.rotate((z.ang || 0) * Math.PI / 180);
+    lineas.forEach((x, i) => texto(g, x, 0, (i - (lineas.length - 1) / 2) * size * 1.15, { size, color, halo: plot ? null : 'rgba(0,0,0,.55)', align: 'center', base: 'middle', bold: true }));
+    g.restore(); return true;
+  }
+  return false;
 }
 /* Un panel (o una figura) con el relleno y achurado verde de los paneles */
 export function panelDibujo(g, pts, { plot, u = 1, sel } = {}) {

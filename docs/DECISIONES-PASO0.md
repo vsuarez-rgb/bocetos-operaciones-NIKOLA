@@ -66,3 +66,5 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - **Panel derecho** (paleta Propiedades): secciones fijas, sin desplegar: resumen del paso y propiedades de lo elegido. El **bloque de paneles** se edita aquí (ya no hay ventana flotante sobre el dibujo).
 - **Capas**: botón CAPAS en la barra de estado, con la lista flotante.
 - La etiqueta de una canalización ya no se muestra u oculta desde sus propiedades: eso se hace solo en "Cotas, etiquetas y textos".
+- El **bloque de paneles** se edita en su propia ventana, una columna fija entre el dibujo y el panel derecho (no flota sobre los bloques). Se cierra con ✕ o Esc.
+- Elementos (zonas): opción "Nombre dentro del área, en su color" (`p.nombreDentro`, por hoja). El nombre va en hasta 3 líneas con el tamaño más grande que quepa; si no cabe, sale como etiqueta normal.
