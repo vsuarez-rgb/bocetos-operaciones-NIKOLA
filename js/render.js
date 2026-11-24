@@ -30,10 +30,13 @@ function inflar(poly, d) {
 const norm = v => { const L = Math.hypot(v[0], v[1]) || 1; return [v[0] / L, v[1] / L]; };
 function orientCW(poly) { let s = 0; poly.forEach((p, i) => { const q = poly[(i + 1) % poly.length]; s += (q[0] - p[0]) * (q[1] + p[1]); }); return s > 0 ? poly.slice().reverse() : poly; }
 
+/* Letra del dibujo: fina y angosta, parecida a la de AutoCAD (romans) */
+export const FUENTE_CAD = "'Roboto Condensed', 'Archivo Narrow', 'Arial Narrow', Arial, sans-serif";
+const fuente = size => `300 ${size}px ${FUENTE_CAD}`;
 function texto(g, txt, x, y, { size = 12, color = '#fff', halo = null, align = 'left', base = 'alphabetic', bold = false, italic = false, font = null } = {}) {
-  g.font = `${italic ? 'italic ' : ''}${bold ? '600 ' : '400 '}${size}px ${font || "'Archivo Narrow', 'Arial Narrow', Arial, sans-serif"}`;
+  g.font = `${italic ? 'italic ' : ''}${bold ? '600 ' : '300 '}${size}px ${font || FUENTE_CAD}`;
   g.textAlign = align; g.textBaseline = base;
-  if (halo) { g.lineWidth = Math.max(2, size / 4); g.strokeStyle = halo; g.lineJoin = 'round'; g.strokeText(txt, x, y); }
+  if (halo) { g.lineWidth = Math.max(1.5, size / 6); g.strokeStyle = halo; g.lineJoin = 'round'; g.strokeText(txt, x, y); }
   g.fillStyle = color; g.fillText(txt, x, y);
 }
 const path = (g, pts, close) => { g.beginPath(); pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); if (close) g.closePath(); };
@@ -56,9 +59,11 @@ export function dibujar(g, p, V, o) {
   if (vis('techos')) p.roofs.forEach((r, i) => {
     if (!r.poly.length) return;
     const pts = r.poly.map(T), act = esSel(o, 'roof', r.id);
+    // Contorno delgado; con p.ocultarContornos no se dibuja (salvo mientras se dibuja el techo o si está elegido)
+    const oculto = p.ocultarContornos && r.closed && !act && o.step !== 'techos';
     path(g, pts, r.closed);
-    if (r.closed && !plot) { g.fillStyle = act ? 'rgba(250,183,4,.10)' : 'rgba(255,255,255,.04)'; g.fill(); }
-    g.lineWidth = (act ? 2.2 : 1.4) * u; g.strokeStyle = plot ? '#2b2b2b' : act ? '#FAB704' : '#FFFFFF'; g.stroke();
+    if (r.closed && !plot && !oculto) { g.fillStyle = act ? 'rgba(250,183,4,.10)' : 'rgba(255,255,255,.04)'; g.fill(); }
+    if (!oculto) { g.lineWidth = (act ? 1.6 : .8) * u; g.strokeStyle = plot ? '#2b2b2b' : act ? '#FAB704' : '#FFFFFF'; g.stroke(); }
     if (!r.closed && !plot) pts.forEach((q, j) => { g.fillStyle = j ? '#FFFFFF' : '#FAB704'; g.fillRect(q[0] - 3, q[1] - 3, 6, 6); });
     if (r.closed && (o.step === 'techos' || o.step === 'paneles') && !plot) {
       const c = T(centroid(r.poly)); texto(g, `TECHO ${i + 1}`, c[0], c[1], { size: 12 * u, color: act ? '#FAB704' : '#fff', halo: 'rgba(0,0,0,.7)', align: 'center', base: 'middle', bold: true });
@@ -83,6 +88,9 @@ export function dibujar(g, p, V, o) {
     g.strokeStyle = Z.c + 'AA'; g.lineWidth = 1 * u; const H = bb[3] - bb[1];
     for (let d = -H; d < bb[2] - bb[0]; d += 7 * u) { g.beginPath(); g.moveTo(bb[0] + d, bb[3]); g.lineTo(bb[0] + d + H, bb[1]); g.stroke(); }
     g.restore(); path(g, pts, true); g.setLineDash([5 * u, 4 * u]); g.lineWidth = (sel ? 2.4 : 1.4) * u; g.strokeStyle = sel ? '#FAB704' : Z.c; g.stroke(); g.setLineDash([]);
+    // Nombre del elemento: solo si se pidió en el paso Cotas, etiquetas y textos (z.etq.ver)
+    if (z.etq && z.etq.ver && (plot || o.rotulos !== false)) { const cF = [z.x + z.w / 2, z.y + z.h / 2], cP = T(cF);
+      etiqueta(g, o, { p, of: 'zona', id: z.id, et: z.etq, txt: z.etqTxt || Z.n, anchorF: cF, attach: () => cP, def: [cP[0] + 10 * u, cP[1] - 12 * u], k, V, u, plot, color: plot ? '#111' : '#fff' }); }
   });
 
   // Paneles (achurados verdes como en los planos)
@@ -112,8 +120,8 @@ export function dibujar(g, p, V, o) {
     if (R.bloques && (plot || o.rotulos || o.step === 'paneles')) R.bloques.forEach(B => {
       const r = p.roofs[B.ri], bl = r && (r.bloques || [])[B.bi]; if (!bl) return; const iv = bl.incl != null ? bl.incl : inclPanelesDe(r); if (!iv) return;
       const q = B.q.map(T), v = q.reduce((m, x) => x[0] + x[1] < m[0] + m[1] ? x : m, q[0]), vf = B.q.reduce((m, x) => x[0] + x[1] < m[0] + m[1] ? x : m, B.q[0]);
-      if ((plot || o.rotulos) && bl.id) etiqueta(g, o, { p, of: 'inclb', id: bl.id, et: bl.etq, txt: bl.etqTxt || `${iv}º`, anchorF: vf, attach: () => v, def: [v[0] - 4 * u, v[1] - 4 * u], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#FAB704' });
-      else if (!plot && o.step === 'paneles') texto(g, `${iv}º`, v[0] - 4 * u, v[1] - 4 * u, { size: 12 * u, color: '#FAB704', halo: 'rgba(0,0,0,.75)', align: 'right' });
+      if ((plot || o.rotulos) && bl.id) etiqueta(g, o, { p, of: 'inclb', id: bl.id, et: bl.etq, txt: bl.etqTxt || `${iv}º`, anchorF: vf, attach: () => v, def: [v[0] - 4 * u, v[1] - 4 * u], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#fff' });
+      else if (!plot && o.step === 'paneles') texto(g, `${iv}º`, v[0] - 4 * u, v[1] - 4 * u, { size: 12 * u, color: '#fff', halo: 'rgba(0,0,0,.75)', align: 'right' });
     });
     if (!plot && o.step === 'paneles' && o.selBloque) { const B = R.bloques.find(b => b.ri === o.selBloque.ri && b.bi === o.selBloque.bi); if (B) { path(g, B.q.map(T), true); g.setLineDash([6, 4]); g.lineWidth = 1.6; g.strokeStyle = '#FAB704'; g.stroke(); g.setLineDash([]); grips(g, B.q.map(T)); } }
   }
@@ -222,13 +230,13 @@ export function dibujar(g, p, V, o) {
   if (vis('textos')) p.textos.forEach(tx => {
     const q = T(tx.p), size = Math.max(plot ? 4 : 7, altoTextoPx(p, tx) * k), sel = esSel(o, 'texto', tx.id);
     if (tx.guia) {                                         // línea de referencia: del elemento al texto, subrayándolo
-      g.font = `400 ${size}px 'Archivo Narrow', 'Arial Narrow', Arial, sans-serif`; const wt = g.measureText(tx.s).width, A = T(tx.guia), izq = A[0] > q[0] + wt / 2;
+      g.font = fuente(size); const wt = g.measureText(tx.s).width, A = T(tx.guia), izq = A[0] > q[0] + wt / 2;
       const xb = izq ? q[0] + wt + 3 * u : q[0] - 3 * u, yb = q[1] + 3 * u;
       g.strokeStyle = plot ? '#222' : (tx.c || '#fff'); g.lineWidth = .9 * u; g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(xb, yb); g.lineTo(izq ? q[0] - 3 * u : q[0] + wt + 3 * u, yb); g.stroke();
       g.beginPath(); g.arc(A[0], A[1], 2.2 * u, 0, Math.PI * 2); g.fillStyle = plot ? '#222' : (tx.c || '#fff'); g.fill();
     }
     texto(g, tx.s, q[0], q[1], { size, color: plot ? '#111' : (tx.c || '#fff'), halo: plot ? null : 'rgba(0,0,0,.7)' });
-    if (sel) { g.font = `400 ${size}px 'Archivo Narrow', Arial`; const w = g.measureText(tx.s).width; g.strokeStyle = '#FAB704'; g.setLineDash([4, 3]); g.strokeRect(q[0] - 3, q[1] - size, w + 6, size + 5); g.setLineDash([]); grips(g, [q]); }
+    if (sel) { g.font = fuente(size); const w = g.measureText(tx.s).width; g.strokeStyle = '#FAB704'; g.setLineDash([4, 3]); g.strokeRect(q[0] - 3, q[1] - size, w + 6, size + 5); g.setLineDash([]); grips(g, [q]); }
   });
 
   // Norte
@@ -267,7 +275,7 @@ function etiqueta(g, o, { p, of, id, et = {}, txt, anchorF, def, izqDef, attach,
   const gen = (p && p.tamEtq) || 1, Tp = q => [q[0] * k - V.ox, q[1] * k - V.oy];
   const size = et.escala ? Math.max(3, ((p && p.w) || 1000) / 110 * k * (et.tam || 1) * gen) : (plot ? 8 : 11) * u * (et.tam || 1) * gen;
   const L = et.dx != null ? Tp([anchorF[0] + et.dx, anchorF[1] + et.dy]) : def;
-  g.font = `400 ${size}px 'Archivo Narrow', 'Arial Narrow', Arial, sans-serif`;
+  g.font = fuente(size);
   const wt = g.measureText(txt).width + 4 * u, A = attach(L), izq = et.dx != null ? L[0] < A[0] : !!izqDef;
   const x0 = izq ? L[0] - wt : L[0], x1 = izq ? L[0] : L[0] + wt;
   g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(L[0], L[1]); g.lineTo(izq ? x0 : x1, L[1]); g.strokeStyle = plot ? '#222' : '#fff'; g.lineWidth = .8 * u; g.stroke();

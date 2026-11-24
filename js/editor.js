@@ -350,7 +350,7 @@ function gripEn(q) {
   if (s.t === 'ref' && E.p.ref) { if (dist(E.p.ref.a, q) < d) return { obj: E.p.ref, k: 'a' }; if (dist(E.p.ref.b, q) < d) return { obj: E.p.ref, k: 'b' }; }
   return null;
 }
-const listaEtq = of => of === 'equipo' ? E.p.equipos : of === 'string' ? E.p.strings : of === 'incl' ? E.p.roofs : of === 'inclb' ? E.p.roofs.flatMap(r => r.bloques || []) : E.p.rutas;
+const listaEtq = of => of === 'equipo' ? E.p.equipos : of === 'string' ? E.p.strings : of === 'incl' ? E.p.roofs : of === 'inclb' ? E.p.roofs.flatMap(r => r.bloques || []) : of === 'zona' ? E.p.zonas : E.p.rutas;
 const duenoEtq = s => s && s.t === 'etq' ? listaEtq(s.of).find(x => x.id === s.id) : null;
 function etqEn(q) { const sq = aPant(q); return [...(E.hits || [])].reverse().find(h => sq[0] >= h.caja[0] && sq[0] <= h.caja[2] && sq[1] >= h.caja[1] && sq[1] <= h.caja[3]); }
 function objetoEn(q) {
@@ -693,7 +693,7 @@ function borrarSel() {
     its.forEach(it => quita({ equipo: p.equipos, ruta: p.rutas, cota: p.cotas, texto: p.textos, fig: p.figPaneles || [], zona: p.zonas }[it.t] || [], it.id));
     log(`BORRAR  ${its.length} objetos`); E.sel = null; despues(); return; }
   const s = E.sel, p = E.p; if (!s) return toast('No hay nada seleccionado');
-  if (s.t === 'etq') { const ow = duenoEtq(s); if (ow) { antes(); (ow.etq ||= {}).oculta = true; E.sel = null; log('ETIQUETA quitada'); despues(); } return; }
+  if (s.t === 'etq') { const ow = duenoEtq(s); if (ow) { antes(); if (s.of === 'zona') delete (ow.etq ||= {}).ver; else (ow.etq ||= {}).oculta = true; E.sel = null; log('ETIQUETA quitada'); despues(); } return; }
   antes();
   const quitar = (arr, id) => { const i = arr.findIndex(x => x.id === id); if (i >= 0) arr.splice(i, 1); };
   if (s.t === 'roof') { quitar(p.roofs, s.id); }
@@ -855,7 +855,15 @@ function panel() {
       <p class="mut">Dibuja cada agua por separado. Puedes escribir el largo de cada lado en metros (en la dirección del cursor) y activar ORTO (F8).</p>
       <div class="lista">${p.roofs.map((r, i) => `<button class="li" data-act="sel-roof" data-id="${r.id}" aria-pressed="${E.sel && E.sel.id === r.id}"><b>Techo ${i + 1}</b><span>${r.closed ? `${fmt(R.porTecho[i].area, 1)} m² · incl. ${r.incl}°` : 'sin cerrar'}</span></button>`).join('') || '<p class="mut">Sin techos todavía.</p>'}</div>
       <div class="row"><button class="btn" data-act="tool" data-k="roof">${ic('plus')} Dibujar techo</button>${E.temp && E.tool === 'roof' ? `<button class="btn" data-act="cerrar-techo">Cerrar (Enter)</button>` : ''}</div>
-      <dl class="dl"><dt>Área total</dt><dd>${R.area ? fmt(R.area, 1) + ' m²' : '—'}</dd></dl>`);
+      <dl class="dl"><dt>Área total</dt><dd>${R.area ? fmt(R.area, 1) + ' m²' : '—'}</dd></dl>
+      <label class="chk"><input type="checkbox" data-campo="hoja.contornos" ${!p.ocultarContornos ? 'checked' : ''}> Mostrar el contorno de los techos (fuera de este paso)</label>`);
+    // Cómo es el techo elegido: se define aquí, al dibujarlo (antes estaba en Paneles)
+    const r = techoAct(), ri = r ? p.roofs.indexOf(r) : -1, T = ri >= 0 ? R.porTecho[ri] : null;
+    if (r && r.closed) h += sec(`Techo ${ri + 1}: cómo es`, `${rango('roof.incl', r.incl || 0, 0, 60, 'Inclinación del techo')}
+        <label class="f"><span>La pendiente baja hacia</span>${seg('roof.baja', r.baja || 'abajo', [['abajo', '↓'], ['arriba', '↑'], ['izq', '←'], ['der', '→']])}</label>
+        ${num('roof.setback', fmt((r.setback ?? 400) / 1000, 2), { l: 'Retiro al borde', u: 'm' })}
+        <dl class="dl"><dt>Área real</dt><dd>${T ? fmt(T.area, 1) : '—'} m²</dd></dl>`, true);
+    else if (p.roofs.some(x => x.closed)) h += `<p class="mut" style="padding:10px 14px">Elige un techo (en la lista o con un clic) para definir su inclinación, pendiente y retiro.</p>`;
   }
   if (E.step === 'elementos') {
     h += sec('Elementos', `
@@ -874,10 +882,8 @@ function panel() {
       <div class="lista">${p.roofs.filter(t => t.closed).map(t => { const i = p.roofs.indexOf(t); return `<button class="li" data-act="sel-roof" data-id="${t.id}" aria-pressed="${r && r.id === t.id}"><b>Techo ${i + 1}</b><span>${R.porTecho[i].n} paneles · ${t.modo === 'manual' ? `manual, ${(t.bloques || []).length} bloque(s)` : `automático, paneles a ${inclPanelesDe(t)}°`}</span></button>`; }).join('') || '<p class="mut">Dibuja un techo primero.</p>'}</div>
       ${!r ? '<p class="mut">Elige un techo (en la lista o con un clic en el dibujo) para caracterizarlo y poner sus paneles.</p>' : ''}`);
     if (r) {
-      h += sec(`Techo ${ri + 1}: cómo es`, `${rango('roof.incl', r.incl || 0, 0, 60, 'Inclinación del techo')}
-        <label class="f"><span>La pendiente baja hacia</span>${seg('roof.baja', r.baja || 'abajo', [['abajo', '↓'], ['arriba', '↑'], ['izq', '←'], ['der', '→']])}</label>
-        ${num('roof.setback', fmt((r.setback ?? 400) / 1000, 2), { l: 'Retiro al borde', u: 'm' })}
-        <dl class="dl"><dt>Área real</dt><dd>${T ? fmt(T.area, 1) : '—'} m²</dd></dl>`);
+      const bajaTxt = { abajo: '↓', arriba: '↑', izq: '←', der: '→' }[r.baja || 'abajo'];
+      h += `<p class="mut" style="padding:8px 14px 0">Techo ${ri + 1}: ${r.incl || 0}°, baja ${bajaTxt}, retiro ${fmt((r.setback ?? 400) / 1000, 2)} m · se cambia en el paso Techos.</p>`;
       const sobre = r.inclPan == null;
       h += sec(`Paneles del techo ${ri + 1}`, `${seg('roof.modo', r.modo || 'auto', [['auto', 'Automático'], ['manual', 'Manual (bloques)']])}
         <label class="f"><span>Panel</span><select class="in" data-campo="roof.panel">${PANELES.map(x => `<option value="${x.id}" ${panelDe(p, r).id === x.id ? 'selected' : ''}>${x.n}</option>`).join('')}</select></label>
@@ -930,7 +936,8 @@ function panel() {
       <div class="row"><button class="btn" data-act="str-new">${ic('plus')} Nuevo string</button><button class="btn" data-act="str-auto">Armar automático</button></div>`);
   }
   if (E.step === 'etiquetas') {
-    const grupo = (of, titulo, xs, nombre) => xs.length ? `<div class="sub">${titulo}</div><div class="lista etq-lista">${xs.map((x, i) => { const oc = x.etq && x.etq.oculta;
+    // los elementos (zonas) no llevan nombre salvo que se pida: su etiqueta se enciende con etq.ver
+    const grupo = (of, titulo, xs, nombre) => xs.length ? `<div class="sub">${titulo}</div><div class="lista etq-lista">${xs.map((x, i) => { const oc = of === 'zona' ? !(x.etq && x.etq.ver) : x.etq && x.etq.oculta;
       return `<div class="etq-f${E.sel && E.sel.t === 'etq' && E.sel.id === x.id ? ' on' : ''}"><button class="etq-ojo" data-act="etq-ojo" data-of="${of}" data-id="${x.id}" title="${oc ? 'Mostrar' : 'Quitar'}">${ic(oc ? 'eyeoff' : 'eye', 14)}</button><button class="etq-n" data-act="etq-sel" data-of="${of}" data-id="${x.id}" ${oc ? 'disabled' : ''}>${esc(nombre(x, i))}</button></div>`; }).join('')}</div>` : '';
     const nEq = x => x.rotulo || EQUIPOS[x.k]?.n || 'Equipo', nRt = x => x.etqTxt || CANAL[x.k]?.corto || 'Canalización', nSt = (x, i) => x.etqTxt || `String ${i + 1}`;
     E.proyecto.etqVisto = true;
@@ -939,6 +946,7 @@ function panel() {
       ${p.strings.length ? `<label class="chk"><input type="checkbox" data-campo="hoja.encerrar" ${p.encerrarStrings !== false ? 'checked' : ''}> Encerrar los strings (contorno de color)</label>` : ''}
       <div class="row wrap"><button class="btn sm" data-act="etq-todas" data-k="ver">Mostrar todas</button><button class="btn sm" data-act="etq-todas" data-k="quitar">Quitar todas</button><button class="btn sm" data-act="etq-todas" data-k="lugar">Todas a su lugar</button></div>
       ${grupo('equipo', 'Equipos', p.equipos, nEq)}${grupo('ruta', 'Canalizaciones', p.rutas, nRt)}${grupo('string', 'Strings', p.strings, nSt)}
+      ${grupo('zona', 'Elementos (su nombre, si quieres ponerlo)', p.zonas, x => x.etqTxt || (ZONAS[x.k] || ZONAS.obs).n)}
       ${grupo('incl', 'Inclinación de los paneles (techos automáticos)', p.roofs.filter(r => r.closed && r.modo !== 'manual' && inclPanelesDe(r)), x => x.etqTxt || `Techo ${p.roofs.indexOf(x) + 1} · ${inclPanelesDe(x)}º`)}
       ${grupo('inclb', 'Inclinación de cada bloque', p.roofs.flatMap(r => (r.bloques || []).filter(b => b.id && (b.incl != null ? b.incl : inclPanelesDe(r))).map(b => ({ id: b.id, etq: b.etq, etqTxt: b.etqTxt, incl: b.incl, _r: r }))), x => x.etqTxt || `Bloque · ${x.incl != null ? x.incl : inclPanelesDe(x._r)}º`)}
       ${!p.equipos.length && !p.rutas.length && !p.strings.length ? '<p class="mut">Esta hoja no tiene equipos, canalizaciones ni strings.</p>' : ''}`);
@@ -1026,7 +1034,7 @@ function propsSel(s, { num, rango, seg }) {
     s.items.forEach(x => { c[x.t] = (c[x.t] || 0) + 1; });
     return `<p class="mut">${Object.entries(c).map(([t, n]) => `${n} ${N[t] || t}`).join(' · ')}</p><p class="mut">Arrastra cualquiera para mover todo junto. Mayús + clic suma o quita uno. Supr borra todo lo elegido.</p>${del}`; }
   if (s.t === 'etq') { const ow = duenoEtq(s); if (!ow) return ''; const et = ow.etq || {};
-    const txt = s.of === 'equipo' ? (ow.rotulo || '') : (ow.etqTxt || ''), ph = s.of === 'incl' || s.of === 'inclb' ? 'Inclinación (ej: 15º)' : s.of === 'equipo' ? EQUIPOS[ow.k]?.n : s.of === 'string' ? `String ${p.strings.indexOf(ow) + 1}` : CANAL[ow.k]?.corto;
+    const txt = s.of === 'equipo' ? (ow.rotulo || '') : (ow.etqTxt || ''), ph = s.of === 'incl' || s.of === 'inclb' ? 'Inclinación (ej: 15º)' : s.of === 'equipo' ? EQUIPOS[ow.k]?.n : s.of === 'zona' ? (ZONAS[ow.k] || ZONAS.obs).n : s.of === 'string' ? `String ${p.strings.indexOf(ow) + 1}` : CANAL[ow.k]?.corto;
     return `<label class="f"><span>Texto</span><input class="in" data-campo="etq.txt" value="${esc(txt)}" placeholder="${esc(ph || '')}"></label>
       ${rango('etq.tam', Math.round((et.tam || 1) * 100), 40, 400, 'Tamaño', ' %')}
       <label class="chk"><input type="checkbox" data-campo="etq.fijo" ${et.fijo ? 'checked' : ''}> Fija (no se mueve con el mouse)</label>
@@ -1124,8 +1132,11 @@ document.addEventListener('click', ev => {
     case 'med-ojo': { const e2 = p.equipos.find(x => x.id === b.dataset.id); if (!e2) break; antes(); const visible = e2.verMed === true || (e2.verMed !== false && p.verMedidas); e2.verMed = !visible; despues(); break; }
     case 'etq-sel': E.sel = { t: 'etq', of: b.dataset.of, id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'sel-obj': E.sel = { t: b.dataset.t, id: b.dataset.id }; panel(); dibujarTodo(); break;
-    case 'etq-ojo': { const ow = listaEtq(b.dataset.of).find(x => x.id === b.dataset.id); if (!ow) break; antes(); const et = (ow.etq ||= {}); et.oculta = !et.oculta; if (!et.oculta && E.sel && E.sel.id === ow.id) E.sel = null; despues(); break; }
-    case 'etq-todas': { antes(); const k2 = b.dataset.k; [...p.equipos, ...p.rutas, ...p.strings, ...p.roofs, ...p.roofs.flatMap(r => r.bloques || [])].forEach(x => { const et = (x.etq ||= {}); if (k2 === 'ver') delete et.oculta; if (k2 === 'quitar') et.oculta = true; if (k2 === 'lugar') { delete et.dx; delete et.dy; } }); E.sel = null; despues(); break; }
+    case 'etq-ojo': { const ow = listaEtq(b.dataset.of).find(x => x.id === b.dataset.id); if (!ow) break; antes(); const et = (ow.etq ||= {});
+      if (b.dataset.of === 'zona') { if (et.ver) { delete et.ver; if (E.sel && E.sel.id === ow.id) E.sel = null; } else et.ver = true; }
+      else { et.oculta = !et.oculta; if (!et.oculta && E.sel && E.sel.id === ow.id) E.sel = null; } despues(); break; }
+    case 'etq-todas': { antes(); const k2 = b.dataset.k; [...p.equipos, ...p.rutas, ...p.strings, ...p.roofs, ...p.roofs.flatMap(r => r.bloques || [])].forEach(x => { const et = (x.etq ||= {}); if (k2 === 'ver') delete et.oculta; if (k2 === 'quitar') et.oculta = true; if (k2 === 'lugar') { delete et.dx; delete et.dy; } });
+      p.zonas.forEach(z => { if (k2 === 'quitar' && z.etq) delete z.etq.ver; if (k2 === 'lugar' && z.etq) { delete z.etq.dx; delete z.etq.dy; } }); E.sel = null; despues(); break; }
     case 'hoja-renombrar': renombrarHoja(); break;
     case 'hoja-duplicar': duplicarHoja(); break;
     case 'etq-reset': { const ow = duenoEtq(E.sel); if (ow && ow.etq) { antes(); delete ow.etq.dx; delete ow.etq.dy; despues(); } break; }
@@ -1189,6 +1200,7 @@ function aplicar(campo, v, desdeChange, vivo) {
   else if (pre === 'hoja' && ['tamEtq', 'tamCotas'].includes(k)) { p[k] = Math.max(.2, +v / 100); }
   else if (pre === 'hoja' && k === 'vista') { p.vistaEquipos = v; }
   else if (pre === 'hoja' && k === 'encerrar') { if (v) delete p.encerrarStrings; else p.encerrarStrings = false; }
+  else if (pre === 'hoja' && k === 'contornos') { if (v) delete p.ocultarContornos; else p.ocultarContornos = true; }
   else if (pre === 'ruta' && k === 'etqVer') { const rt = obj.ruta(); if (!rt) return; (rt.etq ||= {}).oculta = !v; }
   else if (pre === 'eq' && k === 'etqVer') { const e = obj.eq(); if (!e) return; (e.etq ||= {}).oculta = !v; }
   else if (pre === 'ruta' && k === 'dash') { const rt = obj.ruta(); if (!rt) return; if (v) rt.dash = true; else delete rt.dash; }
