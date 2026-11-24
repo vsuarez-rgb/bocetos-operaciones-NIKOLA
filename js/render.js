@@ -215,7 +215,7 @@ export function dibujar(g, p, V, o) {
       g.save(); g.translate(m[0] - nx * 1.2, m[1] - ny * 1.2); g.rotate(rot); texto(g, txt, 0, -2 * u, { size: (plot ? 9 : 11.5) * u * (p.tamCotas || 1), color: plot ? '#111' : col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); g.restore();
     };
     if (p.ref && !plot && (o.step === 'escala' || o.verRef)) cota(p.ref.a, p.ref.b, p.ref.mm ? `${fmt(p.ref.mm / 1000, 2)} m · REF` : '? m', '#FAB704', true);
-    p.cotas.forEach(ct => { const sel = esSel(o, 'cota', ct.id); cota(ct.a, ct.b, textoCota(p, ct), sel ? '#FAB704' : (plot ? '#111' : '#FAB704')); if (sel) grips(g, [T(ct.a), T(ct.b)]); });
+    p.cotas.forEach(ct => { const sel = esSel(o, 'cota', ct.id); cota(ct.a, ct.b, textoCota(p, ct), sel ? '#FAB704' : (plot ? '#111' : '#FFFFFF')); if (sel) grips(g, [T(ct.a), T(ct.b)]); });
   }
 
   // Textos (alto en mm reales, como TEXT de AutoCAD)
