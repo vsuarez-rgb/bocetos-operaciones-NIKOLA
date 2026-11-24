@@ -14,7 +14,7 @@ import { listaHojas, TIPOS_HOJA } from '../hojas.js';
 import { calcular, calcStrings } from '../geom.js';
 import { panelLamina } from '../lamina.js';
 import { TAMANOS, TIPOS_BLOQUE, PLANTILLAS_INCLUIDAS, PAQUETES, SECCIONES, seccionDe, medida, copiarPagina, nuevoBloque, paginaEnBlanco, esFijo } from './modelo.js';
-import { htmlPagina, datosInforme, CSS_PAGINA, MM, olvidarVistas, imagenHoja, filasTablaMontaje } from './pagina.js';
+import { htmlPagina, datosInforme, CSS_PAGINA, MM, olvidarVistas, imagenHoja } from './pagina.js';
 
 /* plantilla: { pg, id, mia } cuando se está editando una plantilla (no una página del proyecto) */
 const S = { p: null, el: null, cb: {}, pag: null, sel: null, zoom: null, datos: null, mias: [], editadas: {}, plantilla: null, gen: 0, ventanas: {}, encuadre: null };
@@ -56,7 +56,7 @@ async function pintar() {
     <section class="inf-lienzo">
       ${pg ? `<div class="inf-bar">
           <span class="inf-bar-t">${S.plantilla ? 'Plantilla: ' : ''}${esc(pg.nombre || 'Página')} · ${esc(pg.tamano)} ${pg.orientacion}</span><span class="tb-sp"></span>
-          <span class="inf-add">Agregar:</span>${Object.entries(TIPOS_BLOQUE).map(([k, n]) => `<button class="inf-btn" data-act="in-add" data-k="${k}" title="Agregar ${n.toLowerCase()}">${n.replace(' de hoja de diseño', '').replace(' (modo plano)', '')}</button>`).join('')}<button class="inf-btn" data-act="in-add-montaje" title="Tabla con la estructura de cada techo: bases, perfil, riel y anclajes">Estructura</button>
+          <span class="inf-add">Agregar:</span>${Object.entries(TIPOS_BLOQUE).map(([k, n]) => `<button class="inf-btn" data-act="in-add" data-k="${k}" title="Agregar ${n.toLowerCase()}">${n.replace(' de hoja de diseño', '').replace(' (modo plano)', '')}</button>`).join('')}
           <span class="inf-zoom" title="Ctrl + rueda del mouse también hace zoom"><button data-act="in-zoom" data-k="-1" title="Alejar">−</button><button data-act="in-zoom" data-k="0" title="Ajustar la página a la pantalla" id="infZ">Ajustar</button><button data-act="in-zoom" data-k="1" title="Acercar">+</button></span>
         </div>
         <div class="inf-scroll"><div class="inf-hoja"><div class="pg-esc"><div class="inf-gen">Generando la página…</div></div></div></div>
@@ -196,10 +196,6 @@ export function accionInforme(a, el) {
     case 'in-nueva': dialogoNueva(el.dataset.k || (pg ? seccionDe(pg) : 'informe')); break;
     case 'in-paquete': agregarPaquete(el.dataset.k); break;
     case 'in-add': { const [W, H] = medida(pg), nb = nuevoBloque(el.dataset.k, 20, 20); if (nb.tipo === 'lamina') { nb.w = W; nb.h = H; nb.x = 0; nb.y = 0; } nb.x = Math.max(0, Math.round((W - nb.w) / 2)); nb.y = Math.max(0, Math.round((H - nb.h) / 2)); pg.bloques.push(nb); S.sel = nb.id; repintar(); break; }
-    case 'in-add-montaje': { const [W, H] = medida(pg), nb = nuevoBloque('tabla', 20, 20), filas = filasTablaMontaje(S.p);
-      Object.assign(nb, { titulo: 'CUBICACIÓN DE ESTRUCTURA', filas, anchos: '', w: Math.min(W - 20, 180), h: 8 + 7 * filas.length });
-      nb.x = Math.max(0, Math.round((W - nb.w) / 2)); nb.y = Math.max(0, Math.round((H - nb.h) / 2)); pg.bloques.push(nb); S.sel = nb.id; repintar();
-      if (filas.length < 2) toast('Aún no hay techos con paneles: la tabla queda solo con el encabezado'); break; }
     case 'in-zoom': { const k = +el.dataset.k; if (k === 0) { S.zoom = null; ajustarZoom(); } else zoomPagina(Math.max(.1, Math.min(8, (S.zoom || S.z || 1) * (k > 0 ? 1.25 : .8)))); break; }
     case 'in-pl-editar': editarPlantilla(el.dataset.id, !!el.dataset.mia); break;
     case 'in-pl-salir': salirPlantilla(); break;

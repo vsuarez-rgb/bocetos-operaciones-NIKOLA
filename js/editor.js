@@ -4,8 +4,8 @@
    = mover la vista, F3 refent., F7 rejilla, F8 orto, Esc cancela, Enter termina.
    ========================================================================== */
 import { $, $$, esc, fmt, parseNum, uid, clone, dist, lerp, rotP, centroid, pointInPoly, distSeg, edgeAngle, anguloBordeCercano, ic, toast, descargar } from './util.js';
-import { PANELES, INVERSORES, ZONAS, EQUIPOS, CANAL, CAPAS, ESTADOS, COLORES_STRING, GAP_FILA, MODELOS_EQUIPO, MONTAJE_DEF } from './catalogo.js';
-import { esReal, simboloCuadrado, nPanelesFig, inclPanelesDe, vistaEq, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo, tamEquipoPx, altoTextoPx, montajeDe, textoIncl, cubicacionMontaje, nombreMontaje } from './geom.js';
+import { PANELES, INVERSORES, ZONAS, EQUIPOS, CANAL, CAPAS, ESTADOS, COLORES_STRING, GAP_FILA, MODELOS_EQUIPO } from './catalogo.js';
+import { esReal, simboloCuadrado, nPanelesFig, inclPanelesDe, vistaEq, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo, tamEquipoPx, altoTextoPx } from './geom.js';
 import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota } from './render.js';
 import { vistaUnilineal, panelUnilineal, accionUnilineal } from './unilineal.js';
 import { CONJUNTOS_INCLUIDOS, insertarConjunto, conjuntoDeHoja } from './conjuntos.js';
@@ -46,7 +46,6 @@ export function abrirEditor(p, volver) {
     fotoAlpha: .85, guardado: true, R: null, SI: null, abiertas: new Map() };
   E.tool = HERR_DEF[E.step];
   cargarNormas().then(n => { if (E) { E.normas = n; if (E.step === 'equipos') { panel(); dibujarTodo(); } } });
-  leerAjuste('montajeDef').then(x => { if (x && E) { Object.assign(MONTAJE_DEF, x); recalcular(); if (E.step === 'paneles') { panel(); dibujarTodo(); } } });
   leerAjuste('conjuntosEquipos').then(x => { if (E) { E.conjuntos = x || []; if (E.step === 'equipos') panel(); } });
   render();
   cargarImg(E.p.img).then(() => { ajustarVista(); dibujarTodo(); });
@@ -519,7 +518,7 @@ function seleccionarVentana(D) {
   if ((x1 - x0) * E.V.k < 4 && (y1 - y0) * E.V.k < 4) { if (!D.sumar) E.sel = null; panel(); dibujarTodo(); return; }   // fue un clic, no una ventana
   const p = E.p, dentro = q => q[0] >= x0 && q[0] <= x1 && q[1] >= y0 && q[1] <= y1, items = [];
   const tipos = E.step === 'etiquetas' ? [['cota', p.cotas], ['texto', p.textos]]
-    : [['equipo', E.capas.has('equipos') ? p.equipos : []], ['ruta', p.rutas.filter(r => E.capas.has(CANAL[r.k]?.doble ? 'estructura' : CANAL[r.k]?.riel ? 'rieles' : 'canal'))], ['cota', E.capas.has('cotas') ? p.cotas : []], ['texto', E.capas.has('textos') ? p.textos : []],
+    : [['equipo', E.capas.has('equipos') ? p.equipos : []], ['ruta', p.rutas.filter(r => E.capas.has(CANAL[r.k]?.riel ? 'rieles' : 'canal'))], ['cota', E.capas.has('cotas') ? p.cotas : []], ['texto', E.capas.has('textos') ? p.textos : []],
        ['fig', E.capas.has('paneles') ? (p.figPaneles || []) : []], ['zona', ['elementos', 'techos'].includes(E.step) && E.capas.has('zonas') ? p.zonas : []]];
   tipos.forEach(([t, lista]) => lista.forEach(x => { const pts = puntosObj(t, x); if (pts.length && (cruce ? pts.some(dentro) : pts.every(dentro))) items.push({ t, id: x.id }); }));
   let sel = D.sumar && E.sel ? E.sel : null;
@@ -754,10 +753,6 @@ function dialogoConfig() {
       <h3 class="cfg-t">Normas</h3><p class="mut">Se revisan en la vista de frente de los equipos con medida real, midiendo desde el nivel de piso de cada hoja. Solo dan advertencias, que el ingeniero puede marcar como revisadas. Quedan guardadas en este navegador.</p>
       <div class="cfg-lista">${normas.map(fila).join('')}</div>
       <div class="row wrap"><button class="btn sm" data-cfg="nueva">${ic('plus', 14)} Agregar norma</button><button class="btn sm" data-cfg="base">Volver a las normas iniciales</button></div>
-      <h3 class="cfg-t">Estructura de los paneles (valores por defecto)</h3><p class="mut">Pendientes de revisar con las restricciones y normas. Cada techo o bloque puede tener los suyos.</p>
-      <div class="row"><label class="f mini"><span>Distancia entre bases</span><span class="fi"><input class="in" data-md="sepBases" value="${fmt(MONTAJE_DEF.sepBases / 1000, 2)}" inputmode="decimal"><em>m</em></span></label>
-        <label class="f mini"><span>Sobresalen</span><span class="fi"><input class="in" data-md="sobresale" value="${fmt(MONTAJE_DEF.sobresale / 10, 0)}" inputmode="decimal"><em>cm</em></span></label>
-        <label class="f mini"><span>Anclajes por base</span><span class="fi"><input class="in" data-md="anclajesPorBase" value="${MONTAJE_DEF.anclajesPorBase}" inputmode="decimal"><em>u</em></span></label></div>
       <div class="row end"><button class="btn" value="cancel">Cancelar</button><button class="btn pri" value="ok">Guardar</button></div></form>`; };
   const leer = () => d.querySelectorAll('.cfg-n').forEach(el => { const n = normas[+el.dataset.i];
     el.querySelectorAll('[data-n]').forEach(i => { const k = i.dataset.n; if (i.type === 'checkbox') n[k] = i.checked; else if (k === 'min' || k === 'max') { const v = parseNum(i.value); if (v != null) n[k] = v; else delete n[k]; } else if (k === 'ubic') { if (i.value) n.ubic = i.value; else delete n.ubic; } else n[k] = i.value; });
@@ -771,10 +766,7 @@ function dialogoConfig() {
     if (b.dataset.cfg === 'base' && confirm('¿Volver a las normas iniciales? Se pierden las que agregaste o cambiaste.')) normas = JSON.parse(JSON.stringify(NORMAS_BASE));
     pintar();
   });
-  d.addEventListener('close', () => { if (d.returnValue === 'ok') { leer(); E.normas = normas; guardarNormas(normas);
-      const md = {}; d.querySelectorAll('[data-md]').forEach(i => { const v = parseNum(i.value), k = i.dataset.md; if (v != null && v >= 0) md[k] = k === 'sepBases' ? Math.round(v * 1000) : k === 'sobresale' ? Math.round(v * 10) : Math.round(v); });
-      Object.assign(MONTAJE_DEF, md); guardarAjuste('montajeDef', md);
-      toast('Configuración guardada'); recalcular(); panel(); dibujarTodo(); } d.remove(); });
+  d.addEventListener('close', () => { if (d.returnValue === 'ok') { leer(); E.normas = normas; guardarNormas(normas); toast('Normas guardadas'); panel(); dibujarTodo(); } d.remove(); });
 }
 function renombrarHoja() {
   const h = hojaActiva(), P = E.proyecto, actual = h ? h.nombre : nombrePrincipal(P);
@@ -899,7 +891,10 @@ function panel() {
           <div class="f"><span>Bloque nuevo</span><span class="row">${stepper('blk.f', E.blk.f)} filas × ${stepper('blk.c', E.blk.c)} col.</span></div>
           <p class="mut">Clic en un lugar vacío del techo pone un bloque. Clic en un bloque abre su ventana al lado, con su tamaño, giro e inclinación.</p>
           <div class="lista">${(r.bloques || []).map((b, bi) => { const n = R.panels.filter(pn => pn.ri === ri && pn.bi === bi && !pn.off && !pn.bad).length;
-            return `<button class="li" data-act="sel-bloque" data-ri="${ri}" data-bi="${bi}" aria-pressed="${E.sel && E.sel.t === 'bloque' && E.sel.ri === ri && E.sel.bi === bi}"><b>Bloque ${bi + 1}</b><span>${b.f}×${b.c} · ${n} paneles</span><em>${textoIncl(r, b)}</em></button>`; }).join('') || '<p class="mut">Sin bloques todavía.</p>'}</div>` : `
+            return `<button class="li" data-act="sel-bloque" data-ri="${ri}" data-bi="${bi}" aria-pressed="${E.sel && E.sel.t === 'bloque' && E.sel.ri === ri && E.sel.bi === bi}"><b>Bloque ${bi + 1}</b><span>${b.f}×${b.c} · ${n} paneles</span><em>${b.incl != null ? b.incl : inclPanelesDe(r)}°</em></button>`; }).join('') || '<p class="mut">Sin bloques todavía.</p>'}</div>` : `
+          <div class="sub">Inclinación de todos los paneles</div>
+          <label class="chk"><input type="checkbox" data-campo="roof.inclSobre" ${sobre ? 'checked' : ''}> Sobrepuestos al techo (misma inclinación: ${r.incl || 0}°)</label>
+          ${sobre ? '' : rango('roof.inclPan', r.inclPan, 0, 60, 'Inclinación de los paneles (estructura)')}
           ${T && T.sombra ? `<dl class="dl"><dt>Separación por sombra</dt><dd>${fmt(T.sombra / 10, 0)} cm entre filas</dd></dl>` : ''}
           ${seg('roof.orient', r.orient || 'v', [['v', 'Vertical'], ['h', 'Horizontal']])}
           ${rango('roof.ang', r.ang || 0, -90, 90, 'Giro de los paneles')}
@@ -907,29 +902,25 @@ function panel() {
           ${num('roof.sepFila', fmt((r.sepFila ?? GAP_FILA) / 10, 0), { l: sobre ? 'Espacio entre filas' : 'Espacio mínimo entre filas', u: 'cm' })}
           ${(r.off || []).length ? `<button class="btn sm" data-act="devolver">Devolver ${r.off.length} panel(es) sacados</button>` : ''}`}
         ${r.modo === 'manual' && R.panels.some(pn => pn.rid === r.id && pn.bad) ? `<div class="aviso warn">${ic('alert', 16)}<span>Hay paneles en rojo (fuera del techo, en el retiro, sobre una zona o en sombra). No se cuentan.</span></div>` : ''}`);
-      h += sec(`Montaje del techo ${ri + 1}`, montajeHtml(r, null, { num, rango, seg }) + (r.modo === 'manual' ? '<p class="mut">Cada bloque usa este montaje, salvo que en su ventana elijas otro.</p>' : ''), true);
-      const rm = r.rieles && r.rieles.modo !== 'perfil' ? r.rieles.modo : 'no';
-      h += sec(`Rieles del techo ${ri + 1}`, `${seg('riel.modo', rm || 'no', [['no', 'Sin rieles'], ['perp', 'Perpendiculares'], ['paral', 'Paralelos']])}
-        ${rm && rm !== 'no' ? num('riel.d', r.rieles.d ? fmt(r.rieles.d / 10, 0) : '', { l: 'Distancia entre los 2 rieles', u: 'cm' }, `placeholder="${fmt((r.rieles.modo === 'paral' ? panelDe(p, r).w : panelDe(p, r).h) / 20, 0)} (la mitad del panel)"`) : ''}
+      h += sec(`Rieles del techo ${ri + 1}`, `${seg('riel.modo', (r.rieles && r.rieles.modo) || 'no', [['no', 'Sin rieles'], ['perp', 'Perpendiculares'], ['paral', 'Paralelos'], ['perfil', 'Perfiles (losa plana)']])}
+        ${r.rieles && r.rieles.modo === 'perfil' ? `<label class="f"><span>Largo de los perfiles</span>${seg('riel.largo', r.rieles.largo || 'bloque', [['bloque', 'Sobresalen'], ['techo', 'Hasta el techo'], ['manual', 'A mano']])}</label>
+          ${(r.rieles.largo || 'bloque') === 'bloque' ? num('riel.sob', r.rieles.sob != null ? fmt(r.rieles.sob / 10, 0) : '', { l: 'Cuánto sobresalen del bloque', u: 'cm' }, 'placeholder="15"') : ''}
+          <p class="mut">${r.rieles.largo === 'manual' ? 'Dibuja cada perfil con «Dibujar perfil» (sección Rieles y perfiles a mano).' : 'En losa plana los perfiles van en rojo: dos por cada fila de paneles, a lo largo de la fila.'}</p>` : ''}
+        ${R.rieles && R.rieles.mmPerfil ? `<dl class="dl"><dt>Metros de perfil (proyecto)</dt><dd>${fmt(R.rieles.mmPerfil / 1000, 1)} m</dd></dl>` : ''}
+        ${r.rieles && r.rieles.modo && r.rieles.modo !== 'no' && !(r.rieles.modo === 'perfil' && r.rieles.largo === 'manual') ? num('riel.d', r.rieles.d ? fmt(r.rieles.d / 10, 0) : '', { l: r.rieles.modo === 'perfil' ? 'Distancia entre los 2 perfiles' : 'Distancia entre los 2 rieles', u: 'cm' }, `placeholder="${fmt((r.rieles.modo === 'paral' ? panelDe(p, r).w : panelDe(p, r).h) / 20, 0)} (la mitad del panel)"`) : ''}
         ${R.rieles && R.rieles.porTecho[ri] ? `<dl class="dl"><dt>Metros de riel (techo)</dt><dd>${fmt(R.rieles.porTecho[ri] / 1000, 1)} m</dd></dl>` : ''}`);
     }
-    // Cubicación de la estructura por techo
-    const C = cubicacionMontaje(p, R);
-    if (C.techos.length) h += sec('Estructura y anclajes (cubicación)', `${C.techos.map(t => `<div class="sub">Techo ${t.i + 1} · ${t.tipos.map(nombreMontaje).join(' + ').toLowerCase()}</div>
-        <dl class="dl">${t.delanteras ? `<dt>Bases delanteras / traseras</dt><dd>${t.delanteras} / ${t.traseras}</dd>` : ''}${t.mmPerfil ? `<dt>Perfil</dt><dd>${fmt(t.mmPerfil / 1000, 1)} m</dd>` : ''}${t.mmRiel ? `<dt>Riel</dt><dd>${fmt(t.mmRiel / 1000, 1)} m</dd>` : ''}${t.anclajes ? `<dt>Anclajes</dt><dd>${t.anclajes}</dd>` : ''}${!t.delanteras && !t.mmPerfil && !t.mmRiel ? '<dt>Sin estructura ni rieles calculados</dt><dd></dd>' : ''}</dl>`).join('')}
-      ${C.techos.length > 1 ? `<div class="sub">Total</div><dl class="dl"><dt>Bases delanteras / traseras</dt><dd>${C.delanteras} / ${C.traseras}</dd><dt>Perfil</dt><dd>${fmt(C.mmPerfil / 1000, 1)} m</dd><dt>Riel</dt><dd>${fmt(C.mmRiel / 1000, 1)} m</dd><dt>Anclajes</dt><dd>${C.anclajes}</dd></dl>` : ''}
-      ${C.delanteras || C.mmPerfil ? `<label class="chk"><input type="checkbox" data-campo="hoja.sube" ${!p.ocultarSube ? 'checked' : ''}> Mostrar la flecha «sube» junto a los paneles</label>` : ''}
-      ${MONTAJE_DEF.pendiente && (C.delanteras || C.anclajes) ? `<p class="mut">Distancia entre bases, lo que sobresale y anclajes por base son valores por defecto pendientes de revisar (Configuración).</p>` : ''}`);
   }
   if (E.step === 'paneles') {
-    const figs = p.figPaneles || [], rielesL = p.rutas.filter(r => r.k === 'riel');
+    const figs = p.figPaneles || [], rielesL = p.rutas.filter(r => r.k === 'riel'), perfilesL = p.rutas.filter(r => r.k === 'perfil');
     h += sec('Paneles dibujados', `<p class="mut">Para hojas sin escala o en perspectiva: figuras con el mismo relleno de los paneles. No se suman al conteo de paneles del proyecto.</p>
       ${seg('_figForma', E.figForma, [['grid', 'Cuadrícula (4 esquinas)'], ['poly', 'Figura libre']])}
       ${E.figForma === 'grid' ? `<div class="f"><span>Nueva cuadrícula</span><span class="row">${stepper('fig.nf', E.figFC.f)} filas × ${stepper('fig.nc', E.figFC.c)} col.</span></div>` : ''}
       <button class="btn sm" data-act="tool" data-k="figpan">${ic('grid', 14)} Dibujar paneles</button>${figs.some(x => x.contar) ? `<dl class="dl"><dt>Se suman al proyecto</dt><dd>${figs.filter(x => x.contar).reduce((t, x) => t + nPanelesFig(x), 0)} paneles</dd></dl>` : '<p class="mut">Para que cuenten, elige la figura y marca «Sumar estos paneles al proyecto».</p>'}${figs.length ? `<p class="mut">${figs.length} figura(s) en esta hoja.</p>` : ''}`);
-    h += sec('Rieles (dibujo libre)', `<p class="mut">Para casos en perspectiva o sin cálculo automático: dibuja cada riel como una línea. ${s ? 'Se miden solos con la escala.' : 'Sin escala, escribe su largo en Propiedades.'}</p>
-      <button class="btn sm" data-act="rutaK" data-k="riel">${ic('pline', 14)} Dibujar riel</button>
-      ${rielesL.length ? `<dl class="dl"><dt>Rieles dibujados</dt><dd>${rielesL.length}</dd><dt>Total aprox.</dt><dd>${fmt(rielesL.reduce((t, r) => t + largoRuta(p, r), 0), 1)} m</dd></dl>` : ''}`);
+    h += sec('Rieles y perfiles a mano', `<p class="mut">Para casos en perspectiva o sin cálculo automático: dibuja cada riel o perfil como una línea. ${s ? 'Se miden solos con la escala.' : 'Sin escala, escribe su largo en Propiedades.'}</p>
+      <div class="row wrap"><button class="btn sm" data-act="rutaK" data-k="riel">${ic('pline', 14)} Dibujar riel</button><button class="btn sm" data-act="rutaK" data-k="perfil">${ic('pline', 14)} Dibujar perfil</button></div>
+      ${rielesL.length ? `<dl class="dl"><dt>Rieles dibujados</dt><dd>${rielesL.length}</dd><dt>Total aprox.</dt><dd>${fmt(rielesL.reduce((t, r) => t + largoRuta(p, r), 0), 1)} m</dd></dl>` : ''}
+      ${perfilesL.length ? `<dl class="dl"><dt>Perfiles dibujados</dt><dd>${perfilesL.length}</dd><dt>Total aprox.</dt><dd>${fmt(perfilesL.reduce((t, r) => t + largoRuta(p, r), 0), 1)} m</dd></dl>` : ''}`);
   }
   if (E.step === 'strings') {
     const S = E.SI, inv = S.inv;
@@ -1078,37 +1069,15 @@ function propsSel(s, { num, rango, seg }) {
     return `<div class="f"><span>Tamaño</span><span class="row">${stepper('b.f', b.f)} filas × ${stepper('b.c', b.c)} col.</span></div>
       ${rango('b.ang', Math.round(b.ang ?? r.ang ?? 0), -90, 90, 'Giro')}<button class="btn sm" data-act="blk-paralelo">Paralelo al borde más cercano</button>
       ${seg('b.orient', b.orient || r.orient || 'v', [['v', 'Vertical'], ['h', 'Horizontal']])}
-      <div class="sub">Montaje</div>
-      ${montajeHtml(r, b, { num, rango, seg })}
-      <div class="sub">Rieles</div>
-      ${seg('riel.bModo', (b.rieles && b.rieles.modo !== 'perfil' && b.rieles.modo) || 'hereda', [['hereda', 'Del techo'], ['no', 'Sin'], ['perp', 'Perp.'], ['paral', 'Paral.']])}
-      ${b.rieles && b.rieles.modo && !['no', 'perfil'].includes(b.rieles.modo) ? num('riel.bD', b.rieles.d ? fmt(b.rieles.d / 10, 0) : '', { l: 'Distancia entre rieles', u: 'cm' }) : ''}
+      ${seg('riel.bModo', (b.rieles && b.rieles.modo) || 'hereda', [['hereda', 'Rieles del techo'], ['no', 'Sin'], ['perp', 'Perp.'], ['paral', 'Paral.'], ['perfil', 'Perfiles']])}
+      ${b.rieles && b.rieles.modo === 'perfil' ? `${seg('riel.bLargo', b.rieles.largo || 'bloque', [['bloque', 'Sobresalen'], ['techo', 'Hasta el techo'], ['manual', 'A mano']])}
+        ${(b.rieles.largo || 'bloque') === 'bloque' ? num('riel.bSob', b.rieles.sob != null ? fmt(b.rieles.sob / 10, 0) : '', { l: 'Cuánto sobresalen', u: 'cm' }, 'placeholder="15"') : ''}` : ''}
+      ${b.rieles && b.rieles.modo && b.rieles.modo !== 'no' && !(b.rieles.modo === 'perfil' && b.rieles.largo === 'manual') ? num('riel.bD', b.rieles.d ? fmt(b.rieles.d / 10, 0) : '', { l: b.rieles.modo === 'perfil' ? 'Distancia entre perfiles' : 'Distancia entre rieles', u: 'cm' }) : ''}
+      <label class="chk"><input type="checkbox" data-campo="b.inclHereda" ${b.incl == null ? 'checked' : ''}> Inclinación de los paneles del techo (${inclPanelesDe(r)}°)</label>
+      ${b.incl != null ? rango('b.incl', b.incl, 0, 60, 'Inclinación de este bloque') : ''}
       ${num('b.sep', fmt((b.sep ?? GAP_FILA) / 10, 0), { l: 'Entre filas', u: 'cm' })}
       <div class="row"><button class="btn sm" data-act="blk-rep" data-k="der">Repetir →</button><button class="btn sm" data-act="blk-rep" data-k="abajo">Repetir ↓</button></div>${del}`; }
   return '';
-}
-
-/* Selector "Tipo de montaje" y solo los campos de ese tipo. b = bloque (null = el techo). Campos: mont.* (techo) y montb.* (bloque) */
-function montajeHtml(r, b, { num, rango, seg }) {
-  const pre = b ? 'montb' : 'mont', M = montajeDe(r, b), D = MONTAJE_DEF, pend = D.pendiente ? ' · pendiente' : '';
-  const tipo = b ? (b.montaje && b.montaje.tipo) || (b.incl != null ? 'fija' : 'hereda') : M.tipo;
-  const ops = [['riel', 'Rieles'], ['fija', 'Fija'], ['ajustable', 'Ajustable'], ['perfil', 'Perfiles']];
-  const anclajeIn = `<label class="f"><span>Anclaje (se usa en la nota de montaje)</span><input class="in" data-campo="${pre}.anclaje" value="${esc(M.anclaje)}" placeholder="Ej: perno doble hilo"></label>`;
-  let h = seg(`${pre}.tipo`, tipo, b ? [['hereda', 'Del techo'], ...ops] : ops);
-  if (tipo === 'hereda') return h + `<p class="mut">Usa el montaje del techo: ${nombreMontaje(montajeDe(r).tipo).toLowerCase()}, ${textoIncl(r)}.</p>`;
-  if (tipo === 'riel') return h + `<p class="mut">Paneles sobrepuestos al techo, con su misma inclinación (${r.incl || 0}°), sobre rieles.</p>${anclajeIn}`;
-  if (tipo === 'ajustable') h += rango(`${pre}.angMin`, M.angMin ?? 0, 0, 60, 'Ángulo mínimo') + rango(`${pre}.ang`, M.ang, 0, 60, 'Ángulo máximo (la sombra usa este)');
-  else h += rango(`${pre}.ang`, M.ang, 0, 60, 'Inclinación de los paneles');
-  if (tipo === 'perfil') {
-    h += `<label class="f"><span>Largo de los perfiles</span>${seg(`${pre}.largo`, M.largo, [['bloque', 'Sobresalen'], ['techo', 'Hasta el techo'], ['manual', 'A mano']])}</label>`;
-    if (M.largo === 'bloque') h += num(`${pre}.sob`, fmt(M.sobresale / 10, 0), { l: `Cuánto sobresalen${pend}`, u: 'cm' });
-    if (M.largo !== 'manual') h += num(`${pre}.d`, M.d ? fmt(M.d / 10, 0) : '', { l: 'Distancia entre los 2 perfiles', u: 'cm' }, `placeholder="${fmt(panelDe(E.p, r).h / 20, 0)} (la mitad del panel)"`);
-    h += `<p class="mut">${M.largo === 'manual' ? 'Dibuja cada perfil con la herramienta Perfil (barra de arriba).' : 'Dos perfiles rojos por fila, a lo largo de la fila.'}</p>`;
-  } else {
-    h += num(`${pre}.sep`, fmt(M.sepBases / 1000, 2), { l: `Distancia entre bases${pend}`, u: 'm' });
-    h += num(`${pre}.sob`, fmt(M.sobresale / 10, 0), { l: `Cuánto sobresalen del panel${pend}`, u: 'cm' });
-  }
-  return h + anclajeIn;
 }
 
 /* ---------- Eventos del panel (delegados) ---------- */
@@ -1199,31 +1168,6 @@ document.addEventListener('input', ev => {
   if (t.dataset.campo === '_fotoAlpha') { E.p.fotoOpac = t.value / 100; const b = t.parentElement.querySelector('b'); if (b) b.textContent = t.value + '%'; E.guardado = false; estadoGuardado(); programarGuardado(); dibujarTodo(); return; }
   aplicar(t.dataset.campo, t.value, false, true);
 });
-/* Cambia el montaje del techo (bl = null) o de un bloque. El ángulo vive en r.inclPan / b.incl (en ajustable, el máximo). */
-function aplicarMontaje(r, bl, k, v, n) {
-  const tgt = bl || r, angK = bl ? 'incl' : 'inclPan', M0 = montajeDe(r, bl);
-  const conTipo = () => { tgt.montaje ||= {}; tgt.montaje.tipo ||= M0.tipo; return tgt.montaje; };
-  if (k === 'tipo') {
-    if (bl && v === 'hereda') { delete bl.montaje; delete bl.incl; return; }
-    const m = (tgt.montaje ||= {}); m.tipo = v;
-    // los perfiles de antes (rieles.modo 'perfil') pasan al montaje sin perder lo que sobresalen ni su distancia
-    if (tgt.rieles && tgt.rieles.modo === 'perfil') { if (tgt.rieles.sob != null) m.sobresale ??= tgt.rieles.sob; if (tgt.rieles.d) m.d ??= tgt.rieles.d; delete tgt.rieles; }
-    if (v === 'riel') { delete tgt[angK]; delete m.angMin; return; }
-    if (v !== 'ajustable') delete m.angMin;
-    if (v === 'ajustable') { m.angMin ??= 15; if (tgt[angK] == null || tgt[angK] < m.angMin) tgt[angK] = Math.max(30, m.angMin); }
-    else if (v === 'fija') tgt[angK] ??= Math.max(r.incl || 0, 15);
-    else tgt[angK] ??= r.incl || 0;
-    return;
-  }
-  const m = conTipo();
-  if (k === 'ang') { tgt[angK] = n ?? 0; if (m.tipo === 'ajustable' && m.angMin > tgt[angK]) m.angMin = tgt[angK]; }
-  else if (k === 'angMin') { m.angMin = n ?? 0; if (tgt[angK] != null && tgt[angK] < m.angMin) tgt[angK] = m.angMin; }
-  else if (k === 'sep') { if (n > 0) m.sepBases = Math.round(n * 1000); else delete m.sepBases; }
-  else if (k === 'sob') { if (n != null && n >= 0) m.sobresale = Math.round(n * 10); else delete m.sobresale; }
-  else if (k === 'd') { if (n > 0) m.d = Math.round(n * 10); else delete m.d; }
-  else if (k === 'largo') m.largo = v;
-  else if (k === 'anclaje') { const t = String(v).trim(); if (t) m.anclaje = t; else delete m.anclaje; }
-}
 function bloqueSel() { const s = E.sel; return s && s.t === 'bloque' ? (E.p.roofs[s.ri] || {}).bloques?.[s.bi] : null; }
 let enVivo = false;
 function aplicar(campo, v, desdeChange, vivo) {
@@ -1269,9 +1213,7 @@ function aplicar(campo, v, desdeChange, vivo) {
   else if (pre === 'fig') { const f = (p.figPaneles || []).find(x => s && x.id === s.id); if (!f) return;
     if (k === 'tipo') f.tipo = v; else if (k === 'contar') { if (v) f.contar = true; else delete f.contar; } else if (k === 'panel') f.panel = v;
     else if (k === 'n') { if (n != null && n >= 0) f.n = Math.round(n); else delete f.n; } else f[k] = Math.max(1, Math.round(+v || 1)); }
-  else if (pre === 'mont' || pre === 'montb') { if (!r) return; const bl = pre === 'montb' ? bloqueSel() : null; if (pre === 'montb' && !bl) return; aplicarMontaje(r, bl, k, v, n); }
-  else if (pre === 'hoja' && k === 'sube') { if (v) delete p.ocultarSube; else p.ocultarSube = true; }
-  else if (pre === 'riel') { const tgt = k.startsWith('b') ? bloqueSel() : r; if (!tgt) return; const kk = k.replace(/^b/, '').toLowerCase(); tgt.rieles ||= {}; if (kk === 'modo') { if (v === 'hereda') delete tgt.rieles; else tgt.rieles.modo = v; } else if (kk === 'sob') { if (n != null && n >= 0) tgt.rieles.sob = n * 10; else delete tgt.rieles.sob; } else { if (n > 0) tgt.rieles.d = n * 10; else delete tgt.rieles.d; } }
+  else if (pre === 'riel') { const tgt = k.startsWith('b') ? bloqueSel() : r; if (!tgt) return; const kk = k.replace(/^b/, '').toLowerCase(); tgt.rieles ||= {}; if (kk === 'modo') { if (v === 'hereda') delete tgt.rieles; else tgt.rieles.modo = v; } else if (kk === 'largo') { if (v === 'bloque') delete tgt.rieles.largo; else tgt.rieles.largo = v; } else if (kk === 'sob') { if (n != null && n >= 0) tgt.rieles.sob = n * 10; else delete tgt.rieles.sob; } else { if (n > 0) tgt.rieles.d = n * 10; else delete tgt.rieles.d; } }
   else if (pre === 'tx') { const t = obj.tx(); if (!t) return; if (k === 'h') t.h = (n || .4) * 1000; else if (k === 'f') t.f = Math.max(.1, +v / 100); else t.s = v; }
   else if (pre === 'norte') { p.norte.ang = +v; }
   else if (pre === 'str') { const st = obj.str(); if (!st) return; if (k === 'mppt') { st.mppt = +v; st.num = p.strings.filter(x => x !== st && x.mppt === +v).length + 1; } else if (k === 'largo') st.largo = n; else if (k === 'seccion') st.seccion = n || 6; }

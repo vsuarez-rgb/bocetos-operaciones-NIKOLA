@@ -14,7 +14,7 @@ Es un sitio **estático**: HTML, CSS y JavaScript sin compilación. No hay que i
 | 1 · Escala | Se sube la foto de dron y se traza una medida conocida. Si la foto trae altura de vuelo (EXIF/XMP del dron), se compara con la escala. |
 | 2 · Techos | Cada agua se dibuja como polilínea. Se puede escribir el largo de cada lado en metros (en la dirección del cursor). Al elegir un techo se define cómo es: inclinación, hacia dónde baja la pendiente y retiro al borde. El contorno es delgado y se puede ocultar fuera de este paso. |
 | 3 · Elementos | Obstáculos, zonas no utilizables, objetos que se retiran y pasillos. |
-| 4 · Paneles | Automático (llena el techo respetando retiro y zonas) o manual por bloques filas × columnas, como un arreglo de AutoCAD. **Tipo de montaje** por techo o por bloque: sobre rieles (sobrepuestos), estructura fija, estructura ajustable (ej. 15–30°; la sombra usa el ángulo máximo) o perfiles de losa plana (2 por fila, que sobresalen, llegan al borde del techo o se dibujan a mano). La estructura va en la capa ESTRUCTURA (roja): líneas, bases delanteras y traseras y flecha "sube". Cubicación por techo (bases, metros de perfil y de riel, anclajes) en el panel, en la tabla "Estructura" del informe y en los campos `{MONTAJE …}`; la nota `{MONTAJE Nota}` también sale en la lámina. |
+| 4 · Paneles | Automático (llena el techo respetando retiro y zonas) o manual por bloques filas × columnas, como un arreglo de AutoCAD. Rieles por techo o por bloque: perpendiculares, paralelos o **perfiles de losa plana** (rojos, 2 por fila, a lo largo de la fila: sobresalen del bloque, llegan hasta el borde del techo o se dibujan a mano). Rieles y perfiles también se pueden dibujar a mano. |
 | 5 · Strings | Se asignan paneles a cada MPPT con clic o ventana. Calcula Voc, Voc en frío, Vmp, potencia y caída de tensión, y avisa si algo se sale del rango del inversor. |
 | 6 · Equipos y canalización | Inversor, tableros, medidor, baterías, etc. a escala, y recorridos CC / CA / subterráneo / tierra con su largo. |
 | Informe y planos | Dos secciones de páginas: **Informe** (para el cliente) y **Láminas y planos** (A1 de siempre, planos para el contratista); el cajetín, firmas y notas de las láminas se editan ahí mismo. Páginas armadas con bloques que se mueven y cambian de tamaño: texto (con {Campos} de la ficha o del DWG), imagen, vista de cualquier hoja de diseño, tablas, unilineal y láminas A1 (modo plano). Tamaño y orientación por página. Tablas editables en la misma página (doble clic en una celda) y vistas encuadradas con el mouse como una ventana gráfica de AutoCAD (doble clic, rueda = zoom, arrastrar = mover, escala 1:N), con o sin marco. Plantillas incluidas a partir de los informes reales (Propuesta de diseño, Planos contratista, Láminas A1) y plantillas propias guardadas para reutilizar. PDF de todas las páginas, cada una con su tamaño. |
@@ -80,7 +80,7 @@ Lo que el motor no pueda calcular queda marcado y ese campo se llena a mano en l
 ```
 npm run plantilla   # ../Campos Autocad -.xlsm → data/plantilla/plantilla.json (sin datos de personas)
 npm run validar     # motor vs. los Excel reales de ../_validacion-paso0 (detalle solo en esa carpeta)
-npm test            # pruebas de la calculadora, del diccionario y de la estructura de los paneles
+npm test            # pruebas de la calculadora, del diccionario y de los perfiles de losa plana
 ```
 
 Validación al 18-11-2026: 3 proyectos con el 100 % de las celdas iguales al Excel y 1 con el 99,6 % (las 4 restantes son una fórmula antigua de ese Excel).

@@ -4,7 +4,7 @@
    (modo plot: fondo blanco, colores de impresión).
    ========================================================================== */
 import { ZONAS, EQUIPOS, CANAL, COLORES_STRING } from './catalogo.js';
-import { zonaPoly, escala, largoM, tamEquipoPx, altoTextoPx, esReal, inclPanelesDe, montajeDe, textoIncl } from './geom.js';
+import { zonaPoly, escala, largoM, tamEquipoPx, altoTextoPx, esReal, inclPanelesDe } from './geom.js';
 import { hull, centroid, lerp, dist, fmt } from './util.js';
 
 const imgs = new Map();
@@ -71,12 +71,12 @@ export function dibujar(g, p, V, o) {
     // Inclinación (como "15º" en los planos), junto al vértice de más a la izquierda
     // Inclinación junto al vértice de más a la izquierda: la del techo mientras se dibuja; después, la de los paneles
     // (en manual, cada bloque muestra la suya junto a él)
-    const enTecho = ['techos', 'elementos'].includes(o.step), iv = enTecho ? (r.incl || 0) : r.modo === 'manual' ? null : inclPanelesDe(r), ivTxt = enTecho ? `${iv}º` : textoIncl(r);
+    const iv = ['techos', 'elementos'].includes(o.step) ? (r.incl || 0) : r.modo === 'manual' ? null : inclPanelesDe(r);
     const vI = r.poly.length ? r.poly.reduce((m, q) => q[0] < m[0] ? q : m, r.poly[0]) : null;
-    if (r.closed && iv && (plot || o.rotulos)) { const q = T(vI); etiqueta(g, o, { p, of: 'incl', id: r.id, et: r.etq, txt: r.etqTxt || ivTxt, anchorF: vI, attach: () => q, def: [q[0] - 6 * u, q[1] - 4 * u], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#fff' }); }
+    if (r.closed && iv && (plot || o.rotulos)) { const q = T(vI); etiqueta(g, o, { p, of: 'incl', id: r.id, et: r.etq, txt: r.etqTxt || `${iv}º`, anchorF: vI, attach: () => q, def: [q[0] - 6 * u, q[1] - 4 * u], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#fff' }); }
     else if (r.closed && iv && ['techos', 'elementos', 'paneles'].includes(o.step)) {
       const q = T(vI);
-      texto(g, ivTxt, q[0] - 6 * u, q[1] - 4 * u, { size: 13 * u, color: plot ? '#111' : '#fff', halo: plot ? null : 'rgba(0,0,0,.7)', align: 'right' });
+      texto(g, `${iv}º`, q[0] - 6 * u, q[1] - 4 * u, { size: 13 * u, color: plot ? '#111' : '#fff', halo: plot ? null : 'rgba(0,0,0,.7)', align: 'right' });
     }
   });
 
@@ -118,10 +118,10 @@ export function dibujar(g, p, V, o) {
       }
     });
     if (R.bloques && (plot || o.rotulos || o.step === 'paneles')) R.bloques.forEach(B => {
-      const r = p.roofs[B.ri], bl = r && (r.bloques || [])[B.bi]; if (!bl) return; const M = montajeDe(r, bl), iv = M.ang; if (!iv) return; const ivTxt = textoIncl(r, bl);
+      const r = p.roofs[B.ri], bl = r && (r.bloques || [])[B.bi]; if (!bl) return; const iv = bl.incl != null ? bl.incl : inclPanelesDe(r); if (!iv) return;
       const q = B.q.map(T), v = q.reduce((m, x) => x[0] + x[1] < m[0] + m[1] ? x : m, q[0]), vf = B.q.reduce((m, x) => x[0] + x[1] < m[0] + m[1] ? x : m, B.q[0]);
-      if ((plot || o.rotulos) && bl.id) etiqueta(g, o, { p, of: 'inclb', id: bl.id, et: bl.etq, txt: bl.etqTxt || ivTxt, anchorF: vf, attach: () => v, def: [v[0] - 4 * u, v[1] - 4 * u], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#fff' });
-      else if (!plot && o.step === 'paneles') texto(g, ivTxt, v[0] - 4 * u, v[1] - 4 * u, { size: 12 * u, color: '#fff', halo: 'rgba(0,0,0,.75)', align: 'right' });
+      if ((plot || o.rotulos) && bl.id) etiqueta(g, o, { p, of: 'inclb', id: bl.id, et: bl.etq, txt: bl.etqTxt || `${iv}º`, anchorF: vf, attach: () => v, def: [v[0] - 4 * u, v[1] - 4 * u], izqDef: true, k, V, u, plot, color: plot ? '#111' : '#fff' });
+      else if (!plot && o.step === 'paneles') texto(g, `${iv}º`, v[0] - 4 * u, v[1] - 4 * u, { size: 12 * u, color: '#fff', halo: 'rgba(0,0,0,.75)', align: 'right' });
     });
     if (!plot && o.step === 'paneles' && o.selBloque) { const B = R.bloques.find(b => b.ri === o.selBloque.ri && b.bi === o.selBloque.bi); if (B) { path(g, B.q.map(T), true); g.setLineDash([6, 4]); g.lineWidth = 1.6; g.strokeStyle = '#FAB704'; g.stroke(); g.setLineDash([]); grips(g, B.q.map(T)); } }
   }
@@ -135,15 +135,7 @@ export function dibujar(g, p, V, o) {
   });
 
   // Rieles (naranjos): los calculados sobre los paneles
-  // Estructura (roja): líneas de las bases, bases como puntos, perfiles como rectángulos angostos y flecha "sube"
-  const ES = R && R.estructura;
-  if (vis('estructura') && ES) {
-    const rojo = plot ? '#D11' : '#FF3B3B';
-    ES.lineas.forEach(([a, b]) => { const A = T(a), B = T(b); g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.lineWidth = 1 * u; g.strokeStyle = rojo; g.stroke(); });
-    ES.perfiles.forEach(([a, b]) => perfilRect(g, T(a), T(b), rojo, u));
-    ES.bases.forEach(bs => { const q = T([bs.x, bs.y]); g.beginPath(); g.arc(q[0], q[1], 2.4 * u, 0, Math.PI * 2); g.fillStyle = rojo; g.fill(); });
-    if (!p.ocultarSube) ES.flechas.forEach(([a, b]) => flecha(g, T(a), T(b), plot ? '#222' : '#fff', u));
-  }
+  if (vis('rieles') && R && R.rieles) (R.rieles.perfiles || []).forEach(([a, b]) => lineaDoble(g, [T(a), T(b)], plot ? '#D11' : '#FF3B3B', u));
   if (vis('rieles') && R && R.rieles) R.rieles.lineas.forEach(([a, b]) => { const A = T(a), B = T(b); g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.lineWidth = 1.3 * u; g.strokeStyle = plot ? '#E07B00' : '#FF9E3D'; g.stroke(); });
 
   // Strings: contorno de color alrededor de sus paneles + rótulo "String N"
@@ -167,10 +159,10 @@ export function dibujar(g, p, V, o) {
   // Canalización
   p.rutas.forEach(rt => {
     const C = CANAL[rt.k] || CANAL.ca, pts = rt.pts.map(T), sel = esSel(o, 'ruta', rt.id); if (pts.length < 2) return;
-    if (!vis(C.doble ? 'estructura' : C.riel ? 'rieles' : 'canal')) return;
+    if (!vis(C.riel ? 'rieles' : 'canal')) return;
     if (sel) { path(g, pts); g.lineWidth = 6; g.strokeStyle = 'rgba(250,183,4,.35)'; g.stroke(); }
     const colR = C.libre ? (rt.color || C.c) : C.c, dashR = C.libre ? (rt.dash ? [10, 6] : []) : C.dash;
-    if (C.doble) { for (let i = 1; i < pts.length; i++) perfilRect(g, pts[i - 1], pts[i], plot ? '#D11' : colR, u); if (sel) grips(g, pts); return; }
+    if (C.doble) { lineaDoble(g, pts, plot ? '#D11' : colR, u); if (sel) grips(g, pts); return; }
     path(g, pts); g.setLineDash(dashR.map(d => d * u)); g.lineWidth = 1.8 * u; g.strokeStyle = plot && C.libre && colR === '#FFFFFF' ? '#222' : plot && C.cPlot ? C.cPlot : colR; g.lineJoin = 'round'; g.stroke(); g.setLineDash([]);
     if (sel) grips(g, pts);
     // etiqueta propia (se mueve, cambia de tamaño, se fija o se quita)
@@ -253,30 +245,13 @@ export function dibujar(g, p, V, o) {
   if (o.temp) o.temp(g, T);
 }
 
-/* Línea doble (perfil de estructura): dos líneas paralelas muy juntas */
+/* Perfil de estructura: rectángulo angosto por tramo (se lee como un riel; es un solo perfil) */
 export function lineaDoble(g, pts, col, u = 1) {
   const sep = 2.2 * u; g.strokeStyle = col; g.lineWidth = 1 * u; g.setLineDash([]);
   for (let i = 1; i < pts.length; i++) {
     const a = pts[i - 1], b = pts[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, nx = -(b[1] - a[1]) / L * sep, ny = (b[0] - a[0]) / L * sep;
-    g.beginPath(); g.moveTo(a[0] + nx, a[1] + ny); g.lineTo(b[0] + nx, b[1] + ny); g.moveTo(a[0] - nx, a[1] - ny); g.lineTo(b[0] - nx, b[1] - ny); g.stroke();
+    g.beginPath(); g.moveTo(a[0] + nx, a[1] + ny); g.lineTo(b[0] + nx, b[1] + ny); g.lineTo(b[0] - nx, b[1] - ny); g.lineTo(a[0] - nx, a[1] - ny); g.closePath(); g.stroke();
   }
-}
-/* Perfil de estructura: rectángulo angosto (se lee como un riel) */
-function perfilRect(g, a, b, col, u = 1) {
-  const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, nx = -(b[1] - a[1]) / L * 2.2 * u, ny = (b[0] - a[0]) / L * 2.2 * u;
-  path(g, [[a[0] + nx, a[1] + ny], [b[0] + nx, b[1] + ny], [b[0] - nx, b[1] - ny], [a[0] - nx, a[1] - ny]], true);
-  g.strokeStyle = col; g.lineWidth = 1 * u; g.setLineDash([]); g.stroke();
-}
-/* Flecha corta "sube" (de a hacia b) con su texto */
-function flecha(g, a, b, col, u = 1) {
-  const L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 6 * u) return;
-  const ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, c = Math.min(7 * u, L / 3);
-  g.strokeStyle = col; g.lineWidth = 1 * u; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]);
-  g.moveTo(b[0], b[1]); g.lineTo(b[0] - ux * c - uy * c * .5, b[1] - uy * c + ux * c * .5);
-  g.moveTo(b[0], b[1]); g.lineTo(b[0] - ux * c + uy * c * .5, b[1] - uy * c - ux * c * .5); g.stroke();
-  const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-  g.save(); g.translate(m[0] - uy * 7 * u, m[1] + ux * 7 * u); let rot = Math.atan2(uy, ux); if (rot > Math.PI / 2 || rot < -Math.PI / 2) rot += Math.PI; g.rotate(rot);
-  texto(g, 'SUBE', 0, 0, { size: 9 * u, color: col, align: 'center', base: 'middle' }); g.restore();
 }
 /* Relleno de un área (centrada en 0,0): 'solido' = pintada con su color más transparente;
    'diag' / 'cruz' / 'horiz' = achurado (sombreado, como el Hatch de AutoCAD) */

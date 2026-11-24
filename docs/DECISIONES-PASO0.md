@@ -42,28 +42,16 @@ Orden: 0.1 → 0.2 → **importar (con ON 921)** → 0.3 → 0.4 → 0.5 → 0.6
 
 ---
 
-# Fase 1 · Tipo de montaje (24-11-2026)
+# Paneles: perfiles de losa plana y ajustes (24-11-2026)
 
-## Datos
-- `r.montaje = { tipo, angMin, sepBases, sobresale, d, largo, anclaje }`; `b.montaje` lo reemplaza en un bloque (igual que `b.rieles`). Todo es opcional.
-- **No se repite estado:**
-  - el ángulo sigue en `r.inclPan` / `b.incl`. En "ajustable" ese campo guarda el **ángulo máximo**, así la separación por sombra usa el peor caso sin tocar el cálculo; `angMin` es lo único nuevo;
-  - el lado que **sube** es el contrario de `r.baja` / `b.baja`: no se guarda aparte;
-  - "riel" = paneles sobrepuestos = `inclPan` vacío (lo que antes era la casilla "Sobrepuestos al techo", que nunca se guardó).
-- **Sin `r.montaje`** el tipo se deduce (`montajeDe` en `js/geom.js`): `rieles.modo === 'perfil'` → perfil; con `inclPan` (o `b.incl`) → fija; si no → riel. Los proyectos guardados se ven y calculan igual.
+## Se probó y se descartó: "tipo de montaje"
+La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) con bases delanteras y traseras, anclajes, flecha "sube", cubicación y nota `{MONTAJE Nota}`. **Se quitó entero**: quedó demasiado complejo. Las bases de las estructuras ajustables se van a pensar de nuevo más adelante (ver `docs/PENDIENTES.md`). La flecha "sube" no se usa.
 
-## Perfiles de losa plana
-- Antes eran una opción de **Rieles** ("Perfiles (losa plana)") y se dibujaban **2 por columna** con línea doble.
-- Ahora son el montaje "perfil": **2 por fila**, a lo largo de la fila, dibujados como un **rectángulo angosto** (se lee como un riel; aunque se vean 2 líneas es un solo perfil).
-- Largo: *sobresalen* del bloque (por defecto), *hasta el borde del techo* (el caso habitual) o *a mano* con la herramienta Perfil.
-- Los proyectos con `rieles.modo = 'perfil'` pasan a montaje perfil al abrirse (se deduce), conservando lo que sobresalen y la distancia; la opción salió de Rieles. Cambia el dibujo: de columnas a filas.
-
-## Estructura fija y ajustable
-- Por cada tramo continuo de una fila: líneas en el sentido de la pendiente, una en cada extremo y repartidas cada `sepBases` como máximo; sobresalen del panel y llevan una base en cada punta (delantera = lado que baja, trasera = lado que sube).
-- Metros de perfil = (largo del panel en la pendiente + 2 × sobresale) por línea. Anclajes = bases × anclajes por base.
-
-## Valores por defecto
-Pendientes de revisar con las restricciones y normas (ver `docs/EQUIPOS-EMAT.md`, pendiente 6): distancia entre bases 1.000 mm, sobresale 150 mm, 1 anclaje por base. Se cambian en *Configuración* (se guardan en el navegador) y en cada techo o bloque.
+## Perfiles de losa plana (lo que quedó)
+- Siguen siendo una opción de **Rieles** (`r.rieles.modo = 'perfil'`, también por bloque en `b.rieles`), como antes.
+- Ahora van **2 por fila**, a lo largo de la fila (antes eran 2 por columna), y se dibujan como un **rectángulo angosto**: aunque se vean 2 líneas, es un solo perfil.
+- Largo (`rieles.largo`): *sobresalen* del bloque (`rieles.sob`, 15 cm por defecto, como antes), *hasta el borde del techo* (`'techo'`) o *a mano* (`'manual'`, se dibujan con el botón **Dibujar perfil**, igual que los rieles a mano).
+- Los proyectos guardados con perfiles cambian de dibujo: de columnas a filas.
 
 ## Otros cambios de la misma tanda
 - "Techo N: cómo es" (inclinación, pendiente y retiro) pasó del paso Paneles al paso **Techos**.

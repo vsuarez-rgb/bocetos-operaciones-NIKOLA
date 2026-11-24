@@ -7,7 +7,7 @@
    ========================================================================== */
 import { esc, fmt, ic, toast, descargar, dist, centroid, hull } from './util.js';
 import { CANAL, EQUIPOS, PANELES } from './catalogo.js';
-import { escala, panelDe, inversorDe, calcCA, zonaPoly, CAIDA_MAX, medidaEquipo, notaMontaje, cubicacionMontaje } from './geom.js';
+import { escala, panelDe, inversorDe, calcCA, zonaPoly, CAIDA_MAX, medidaEquipo } from './geom.js';
 import { dibujar, cargarImg, colorString } from './render.js';
 import { hoy } from './store.js';
 import { dibujoLibre } from './uni-dibujo.js';
@@ -34,7 +34,7 @@ function tabla(x, y, titulo, cols, filas, { cab = 7, fila = 5, fs = 1.7, tit = 3
 function datos(p, R, SI) {
   const inv = inversorDe(p), P = panelDe(p, p.roofs.find(r => r.closed)), L = p.lamina, ca = calcCA(p);
   const kwp = SI.pw ? SI.pw / 1000 : R.kwp, kwn = inv.kw * (p.cantInv || 1);
-  return { R, inv, P, L, ca, kwp, kwn, nMod: SI.pw ? SI.lista.reduce((t, x) => t + x.n, 0) : R.n, nStr: SI.lista.filter(x => x.n).length };
+  return { inv, P, L, ca, kwp, kwn, nMod: SI.pw ? SI.lista.reduce((t, x) => t + x.n, 0) : R.n, nStr: SI.lista.filter(x => x.n).length };
 }
 
 const disyDef = D => `${D.inv.fase === 'Trifásico' ? '4' : '2'}x${D.ca.prot} A Curva C`;
@@ -264,11 +264,7 @@ function simbologia(x, y, w, h) {
 }
 function notas(p, D, x, y, w) {
   const extra = [`TIPO DE MÓDULO: ${D.P.tipo.toUpperCase()}.`, `CANTIDAD TOTAL DE MÓDULOS: ${D.nMod}.`, `CANTIDAD TOTAL DE STRINGS: ${D.nStr}.`, `POTENCIA DE CADA MÓDULO: ${D.P.wp} Wp.`, `POTENCIA PEAK DE LA PLANTA: ${fmt(D.kwp, 2)} kWp.`, `POTENCIA NOMINAL DE LA PLANTA: ${fmt(D.kwn, D.kwn % 1 ? 1 : 0)} kW.`];
-  // Nota del montaje: donde se escribió {MONTAJE Nota}; si no está y hay estructura, se agrega sola
-  const nm = notaMontaje(p, D.R).toUpperCase(), propias = (D.L.notas || []).map(n => n.split('{MONTAJE Nota}').join(nm)).filter(Boolean);
-  const conEstructura = cubicacionMontaje(p, D.R).techos.some(t => t.tipos.some(x => x !== 'riel'));
-  if (nm && conEstructura && !(D.L.notas || []).some(n => n.includes('{MONTAJE Nota}'))) extra.unshift(nm);
-  const lista = [...propias, ...extra]; let s = T(x, y, 'NOTAS:', 2.4), yy = y + 5;
+  const lista = [...(D.L.notas || []), ...extra]; let s = T(x, y, 'NOTAS:', 2.4), yy = y + 5;
   const maxC = Math.floor(w / 1.12);
   lista.forEach((n, i) => { const pal = n.split(' '), lineas = []; let l = ''; pal.forEach(pp => { if ((l + ' ' + pp).length > maxC) { lineas.push(l); l = pp; } else l = l ? l + ' ' + pp : pp; }); lineas.push(l);
     s += T(x, yy, `${i + 1}.`, 1.9); lineas.forEach((ln, j) => { s += T(x + 5, yy + j * 2.6, ln, 1.9); }); yy += lineas.length * 2.6 + .9; });
@@ -430,7 +426,7 @@ async function imprimir(p) {
 /* ---------- DXF (AutoCAD R12, unidades mm, Y hacia arriba) ---------- */
 function dxf(p, R, SI) {
   const s = escala(p) || 1, X = q => (q[0] * s).toFixed(1), Y = q => ((p.h - q[1]) * s).toFixed(1);
-  const capas = [['TECHOS', 7], ['ZONAS', 1], ['PANELES', 3], ['RIELES', 30], ['ESTRUCTURA', 1], ['STRINGS', 4], ['CANAL-CC', 5], ['CANAL-CA', 1], ['CANAL-SUB', 30], ['TIERRA', 8], ['EQUIPOS', 6], ['COTAS', 2], ['TEXTOS', 7]];
+  const capas = [['TECHOS', 7], ['ZONAS', 1], ['PANELES', 3], ['STRINGS', 4], ['CANAL-CC', 5], ['CANAL-CA', 1], ['CANAL-SUB', 30], ['TIERRA', 8], ['EQUIPOS', 6], ['COTAS', 2], ['TEXTOS', 7]];
   let e = '';
   const poly = (pts, capa, cerrar = true, color) => { e += `0\nPOLYLINE\n8\n${capa}\n${color ? `62\n${color}\n` : ''}66\n1\n70\n${cerrar ? 1 : 0}\n`; pts.forEach(q => { e += `0\nVERTEX\n8\n${capa}\n10\n${X(q)}\n20\n${Y(q)}\n30\n0\n`; }); e += '0\nSEQEND\n'; };
   const txt = (q, h, t, capa, c = false) => { e += `0\nTEXT\n8\n${capa}\n10\n${X(q)}\n20\n${Y(q)}\n30\n0\n40\n${h}\n1\n${String(t).replace(/\n/g, ' ')}\n${c ? `72\n1\n11\n${X(q)}\n21\n${Y(q)}\n31\n0\n` : ''}`; };
@@ -438,16 +434,9 @@ function dxf(p, R, SI) {
   p.zonas.forEach(z => poly(zonaPoly(z), 'ZONAS'));
   const strDe = new Map(); SI.lista.forEach(x => x.st.panels.forEach(k => strDe.set(k, x)));
   R.validos.forEach(pn => { poly(pn.q, 'PANELES'); const x = strDe.get(pn.key); if (x) txt(centroid(pn.q), 180, x.etq, 'STRINGS', true); });
-  // Rieles (naranjos) y estructura (roja): líneas de bases, perfiles (rectángulo de 40 mm) y bases (círculo de 60 mm)
-  (R.rieles?.lineas || []).forEach(l => poly(l, 'RIELES', false));
-  const ES = R.estructura || { lineas: [], perfiles: [], bases: [] };
-  ES.lineas.forEach(l => poly(l, 'ESTRUCTURA', false));
-  ES.perfiles.forEach(([a, b]) => { const L = dist(a, b) || 1, h = 20 / s, nx = -(b[1] - a[1]) / L * h, ny = (b[0] - a[0]) / L * h; poly([[a[0] + nx, a[1] + ny], [b[0] + nx, b[1] + ny], [b[0] - nx, b[1] - ny], [a[0] - nx, a[1] - ny]], 'ESTRUCTURA'); });
-  ES.bases.forEach(bs => { e += `0\nCIRCLE\n8\nESTRUCTURA\n10\n${X([bs.x, bs.y])}\n20\n${Y([bs.x, bs.y])}\n30\n0\n40\n30\n`; });
-  p.rutas.filter(r => r.k === 'perfil' || r.k === 'riel').forEach(r => poly(r.pts, r.k === 'perfil' ? 'ESTRUCTURA' : 'RIELES', false));
   const cols = [4, 6, 3, 2, 30, 5, 210, 130];
   SI.lista.forEach((x, i) => { const pts = x.st.panels.map(k => R.porKey.get(k)).filter(Boolean).flatMap(pn => pn.q); if (pts.length > 2) { const h = hull(pts); poly(h, 'STRINGS', true, cols[i % cols.length]); const top = h.reduce((m, q) => q[1] < m[1] ? q : m, h[0]); txt([top[0], top[1] - 400 / s], 300, `String ${i + 1}`, 'STRINGS'); } });
-  p.rutas.filter(r => r.k !== 'perfil' && r.k !== 'riel').forEach(r => poly(r.pts, { cc: 'CANAL-CC', ca: 'CANAL-CA', sub: 'CANAL-SUB', tie: 'TIERRA' }[r.k] || 'CANAL-CA', false));
+  p.rutas.forEach(r => poly(r.pts, { cc: 'CANAL-CC', ca: 'CANAL-CA', sub: 'CANAL-SUB', tie: 'TIERRA' }[r.k] || 'CANAL-CA', false));
   p.equipos.forEach(q => { const Q = EQUIPOS[q.k] || EQUIPOS.inv, md = medidaEquipo(p, q), w = md.w / s, h = md.h / s, a = (q.ang || 0) * Math.PI / 180; const pts = [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]].map(v => [q.x + v[0] * Math.cos(a) - v[1] * Math.sin(a), q.y + v[0] * Math.sin(a) + v[1] * Math.cos(a)]); poly(pts, 'EQUIPOS'); txt([q.x + w / 2 + 100 / s, q.y], 200, q.rotulo || Q.n, 'EQUIPOS'); });
   p.cotas.forEach(c => { poly([c.a, c.b], 'COTAS', false); txt([(c.a[0] + c.b[0]) / 2, (c.a[1] + c.b[1]) / 2], 200, `${fmt(dist(c.a, c.b) * s / 1000, 2)} m`, 'COTAS', true); });
   p.textos.forEach(t => txt(t.p, t.h || 400, t.s, 'TEXTOS'));
