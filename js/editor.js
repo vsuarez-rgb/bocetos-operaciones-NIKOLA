@@ -6,7 +6,7 @@
 import { $, $$, esc, fmt, parseNum, uid, clone, dist, lerp, rotP, centroid, pointInPoly, distSeg, edgeAngle, anguloBordeCercano, ic, toast, descargar } from './util.js';
 import { PANELES, INVERSORES, ZONAS, EQUIPOS, CANAL, CAPAS, ESTADOS, COLORES_STRING, GAP_FILA, MODELOS_EQUIPO } from './catalogo.js';
 import { esReal, simboloCuadrado, nPanelesFig, inclPanelesDe, vistaEq, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo, tamEquipoPx, altoTextoPx, perfilesDe, rielesDe } from './geom.js';
-import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota, lineaDoble } from './render.js';
+import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota, lineaDoble, mediaPerfil } from './render.js';
 import { vistaUnilineal, panelUnilineal, accionUnilineal } from './unilineal.js';
 import { CONJUNTOS_INCLUIDOS, insertarConjunto, conjuntoDeHoja } from './conjuntos.js';
 import { leerAjuste, guardarAjuste } from './ajustes.js';
@@ -331,7 +331,7 @@ function temporal(g, T) {
   const t = E.temp, m = E.mouse ? cursorFoto() : null;
   const linea = (pts, col, dash = []) => { g.beginPath(); pts.forEach((q, i) => { const a = T(q); i ? g.lineTo(a[0], a[1]) : g.moveTo(a[0], a[1]); }); g.setLineDash(dash); g.strokeStyle = col; g.lineWidth = 1.5; g.stroke(); g.setLineDash([]); };
   const etiqueta = (a, b) => { const s = escala(E.p); if (!s) return; const q = T(lerp(a, b, .5)), txt = `${fmt(dist(a, b) * s / 1000, 2)} m`; g.font = "12px 'Archivo Narrow', Arial"; g.fillStyle = 'rgba(0,0,0,.75)'; const w = g.measureText(txt).width; g.fillRect(q[0] + 6, q[1] - 16, w + 8, 16); g.fillStyle = '#FAB704'; g.fillText(txt, q[0] + 10, q[1] - 4); };
-  if (t && t.tipo === 'poly' && m && E.tool === 'ruta' && E.rutaK === 'perfil') { lineaDoble(g, [T(t.pts[0]), T(m)], CANAL.perfil.c); etiqueta(t.pts[0], m); }   // el perfil se ve como rectángulo mientras se dibuja
+  if (t && t.tipo === 'poly' && m && E.tool === 'ruta' && E.rutaK === 'perfil') { lineaDoble(g, [T(t.pts[0]), T(m)], CANAL.perfil.c, 1, mediaPerfil(E.p, E.V.k)); etiqueta(t.pts[0], m); }   // el perfil se ve como rectángulo mientras se dibuja
   else if (t && t.tipo === 'poly' && m) { const pts = [...t.pts, m]; linea(pts, t.col || '#FAB704', t.dash || [6, 4]); if (t.pts.length) etiqueta(t.pts[t.pts.length - 1], m); }
   if (t && t.tipo === 'linea' && m) { linea([t.a, m], '#FAB704', [6, 4]); etiqueta(t.a, m); }
   if (E.D && (E.D.kind === 'ventana' || E.D.kind === 'ventanaSel')) { const a = T(E.D.a), b = T(E.D.b), izq = E.D.b[0] >= E.D.a[0]; g.fillStyle = izq ? 'rgba(61,123,255,.15)' : 'rgba(47,208,107,.15)'; g.fillRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.setLineDash(izq ? [] : [6, 4]); g.strokeStyle = izq ? '#3D7BFF' : '#2FD06B'; g.strokeRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.setLineDash([]); }
@@ -1063,7 +1063,6 @@ function propsSel(s, { num, rango, seg }) {
     return `<label class="f"><span>Texto</span><input class="in" data-campo="etq.txt" value="${esc(txt)}" placeholder="${esc(ph || '')}"></label>
       ${rango('etq.tam', Math.round((et.tam || 1) * 100), 40, 400, 'Tamaño', ' %')}
       <label class="chk"><input type="checkbox" data-campo="etq.fijo" ${et.fijo ? 'checked' : ''}> Fija (no se mueve con el mouse)</label>
-      <label class="chk"><input type="checkbox" data-campo="etq.escala" ${et.escala !== false ? 'checked' : ''}> Cambia de tamaño con el zoom (como parte del dibujo)</label>
       <p class="mut">Arrástrala para ponerla donde quieras; la línea guía la sigue.</p>
       <div class="row wrap">${et.dx != null ? '<button class="btn sm" data-act="etq-reset">Volver a su lugar</button>' : ''}<button class="btn sm del" data-act="etq-quitar">${ic('trash', 14)} Quitar etiqueta</button></div>`; }
   if (s.t === 'fig') { const f = (p.figPaneles || []).find(x => x.id === s.id); if (!f) return '';
