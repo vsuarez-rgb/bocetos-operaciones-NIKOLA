@@ -925,15 +925,11 @@ function panel() {
     }
   }
   if (E.step === 'paneles') {
-    const figs = p.figPaneles || [], rielesL = p.rutas.filter(r => r.k === 'riel'), perfilesL = p.rutas.filter(r => r.k === 'perfil');
+    const figs = p.figPaneles || [];   // rieles y perfiles a mano: en la barra de arriba
     h += sec('Paneles dibujados', `<p class="mut">Para hojas sin escala o en perspectiva: figuras con el mismo relleno de los paneles. No se suman al conteo de paneles del proyecto.</p>
       ${seg('_figForma', E.figForma, [['grid', 'Cuadrícula (4 esquinas)'], ['poly', 'Figura libre']])}
       ${E.figForma === 'grid' ? `<div class="f"><span>Nueva cuadrícula</span><span class="row">${stepper('fig.nf', E.figFC.f)} filas × ${stepper('fig.nc', E.figFC.c)} col.</span></div>` : ''}
       <button class="btn sm" data-act="tool" data-k="figpan">${ic('grid', 14)} Dibujar paneles</button>${figs.some(x => x.contar) ? `<dl class="dl"><dt>Se suman al proyecto</dt><dd>${figs.filter(x => x.contar).reduce((t, x) => t + nPanelesFig(x), 0)} paneles</dd></dl>` : '<p class="mut">Para que cuenten, elige la figura y marca «Sumar estos paneles al proyecto».</p>'}${figs.length ? `<p class="mut">${figs.length} figura(s) en esta hoja.</p>` : ''}`);
-    h += sec('Rieles y perfiles a mano', `<p class="mut">Para casos en perspectiva o sin cálculo automático. El riel es una línea (clic en cada punto); el perfil, un rectángulo (clic en el inicio y en el final). También están en la barra de arriba. ${s ? 'Se miden solos con la escala.' : 'Sin escala, escribe su largo en Propiedades.'}</p>
-      <div class="row wrap"><button class="btn sm" data-act="rutaK" data-k="riel">${ic('pline', 14)} Dibujar riel</button><button class="btn sm" data-act="rutaK" data-k="perfil">${ic('pline', 14)} Dibujar perfil</button></div>
-      ${rielesL.length ? `<dl class="dl"><dt>Rieles dibujados</dt><dd>${rielesL.length}</dd><dt>Total aprox.</dt><dd>${fmt(rielesL.reduce((t, r) => t + largoRuta(p, r), 0), 1)} m</dd></dl>` : ''}
-      ${perfilesL.length ? `<dl class="dl"><dt>Perfiles dibujados</dt><dd>${perfilesL.length}</dd><dt>Total aprox.</dt><dd>${fmt(perfilesL.reduce((t, r) => t + largoRuta(p, r), 0), 1)} m</dd></dl>` : ''}`);
   }
   if (E.step === 'strings') {
     const S = E.SI, inv = S.inv;
