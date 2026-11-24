@@ -180,20 +180,24 @@ export function calcular(p) {
 /* Rieles de los paneles (r.rieles = { modo, d } por techo; un bloque puede tener los suyos en b.rieles).
      modo 'perp' · perpendiculares a los paneles: 2 rieles a lo largo de cada fila (como el CONJUNTO 1 de los planos)
      modo 'paral' · paralelos a los paneles: 2 rieles por panel, en el sentido de su largo
-     modo 'perfil' · losa plana: 2 perfiles rojos a lo largo de cada fila; sob = cuánto sobresalen (mm),
-                     largo 'techo' = hasta el borde del techo, 'manual' = se dibujan a mano (herramienta Perfil)
-   d = distancia entre los 2 rieles (mm). Metros de riel = suma de las 2 líneas de cada fila, en todas las filas. */
+   d = distancia entre los 2 rieles (mm). Metros de riel = suma de las 2 líneas de cada fila, en todas las filas.
+   Perfiles de losa plana, aparte de los rieles (se pueden poner los dos): r.perfiles = { on, largo, sob, d }
+   (b.perfiles lo reemplaza en un bloque). 2 perfiles rojos a lo largo de cada fila; sob = cuánto sobresalen (mm),
+   largo 'techo' = hasta el borde del techo, 'manual' = se dibujan a mano (herramienta Perfil).
+   Antes los perfiles eran rieles.modo 'perfil': esos proyectos se leen igual (perfilesDe). */
 export const DEF_RIEL = (modo, pn) => modo === 'paral' ? Math.round(pn.wmm / 2) : Math.round(pn.hmm / 2);
+const perfilViejo = x => x && x.rieles && x.rieles.modo === 'perfil' ? { on: true, largo: x.rieles.largo, sob: x.rieles.sob, d: x.rieles.d } : null;
+export const perfilesDe = (r, b) => (b && (b.perfiles || perfilViejo(b))) || r.perfiles || perfilViejo(r) || { on: false };
+export const rielesDe = (r, b) => { const c = (b && b.rieles && b.rieles.modo) ? b.rieles : (r.rieles || {}); return c.modo === 'perfil' ? {} : c; };
 export function calcRieles(p, out) {
   const res = { lineas: [], mm: 0, filas: 0, porTecho: p.roofs.map(() => 0), perfiles: [], mmPerfil: 0 };
   const grupos = new Map();
   (out.validos || []).forEach(pn => {
-    const r = p.roofs[pn.ri], b = pn.bi != null ? (r.bloques || [])[pn.bi] : null, conf = (b && b.rieles && b.rieles.modo) ? b.rieles : (r.rieles || {});
-    if (!conf.modo || conf.modo === 'no') return;
-    // perp y perfil (losa plana) van por fila; con largo 'manual' los perfiles se dibujan a mano
-    if (conf.modo === 'perfil' && conf.largo === 'manual') return;
-    const k = pn.bi != null ? `${pn.ri}|b${pn.bi}|${pn.i}` : `${pn.ri}|a|${pn.row}`;
-    if (!grupos.has(k)) grupos.set(k, { conf, pans: [] }); grupos.get(k).pans.push(pn);
+    const r = p.roofs[pn.ri], b = pn.bi != null ? (r.bloques || [])[pn.bi] : null, k = pn.bi != null ? `${pn.ri}|b${pn.bi}|${pn.i}` : `${pn.ri}|a|${pn.row}`;
+    const poner = (kk, conf) => { if (!grupos.has(kk)) grupos.set(kk, { conf, pans: [] }); grupos.get(kk).pans.push(pn); };
+    const cr = rielesDe(r, b); if (cr.modo && cr.modo !== 'no') poner('r|' + k, cr);
+    // perfiles por fila; con largo 'manual' se dibujan a mano
+    const cp = perfilesDe(r, b); if (cp.on && cp.largo !== 'manual') poner('p|' + k, { ...cp, modo: 'perfil' });
   });
   const fr = (d, largo) => { const t = Math.max(.04, Math.min(.46, .5 - d / 2 / largo)); return [t, 1 - t]; };
   grupos.forEach(({ conf, pans }) => {

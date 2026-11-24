@@ -28,6 +28,17 @@ prueba('a mano: sin perfiles automáticos', R.rieles.perfiles.length === 0 && R.
 R = calcular(proyecto({ modo: 'perp' }));
 prueba('rieles perpendiculares siguen igual', R.rieles.lineas.length === 4 && cerca(R.rieles.mm, 4 * largoFila), `(${R.rieles.mm})`);
 
+// Perfiles aparte de los rieles: se pueden poner los dos
+let pr = proyecto({ modo: 'perp' }); pr.roofs[0].perfiles = { on: true };
+R = calcular(pr);
+prueba('rieles y perfiles juntos', R.rieles.lineas.length === 4 && R.rieles.perfiles.length === 4, `(${R.rieles.lineas.length} / ${R.rieles.perfiles.length})`);
+pr = proyecto(undefined); pr.roofs[0].perfiles = { on: true, largo: 'techo' };
+R = calcular(pr);
+prueba('solo perfiles (campo nuevo)', R.rieles.lineas.length === 0 && cerca(R.rieles.mmPerfil, 4 * 10000, 2));
+pr = proyecto({ modo: 'perp' }); pr.roofs[0].perfiles = { on: true }; pr.roofs[0].bloques[0].perfiles = { on: false };
+R = calcular(pr);
+prueba('bloque sin perfiles en techo con perfiles', R.rieles.perfiles.length === 0 && R.rieles.lineas.length === 4);
+
 prueba('rayo', cerca(rayoPoligono([0, 0], [1, 0], [[5, -1], [5, 1], [-5, 1], [-5, -1]]), 5, 1e-9));
 prueba('rayo sin cruce', rayoPoligono([10, 10], [1, 0], [[0, 0], [1, 0], [1, 1]]) === null);
 

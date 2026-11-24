@@ -5,7 +5,7 @@
    ========================================================================== */
 import { $, $$, esc, fmt, parseNum, uid, clone, dist, lerp, rotP, centroid, pointInPoly, distSeg, edgeAngle, anguloBordeCercano, ic, toast, descargar } from './util.js';
 import { PANELES, INVERSORES, ZONAS, EQUIPOS, CANAL, CAPAS, ESTADOS, COLORES_STRING, GAP_FILA, MODELOS_EQUIPO } from './catalogo.js';
-import { esReal, simboloCuadrado, nPanelesFig, inclPanelesDe, vistaEq, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo, tamEquipoPx, altoTextoPx } from './geom.js';
+import { esReal, simboloCuadrado, nPanelesFig, inclPanelesDe, vistaEq, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo, tamEquipoPx, altoTextoPx, perfilesDe, rielesDe } from './geom.js';
 import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota } from './render.js';
 import { vistaUnilineal, panelUnilineal, accionUnilineal } from './unilineal.js';
 import { CONJUNTOS_INCLUIDOS, insertarConjunto, conjuntoDeHoja } from './conjuntos.js';
@@ -902,13 +902,16 @@ function panel() {
           ${num('roof.sepFila', fmt((r.sepFila ?? GAP_FILA) / 10, 0), { l: sobre ? 'Espacio entre filas' : 'Espacio mínimo entre filas', u: 'cm' })}
           ${(r.off || []).length ? `<button class="btn sm" data-act="devolver">Devolver ${r.off.length} panel(es) sacados</button>` : ''}`}
         ${r.modo === 'manual' && R.panels.some(pn => pn.rid === r.id && pn.bad) ? `<div class="aviso warn">${ic('alert', 16)}<span>Hay paneles en rojo (fuera del techo, en el retiro, sobre una zona o en sombra). No se cuentan.</span></div>` : ''}`);
-      h += sec(`Rieles del techo ${ri + 1}`, `${seg('riel.modo', (r.rieles && r.rieles.modo) || 'no', [['no', 'Sin rieles'], ['perp', 'Perpendiculares'], ['paral', 'Paralelos'], ['perfil', 'Perfiles (losa plana)']])}
-        ${r.rieles && r.rieles.modo === 'perfil' ? `<label class="f"><span>Largo de los perfiles</span>${seg('riel.largo', r.rieles.largo || 'bloque', [['bloque', 'Sobresalen'], ['techo', 'Hasta el techo'], ['manual', 'A mano']])}</label>
-          ${(r.rieles.largo || 'bloque') === 'bloque' ? num('riel.sob', r.rieles.sob != null ? fmt(r.rieles.sob / 10, 0) : '', { l: 'Cuánto sobresalen del bloque', u: 'cm' }, 'placeholder="15"') : ''}
-          <p class="mut">${r.rieles.largo === 'manual' ? 'Dibuja cada perfil con «Dibujar perfil» (sección Rieles y perfiles a mano).' : 'En losa plana los perfiles van en rojo: dos por cada fila de paneles, a lo largo de la fila.'}</p>` : ''}
-        ${R.rieles && R.rieles.mmPerfil ? `<dl class="dl"><dt>Metros de perfil (proyecto)</dt><dd>${fmt(R.rieles.mmPerfil / 1000, 1)} m</dd></dl>` : ''}
-        ${r.rieles && r.rieles.modo && r.rieles.modo !== 'no' && !(r.rieles.modo === 'perfil' && r.rieles.largo === 'manual') ? num('riel.d', r.rieles.d ? fmt(r.rieles.d / 10, 0) : '', { l: r.rieles.modo === 'perfil' ? 'Distancia entre los 2 perfiles' : 'Distancia entre los 2 rieles', u: 'cm' }, `placeholder="${fmt((r.rieles.modo === 'paral' ? panelDe(p, r).w : panelDe(p, r).h) / 20, 0)} (la mitad del panel)"`) : ''}
+      const rl = rielesDe(r), rm = rl.modo || 'no', pf = perfilesDe(r), pl = pf.largo || 'bloque';
+      h += sec(`Rieles del techo ${ri + 1}`, `${seg('riel.modo', rm, [['no', 'Sin rieles'], ['perp', 'Perpendiculares'], ['paral', 'Paralelos']])}
+        ${rm !== 'no' ? num('riel.d', rl.d ? fmt(rl.d / 10, 0) : '', { l: 'Distancia entre los 2 rieles', u: 'cm' }, `placeholder="${fmt((rm === 'paral' ? panelDe(p, r).w : panelDe(p, r).h) / 20, 0)} (la mitad del panel)"`) : ''}
         ${R.rieles && R.rieles.porTecho[ri] ? `<dl class="dl"><dt>Metros de riel (techo)</dt><dd>${fmt(R.rieles.porTecho[ri] / 1000, 1)} m</dd></dl>` : ''}`);
+      h += sec(`Perfiles del techo ${ri + 1} (losa plana)`, `<label class="chk"><input type="checkbox" data-campo="perf.on" ${pf.on ? 'checked' : ''}> Poner perfiles (se pueden usar junto con los rieles)</label>
+        ${pf.on ? `<label class="f"><span>Largo de los perfiles</span>${seg('perf.largo', pl, [['bloque', 'Sobresalen'], ['techo', 'Hasta el techo'], ['manual', 'A mano']])}</label>
+          ${pl === 'bloque' ? num('perf.sob', pf.sob != null ? fmt(pf.sob / 10, 0) : '', { l: 'Cuánto sobresalen del bloque', u: 'cm' }, 'placeholder="15"') : ''}
+          ${pl !== 'manual' ? num('perf.d', pf.d ? fmt(pf.d / 10, 0) : '', { l: 'Distancia entre los 2 perfiles', u: 'cm' }, `placeholder="${fmt(panelDe(p, r).h / 20, 0)} (la mitad del panel)"`) : ''}
+          <p class="mut">${pl === 'manual' ? 'Dibuja cada perfil con «Dibujar perfil» (sección Rieles y perfiles a mano).' : 'Van en rojo: dos por cada fila de paneles, a lo largo de la fila.'}</p>` : ''}
+        ${R.rieles && R.rieles.mmPerfil ? `<dl class="dl"><dt>Metros de perfil (proyecto)</dt><dd>${fmt(R.rieles.mmPerfil / 1000, 1)} m</dd></dl>` : ''}`);
     }
   }
   if (E.step === 'paneles') {
@@ -1069,10 +1072,15 @@ function propsSel(s, { num, rango, seg }) {
     return `<div class="f"><span>Tamaño</span><span class="row">${stepper('b.f', b.f)} filas × ${stepper('b.c', b.c)} col.</span></div>
       ${rango('b.ang', Math.round(b.ang ?? r.ang ?? 0), -90, 90, 'Giro')}<button class="btn sm" data-act="blk-paralelo">Paralelo al borde más cercano</button>
       ${seg('b.orient', b.orient || r.orient || 'v', [['v', 'Vertical'], ['h', 'Horizontal']])}
-      ${seg('riel.bModo', (b.rieles && b.rieles.modo) || 'hereda', [['hereda', 'Rieles del techo'], ['no', 'Sin'], ['perp', 'Perp.'], ['paral', 'Paral.'], ['perfil', 'Perfiles']])}
-      ${b.rieles && b.rieles.modo === 'perfil' ? `${seg('riel.bLargo', b.rieles.largo || 'bloque', [['bloque', 'Sobresalen'], ['techo', 'Hasta el techo'], ['manual', 'A mano']])}
-        ${(b.rieles.largo || 'bloque') === 'bloque' ? num('riel.bSob', b.rieles.sob != null ? fmt(b.rieles.sob / 10, 0) : '', { l: 'Cuánto sobresalen', u: 'cm' }, 'placeholder="15"') : ''}` : ''}
-      ${b.rieles && b.rieles.modo && b.rieles.modo !== 'no' && !(b.rieles.modo === 'perfil' && b.rieles.largo === 'manual') ? num('riel.bD', b.rieles.d ? fmt(b.rieles.d / 10, 0) : '', { l: b.rieles.modo === 'perfil' ? 'Distancia entre perfiles' : 'Distancia entre rieles', u: 'cm' }) : ''}
+      <div class="sub">Rieles</div>
+      ${seg('riel.bModo', (b.rieles && b.rieles.modo !== 'perfil' && b.rieles.modo) || 'hereda', [['hereda', 'Del techo'], ['no', 'Sin'], ['perp', 'Perp.'], ['paral', 'Paral.']])}
+      ${b.rieles && ['perp', 'paral'].includes(b.rieles.modo) ? num('riel.bD', b.rieles.d ? fmt(b.rieles.d / 10, 0) : '', { l: 'Distancia entre rieles', u: 'cm' }) : ''}
+      <div class="sub">Perfiles (losa plana)</div>
+      ${(() => { const bp = b.perfiles || (b.rieles && b.rieles.modo === 'perfil' ? { on: true, largo: b.rieles.largo, sob: b.rieles.sob, d: b.rieles.d } : null), est = bp ? (bp.on ? 'si' : 'no') : 'hereda', bl = (bp && bp.largo) || 'bloque';
+        return `${seg('perf.bEstado', est, [['hereda', `Del techo (${perfilesDe(r).on ? 'con' : 'sin'})`], ['no', 'Sin'], ['si', 'Con perfiles']])}
+        ${est === 'si' ? `${seg('perf.bLargo', bl, [['bloque', 'Sobresalen'], ['techo', 'Hasta el techo'], ['manual', 'A mano']])}
+          ${bl === 'bloque' ? num('perf.bSob', bp.sob != null ? fmt(bp.sob / 10, 0) : '', { l: 'Cuánto sobresalen', u: 'cm' }, 'placeholder="15"') : ''}
+          ${bl !== 'manual' ? num('perf.bD', bp.d ? fmt(bp.d / 10, 0) : '', { l: 'Distancia entre perfiles', u: 'cm' }) : ''}` : ''}`; })()}
       <label class="chk"><input type="checkbox" data-campo="b.inclHereda" ${b.incl == null ? 'checked' : ''}> Inclinación de los paneles del techo (${inclPanelesDe(r)}°)</label>
       ${b.incl != null ? rango('b.incl', b.incl, 0, 60, 'Inclinación de este bloque') : ''}
       ${num('b.sep', fmt((b.sep ?? GAP_FILA) / 10, 0), { l: 'Entre filas', u: 'cm' })}
@@ -1168,6 +1176,8 @@ document.addEventListener('input', ev => {
   if (t.dataset.campo === '_fotoAlpha') { E.p.fotoOpac = t.value / 100; const b = t.parentElement.querySelector('b'); if (b) b.textContent = t.value + '%'; E.guardado = false; estadoGuardado(); programarGuardado(); dibujarTodo(); return; }
   aplicar(t.dataset.campo, t.value, false, true);
 });
+/* Perfiles de antes (rieles.modo 'perfil') pasan a su propio campo al editar rieles o perfiles */
+function migrarPerfiles(x) { if (x.rieles && x.rieles.modo === 'perfil') { const o = x.rieles; x.perfiles ||= { on: true, ...(o.largo ? { largo: o.largo } : {}), ...(o.sob != null ? { sob: o.sob } : {}), ...(o.d ? { d: o.d } : {}) }; delete x.rieles; } }
 function bloqueSel() { const s = E.sel; return s && s.t === 'bloque' ? (E.p.roofs[s.ri] || {}).bloques?.[s.bi] : null; }
 let enVivo = false;
 function aplicar(campo, v, desdeChange, vivo) {
@@ -1213,7 +1223,10 @@ function aplicar(campo, v, desdeChange, vivo) {
   else if (pre === 'fig') { const f = (p.figPaneles || []).find(x => s && x.id === s.id); if (!f) return;
     if (k === 'tipo') f.tipo = v; else if (k === 'contar') { if (v) f.contar = true; else delete f.contar; } else if (k === 'panel') f.panel = v;
     else if (k === 'n') { if (n != null && n >= 0) f.n = Math.round(n); else delete f.n; } else f[k] = Math.max(1, Math.round(+v || 1)); }
-  else if (pre === 'riel') { const tgt = k.startsWith('b') ? bloqueSel() : r; if (!tgt) return; const kk = k.replace(/^b/, '').toLowerCase(); tgt.rieles ||= {}; if (kk === 'modo') { if (v === 'hereda') delete tgt.rieles; else tgt.rieles.modo = v; } else if (kk === 'largo') { if (v === 'bloque') delete tgt.rieles.largo; else tgt.rieles.largo = v; } else if (kk === 'sob') { if (n != null && n >= 0) tgt.rieles.sob = n * 10; else delete tgt.rieles.sob; } else { if (n > 0) tgt.rieles.d = n * 10; else delete tgt.rieles.d; } }
+  else if (pre === 'perf') { const tgt = k.startsWith('b') ? bloqueSel() : r; if (!tgt) return; migrarPerfiles(tgt); const kk = k.replace(/^b/, '').toLowerCase();
+    if (kk === 'estado') { if (v === 'hereda') delete tgt.perfiles; else tgt.perfiles = { ...(tgt.perfiles || {}), on: v === 'si' }; }
+    else { const pf = (tgt.perfiles ||= { on: true }); if (kk === 'on') pf.on = !!v; else if (kk === 'largo') { if (v === 'bloque') delete pf.largo; else pf.largo = v; } else if (kk === 'sob') { if (n != null && n >= 0) pf.sob = n * 10; else delete pf.sob; } else if (kk === 'd') { if (n > 0) pf.d = n * 10; else delete pf.d; } } }
+  else if (pre === 'riel') { const tgt = k.startsWith('b') ? bloqueSel() : r; if (!tgt) return; migrarPerfiles(tgt); const kk = k.replace(/^b/, '').toLowerCase(); tgt.rieles ||= {}; if (kk === 'modo') { if (v === 'hereda') delete tgt.rieles; else tgt.rieles.modo = v; } else if (kk === 'largo') { if (v === 'bloque') delete tgt.rieles.largo; else tgt.rieles.largo = v; } else if (kk === 'sob') { if (n != null && n >= 0) tgt.rieles.sob = n * 10; else delete tgt.rieles.sob; } else { if (n > 0) tgt.rieles.d = n * 10; else delete tgt.rieles.d; } }
   else if (pre === 'tx') { const t = obj.tx(); if (!t) return; if (k === 'h') t.h = (n || .4) * 1000; else if (k === 'f') t.f = Math.max(.1, +v / 100); else t.s = v; }
   else if (pre === 'norte') { p.norte.ang = +v; }
   else if (pre === 'str') { const st = obj.str(); if (!st) return; if (k === 'mppt') { st.mppt = +v; st.num = p.strings.filter(x => x !== st && x.mppt === +v).length + 1; } else if (k === 'largo') st.largo = n; else if (k === 'seccion') st.seccion = n || 6; }

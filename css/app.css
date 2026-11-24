@@ -537,6 +537,21 @@ select.fi-ctl { background: #1C2228; border-color: var(--ed-line); cursor: point
 /* Ventana del bloque pegada al panel derecho */
 .pop-bl { left: auto !important; top: 0 !important; right: 0; bottom: 0; max-height: none; border-radius: 12px 0 0 12px; border-right-width: 0; box-shadow: -8px 0 24px rgba(0,0,0,.35); width: 290px; }
 #model.con-pop .vctl, #model.con-pop .foto-op { right: 302px; }
+/* Letra chica en la ventana del bloque */
+.pop-bl { font-size: 10.5px; }
+.pop-bl-t b { font-size: 11.5px; }
+.pop-bl-b { gap: 6px; padding: 8px; }
+.pop-bl .sub { font-size: 9px; margin-top: 2px; }
+.pop-bl .f { font-size: 10px; gap: 2px; }
+.pop-bl .in { font-size: 10.5px; height: 26px; padding: 0 8px; }
+.pop-bl .fi em { font-size: 10px; }
+.pop-bl .btn { font-size: 10.5px; height: 26px; padding: 0 8px; }
+.pop-bl .seg button { font-size: 10px; padding: 4px 2px; line-height: 1.2; }
+.pop-bl .chk { font-size: 10.5px; gap: 6px; }
+.pop-bl .chk input { width: 14px; height: 14px; }
+.pop-bl .mut, .pop-bl .dl { font-size: 10px; }
+.pop-bl .stp button { width: 22px; height: 22px; font-size: 13px; }
+.pop-bl .fr output { font-size: 10px; }
 #model.con-pop .hint { left: calc(50% - 145px); }
 
 /* ---------- Configuración y normas ---------- */

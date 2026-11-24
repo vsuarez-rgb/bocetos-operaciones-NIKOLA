@@ -48,7 +48,7 @@ Orden: 0.1 → 0.2 → **importar (con ON 921)** → 0.3 → 0.4 → 0.5 → 0.6
 La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) con bases delanteras y traseras, anclajes, flecha "sube", cubicación y nota `{MONTAJE Nota}`. **Se quitó entero**: quedó demasiado complejo. Las bases de las estructuras ajustables se van a pensar de nuevo más adelante (ver `docs/PENDIENTES.md`). La flecha "sube" no se usa.
 
 ## Perfiles de losa plana (lo que quedó)
-- Siguen siendo una opción de **Rieles** (`r.rieles.modo = 'perfil'`, también por bloque en `b.rieles`), como antes.
+- Van **aparte de los rieles**, porque el ingeniero puede poner los dos o solo uno: `r.perfiles = { on, largo, sob, d }` en el techo y `b.perfiles` en un bloque ("Del techo / Sin / Con perfiles"). Antes eran `rieles.modo = 'perfil'`: esos proyectos se leen igual (`perfilesDe` en `js/geom.js`) y pasan al campo nuevo cuando se editan sus rieles o perfiles.
 - Ahora van **2 por fila**, a lo largo de la fila (antes eran 2 por columna), y se dibujan como un **rectángulo angosto**: aunque se vean 2 líneas, es un solo perfil.
 - Largo (`rieles.largo`): *sobresalen* del bloque (`rieles.sob`, 15 cm por defecto, como antes), *hasta el borde del techo* (`'techo'`) o *a mano* (`'manual'`, se dibujan con el botón **Dibujar perfil**, igual que los rieles a mano).
 - Los proyectos guardados con perfiles cambian de dibujo: de columnas a filas.
