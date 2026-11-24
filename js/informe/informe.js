@@ -43,6 +43,13 @@ export async function vistaInforme(el, p, cb = {}) {
   pintar();
 }
 
+/* Después de deshacer o rehacer (Ctrl+Z / Ctrl+Y): el proyecto cambió por dentro, se vuelve a pintar igual */
+export function repintarInforme() {
+  if (!activo()) return;
+  if (!pagAct()) S.pag = informe().paginas[0]?.id || null;
+  if (S.sel && !bloqueAct()) S.sel = null;
+  pintar();
+}
 async function pintar() {
   const I = informe(), pg = pagAct(), gen = ++S.gen;
   const scPrev = S.el.querySelector('.inf-scroll'), scroll = scPrev && S.pagPintada === (S.plantilla ? 'pl:' + S.plantilla.id : S.pag) ? [scPrev.scrollLeft, scPrev.scrollTop] : null;

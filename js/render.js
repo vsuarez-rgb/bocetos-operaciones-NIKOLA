@@ -251,7 +251,7 @@ export function dibujar(g, p, V, o) {
   });
 
   // Norte
-  if (p.norte && (vis('textos') || plot)) dibujarNorte(g, T([p.norte.x, p.norte.y]), p.norte.ang, 34 * UD, plot, o.sel && o.sel.t === 'norte');
+  if (p.norte && (vis('textos') || plot)) dibujarNorte(g, T([p.norte.x, p.norte.y]), p.norte.ang, 34 * UD * (p.norte.tam || 1), plot, o.sel && o.sel.t === 'norte');
 
   if (o.temp) o.temp(g, T);
 }

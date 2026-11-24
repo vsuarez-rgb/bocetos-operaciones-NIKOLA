@@ -15,7 +15,7 @@ import { nuevoTecho, guardar } from './store.js';
 import { vistaLamina, panelLamina, accionLamina } from './lamina.js';
 import { vistaFicha, panelFicha, accionFicha } from './ficha/ficha.js';
 import { TIPOS_HOJA, TIPOS_PRINCIPAL, CLAVES_HOJA, tipoPrincipal, nombrePrincipal, nuevaHoja, vistaHoja } from './hojas.js';
-import { vistaInforme, panelInforme, accionInforme } from './informe/informe.js';
+import { vistaInforme, panelInforme, accionInforme, repintarInforme } from './informe/informe.js';
 
 export const PASOS = [
   ['ficha', 'Ficha', 'folder'], ['escala', 'Escala', 'ruler'], ['techos', 'Techos', 'roof'], ['elementos', 'Elementos', 'block'], ['paneles', 'Paneles', 'grid'],
@@ -60,12 +60,25 @@ const onResize = () => { if (E && !esPagina()) { dibujarTodo(); } };
 const snap = () => JSON.stringify(E.proyecto, (k, v) => k === 'img' ? undefined : v);
 function antes() { E.hist.push(snap()); if (E.hist.length > 80) E.hist.shift(); E.fut = []; }
 function despues(redibujarPanel = true) { E.guardado = false; recalcular(); if (redibujarPanel) panel(); dibujarTodo(); estadoGuardado(); programarGuardado(); }
-function restaurar(json) {
+function restaurarDatos(json) {
   const P = E.proyecto, imgs = { _: P.img }; (P.hojas || []).forEach(h => { imgs[h.id] = h.img; });
   Object.keys(P).forEach(k => delete P[k]); Object.assign(P, JSON.parse(json), { img: imgs._ });
   (P.hojas || []).forEach(h => { if (h.id in imgs) h.img = imgs[h.id]; });
   if (E.hojaId && !(P.hojas || []).some(h => h.id === E.hojaId)) E.hojaId = null;
-  E.p = vistaHoja(P, E.hojaId); E.sel = null; E.selPanels.clear(); despues(); render(); }
+  E.p = vistaHoja(P, E.hojaId); E.sel = null; E.selPanels.clear(); }
+function restaurar(json) {
+  restaurarDatos(json);
+  if (conDeshacerPagina()) { E.ultimo = snap(); E.guardado = false; recalcular(); estadoGuardado(); programarGuardado(); if (E.step === 'informe') { repintarInforme(); panel(); } else render(); return; }
+  despues(); render(); }
+/* Informe y láminas: cada cambio guarda el estado anterior para Ctrl+Z. Los cambios seguidos (arrastrar,
+   escribir) se juntan en un solo paso, como en AutoCAD. */
+const conDeshacerPagina = () => E && (E.step === 'informe' || E.step === 'lamina');
+function cambioPagina() {
+  const ahora = Date.now();
+  if (E.ultimo && ahora - (E.tUlt || 0) > 700) { E.hist.push(E.ultimo); if (E.hist.length > 80) E.hist.shift(); E.fut = []; }
+  E.ultimo = snap(); E.tUlt = ahora;
+  E.guardado = false; estadoGuardado(); programarGuardado();
+}
 function deshacer() { if (!E.hist.length) return toast('Nada que deshacer'); E.fut.push(snap()); restaurar(E.hist.pop()); log('DESHACER'); }
 function rehacer() { if (!E.fut.length) return toast('Nada que rehacer'); E.hist.push(snap()); restaurar(E.fut.pop()); log('REHACER'); }
 let tGuardar = null;
@@ -125,8 +138,9 @@ function render() {
 
   </div>`}`;
   panel();
+  if (conDeshacerPagina()) E.ultimo = snap();   // punto de partida para Ctrl+Z en informe y láminas
   if (E.step === 'lamina') { vistaLamina($('#laminaWrap'), E.proyecto, E.R, E.SI); return; }
-  if (E.step === 'informe') { vistaInforme($('#informeWrap'), E.proyecto, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, panel: () => panel() }); return; }
+  if (E.step === 'informe') { vistaInforme($('#informeWrap'), E.proyecto, { cambio: cambioPagina, panel: () => panel() }); return; }
   if (E.step === 'unilineal') { vistaUnilineal($('#uniWrap'), E.proyecto, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, panel: () => panel() }); return; }
   if (E.step === 'ficha') { vistaFicha($('#fichaWrap'), E.proyecto, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, panel: () => panel() }); return; }
   const cv = $('#cv');
@@ -196,11 +210,15 @@ function barraLineas() {
       <button class="sb-dd-i" data-act="conj-guardar" ${p.equipos.length ? '' : 'disabled'}>${ic('save', 13)} Guardar los equipos de esta hoja como conjunto</button></div></details>`;
   return `${insertar}${sbSep}${sbT('Trazar')}
     ${Object.entries(CANAL).filter(([k, C]) => !C.riel && !C.libre).map(([k, C]) => `<button class="sb-b" data-act="rutaK" data-k="${k}" aria-pressed="${act(k)}" title="${esc(C.n)}"><i style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i>${esc(C.corto)}</button>`).join('')}
-    <button class="sb-b" data-act="eqK" data-k="cp" data-m="real" aria-pressed="${E.tool === 'equipo' && E.eqK === 'cp'}" title="Caja de paso (medida real, clic donde va)"><i class="sb-cp"></i>Caja de paso</button>
+    ${(() => { const caja = E.tool === 'equipo' && ['cp', 'cdj'].includes(E.eqK) ? E.eqK : null;
+      return `<details class="sb-dd"><summary class="sb-b" aria-pressed="${!!caja}" title="Caja de paso o de derivación (medida real, clic donde va; se estira desde sus esquinas)"><i class="${caja === 'cdj' ? 'sb-cdj' : 'sb-cp'}"></i>${caja === 'cdj' ? 'Caja de derivación' : caja === 'cp' ? 'Caja de paso' : 'Caja'} ▾</summary><div class="sb-dd-p sb-dd-chico">
+        <button class="sb-dd-i" data-act="eqK" data-k="cp" data-m="real" aria-pressed="${caja === 'cp'}"><i class="sb-cp"></i>Caja de paso</button>
+        <button class="sb-dd-i" data-act="eqK" data-k="cdj" data-m="real" aria-pressed="${caja === 'cdj'}"><i class="sb-cdj"></i>Caja de derivación</button></div></details>`; })()}
     ${sbSep}
     <button class="sb-b" data-act="rutaK" data-k="otra" aria-pressed="${act('otra')}" title="Una línea cualquiera con el color que elijas"><i style="border-top:3px ${E.lineaDash ? 'dashed' : 'solid'} ${E.lineaColor}"></i>Otra línea</button>
-    <span class="colores sb-cols">${COLORES_LINEA.map(c => `<button data-act="linea-color" data-v="${c}" aria-pressed="${E.lineaColor === c}" style="--c:${c}" title="${c}"></button>`).join('')}</span>
-    <button class="sb-b" data-act="linea-dash" aria-pressed="${!!E.lineaDash}" title="Línea segmentada">- - -</button>
+    <details class="sb-dd"><summary class="sb-b" title="Color y tipo de la otra línea"><i class="sb-color" style="background:${E.lineaColor}"></i>▾</summary><div class="sb-dd-p sb-dd-chico">
+      <span class="colores sb-cols">${COLORES_LINEA.map(c => `<button data-act="linea-color" data-v="${c}" aria-pressed="${E.lineaColor === c}" style="--c:${c}" title="${c}"></button>`).join('')}</span>
+      <button class="sb-dd-i" data-act="linea-dash" aria-pressed="${!!E.lineaDash}">- - - Segmentada</button></div></details>
     ${sbSep}${sbT('Rellenar')}
     ${[['solido', 'Pintar el área con su color (tarro de pintura)', '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 11l7-7 8 8-7 7z" fill="currentColor" fill-opacity=".35"/><path d="M11 4L8.5 1.5"/><path d="M20 15c0 1.5 1 2.5 1 3.5a1.5 1.5 0 0 1-3 0c0-1 1-2 2-3.5z" fill="currentColor"/></svg>'], ['diag', 'Achurado diagonal (sombreado, como el Hatch de AutoCAD)', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 9.5l8-8M1.5 14.5l13-13M6.5 14.5l8-8"/></svg>'], ['cruz', 'Achurado cruzado', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 9.5l8-8M1.5 14.5l13-13M6.5 14.5l8-8M1.5 6.5l8 8M1.5 1.5l13 13M6.5 1.5l8 8"/></svg>'], ['horiz', 'Achurado horizontal', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 5h13M1.5 8h13M1.5 11h13"/></svg>'], ['quitar', 'Quitar el relleno o el achurado', '✕']].map(([k, t, i]) => `<button class="sb-b sb-ico" data-act="relleno" data-k="${k}" aria-pressed="${E.tool === 'relleno' && E.rellenoK === k}" title="${t}">${i}</button>`).join('')}`;
 }
@@ -374,9 +392,9 @@ function equipoEn(q) { return [...E.p.equipos].reverse().find(e => { const Q = t
 const rutaEn = q => [...E.p.rutas].reverse().find(r => r.pts.some((v, i) => i && distSeg(q, r.pts[i - 1], v) < tol()));
 const cotaEn = q => E.p.cotas.find(c => distSeg(q, c.a, c.b) < tol());
 function textoEn(q) { return E.p.textos.find(t => { const h = Math.max(altoTextoPx(E.p, t), 7 / E.V.k); return q[0] >= t.p[0] - 3 / E.V.k && q[0] <= t.p[0] + t.s.length * h * .55 && q[1] <= t.p[1] + 3 / E.V.k && q[1] >= t.p[1] - h; }); }
-const rectLibreE = e => !esReal(E.p, e) || ['bpc', 'tg', 'tfv'].includes(e.k);   // de referencia (y la bandeja, para su largo): se estiran desde sus esquinas
+const rectLibreE = e => !esReal(E.p, e) || ['bpc', 'tg', 'tfv', 'cp', 'cdj'].includes(e.k);   // de referencia, bandeja, tableros y cajas: se estiran desde sus esquinas
 const figEn = q => [...(E.p.figPaneles || [])].reverse().find(f => f.pts.length >= 3 && pointInPoly(q, f.pts));
-const norteEn = q => E.p.norte && dist(q, [E.p.norte.x, E.p.norte.y]) < 36 / E.V.k;
+const norteEn = q => E.p.norte && dist(q, [E.p.norte.x, E.p.norte.y]) < Math.max(36 / E.V.k, (E.p.w || 1000) / 1210 * 38 * (E.p.norte.tam || 1));   // su tamaño es parte del dibujo
 function bloqueEn(q) { const B = E.R.bloques.find(b => pointInPoly(q, b.q)); return B ? { ...B, rid: E.p.roofs[B.ri].id } : null; }
 function gripEn(q) {
   const s = E.sel; if (!s) return null; const d = 8 / E.V.k;
@@ -670,6 +688,7 @@ function pedirMedidaRef() { prompt('Largo real de la referencia en metros:'); co
 /* ---------- Teclado y línea de comandos ---------- */
 function teclas(ev) {
   if (E && E.step === 'ficha' && (ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') { ev.preventDefault(); guardarYa().then(() => toast('Proyecto guardado')); return; }
+  if (conDeshacerPagina() && (ev.ctrlKey || ev.metaKey) && ['z', 'y'].includes(ev.key.toLowerCase()) && !ev.target.matches('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]')) { ev.preventDefault(); ev.key.toLowerCase() === 'z' ? deshacer() : rehacer(); return; }
   if (!E || esPagina()) return;
   const enInput = ev.target.matches('input, textarea, select') && ev.target.id !== 'cmdIn';
   if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z') { if (enInput) return; ev.preventDefault(); deshacer(); return; }
@@ -876,7 +895,7 @@ function panel() {
   if (E.step === 'ficha') { el.innerHTML = panelFicha(E.proyecto); return; }
   if (E.step === 'informe') { el.innerHTML = panelInforme(E.proyecto); return; }
   if (E.step === 'unilineal') { el.innerHTML = panelUnilineal(E.proyecto); return; }
-  if (E.step === 'lamina') { el.innerHTML = panelLamina(E.proyecto, E.R, E.SI, { cambio: () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, rerender: () => panel() }); return; }
+  if (E.step === 'lamina') { el.innerHTML = panelLamina(E.proyecto, E.R, E.SI, { cambio: cambioPagina, rerender: () => panel() }); return; }
   const p = E.p, R = E.R, s = escala(p);
   let h = '';
   // Secciones fijas (sin desplegar): arriba el resumen del paso, después las propiedades de lo elegido
@@ -1044,7 +1063,6 @@ function propsSel(s, { num, rango, seg }) {
       ${e.k === 'bat' ? `<div class="f"><span>Módulos de batería</span><span class="row">${stepper('eq.mods', e.mods || 3)} módulos (de frente se apilan)</span></div>` : ''}
       ${['tg', 'tfv'].includes(e.k) ? `<div class="f"><span>Ubicación del tablero</span>${seg('eq.ubic', e.ubic || 'armario', [['armario', 'En armario'], ['intemperie', 'A la intemperie']])}</div>` : ''}
       <div class="f"><span>Relleno</span>${seg('eq.relleno', e.relleno || '', [['', 'Sin'], ['solido', 'Pintado'], ['diag', '/ / /'], ['cruz', 'x x x'], ['horiz', '≡']])}</div>
-      <label class="chk"><input type="checkbox" data-campo="eq.etqVer" ${!(e.etq && e.etq.oculta) ? 'checked' : ''}> Mostrar su etiqueta</label>
       <label class="f"><span>Rótulo</span><input class="in" data-campo="eq.rotulo" value="${esc(e.rotulo || '')}" placeholder="${esc(EQUIPOS[e.k].n)}"></label>${rango('eq.ang', Math.round(e.ang || 0), -180, 180, 'Giro')}${del}`; }
   if (s.t === 'ruta') { const r = p.rutas.find(x => x.id === s.id); if (!r) return '';
     const tramos = CANAL[r.k]?.dc ? p.strings.map((st, i) => [st.id, `String ${i + 1} (${nombreString(st)})`]) : ['tie', 'riel', 'otra', 'perfil'].includes(r.k) ? [] : [['inv-tg', 'Inversor – TGFV'], ['tg-emp', 'TG – Empalme']];
@@ -1077,7 +1095,7 @@ function propsSel(s, { num, rango, seg }) {
     const guiaHtml = t.guia ? `<p class="mut">Tiene línea de referencia: arrastra el punto azul del extremo para moverla.</p><button class="btn sm" data-act="guia-quitar">Quitar la línea de referencia</button>` : '';
     if (guiaHtml) return `<label class="f"><span>Texto</span><input class="in" data-campo="tx.s" value="${esc(t.s)}"></label>${escala(p) ? num('tx.h', fmt((t.h || 400) / 1000, 2), { l: 'Altura', u: 'm' }) : rango('tx.f', Math.round((t.f || 1) * 100), 20, 600, 'Tamaño', ' %')}${guiaHtml}${del}`;
     return `<label class="f"><span>Texto</span><input class="in" data-campo="tx.s" value="${esc(t.s)}"></label>${escala(p) ? num('tx.h', fmt((t.h || 400) / 1000, 2), { l: 'Altura', u: 'm' }) : rango('tx.f', Math.round((t.f || 1) * 100), 20, 600, 'Tamaño', ' %')}${del}`; }
-  if (s.t === 'norte') return `${rango('norte.ang', Math.round(p.norte.ang), 0, 359, 'Giro del norte')}${del}`;
+  if (s.t === 'norte') return `${rango('norte.ang', Math.round(p.norte.ang), 0, 359, 'Giro del norte')}${rango('norte.tam', Math.round((p.norte.tam || 1) * 100), 20, 500, 'Tamaño del norte', ' %')}${del}`;
   if (s.t === 'cota') { const c = p.cotas.find(x => x.id === s.id); if (!c) return ''; const sc = escala(p), med = sc ? fmt(dist(c.a, c.b) * sc / 1000, 2) : '';
     return `${sc ? `<dl class="dl"><dt>Largo medido</dt><dd>${fmt(dist(c.a, c.b) * sc / 1000, 3)} m</dd></dl>` : ''}
       <label class="f"><span>Medida que se muestra</span><input class="in" data-campo="cota.txt" value="${esc(c.txt || '')}" placeholder="${sc ? med + ' (medida automática)' : 'Ej: 2,35 (en metros) o un texto'}"></label>
@@ -1113,8 +1131,8 @@ document.addEventListener('click', ev => {
   if (E.step === 'ficha' && accionFicha(a, b)) return;
   if (E.step === 'informe' && accionInforme(a, b)) return;
   if (E.step === 'unilineal' && accionUnilineal(a, b)) return;
-  if (E.step === 'informe' && a.startsWith('lam-') && accionLamina(a, b, E.proyecto, () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, () => panel())) return;   // cajetín de las láminas A1, dentro de Informe
-  if (E.step === 'lamina' && accionLamina(a, b, E.proyecto, () => { E.guardado = false; estadoGuardado(); programarGuardado(); }, () => panel())) return;
+  if (E.step === 'informe' && a.startsWith('lam-') && accionLamina(a, b, E.proyecto, cambioPagina, () => panel())) return;   // cajetín de las láminas A1, dentro de Informe
+  if (E.step === 'lamina' && accionLamina(a, b, E.proyecto, cambioPagina, () => panel())) return;
   switch (a) {
     case 'salir': guardarYa().then(() => { cerrarEditor(); alSalir && alSalir(); }); break;
     case 'paso': irPaso(k); break;
@@ -1248,7 +1266,7 @@ function aplicar(campo, v, desdeChange, vivo) {
     else { const pf = (tgt.perfiles ||= { on: true }); if (kk === 'on') pf.on = !!v; else if (kk === 'largo') { if (v === 'bloque') delete pf.largo; else pf.largo = v; } else if (kk === 'sob') { if (n != null && n >= 0) pf.sob = n * 10; else delete pf.sob; } else if (kk === 'd') { if (n > 0) pf.d = n * 10; else delete pf.d; } } }
   else if (pre === 'riel') { const tgt = k.startsWith('b') ? bloqueSel() : r; if (!tgt) return; migrarPerfiles(tgt); const kk = k.replace(/^b/, '').toLowerCase(); tgt.rieles ||= {}; if (kk === 'modo') { if (v === 'hereda') delete tgt.rieles; else tgt.rieles.modo = v; } else if (kk === 'largo') { if (v === 'bloque') delete tgt.rieles.largo; else tgt.rieles.largo = v; } else if (kk === 'sob') { if (n != null && n >= 0) tgt.rieles.sob = n * 10; else delete tgt.rieles.sob; } else { if (n > 0) tgt.rieles.d = n * 10; else delete tgt.rieles.d; } }
   else if (pre === 'tx') { const t = obj.tx(); if (!t) return; if (k === 'h') t.h = (n || .4) * 1000; else if (k === 'f') t.f = Math.max(.1, +v / 100); else t.s = v; }
-  else if (pre === 'norte') { p.norte.ang = +v; }
+  else if (pre === 'norte') { if (k === 'tam') { const t = Math.max(.2, +v / 100); if (Math.abs(t - 1) < .001) delete p.norte.tam; else p.norte.tam = t; } else p.norte.ang = +v; }
   else if (pre === 'str') { const st = obj.str(); if (!st) return; if (k === 'mppt') { st.mppt = +v; st.num = p.strings.filter(x => x !== st && x.mppt === +v).length + 1; } else if (k === 'largo') st.largo = n; else if (k === 'seccion') st.seccion = n || 6; }
   else if (k === 'estado') p.estado = v;
   else if (k === 'inversor') p.inversor = v;
