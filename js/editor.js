@@ -992,7 +992,7 @@ function panel() {
       return `<div class="etq-f${E.sel && E.sel.t === 'etq' && E.sel.id === x.id ? ' on' : ''}"><button class="etq-ojo" data-act="etq-ojo" data-of="${of}" data-id="${x.id}" title="${oc ? 'Mostrar' : 'Quitar'}">${ic(oc ? 'eyeoff' : 'eye', 14)}</button><button class="etq-n" data-act="etq-sel" data-of="${of}" data-id="${x.id}" ${oc ? 'disabled' : ''}>${esc(nombre(x, i))}</button></div>`; }).join('')}</div>` : '';
     const nEq = x => x.rotulo || EQUIPOS[x.k]?.n || 'Equipo', nRt = x => x.etqTxt || CANAL[x.k]?.corto || 'Canalización', nSt = (x, i) => x.etqTxt || `String ${i + 1}`;
     E.proyecto.etqVisto = true;
-    h += caja('Etiquetas', `${rango('hoja.tamEtq', Math.round((p.tamEtq || 1) * 100), 30, 300, 'Tamaño de todas las etiquetas', ' %')}
+    h += caja('Etiquetas', `${rango('hoja.tamEtq', Math.round((p.tamEtq || 1) * 100), 20, 800, 'Tamaño de todas las etiquetas', ' %')}
       ${p.strings.length ? `<label class="chk"><input type="checkbox" data-campo="hoja.encerrar" ${p.encerrarStrings !== false ? 'checked' : ''}> Encerrar los strings (contorno de color)</label>` : ''}
       ${grupo('equipo', 'Equipos', p.equipos, nEq)}${grupo('ruta', 'Canalizaciones', p.rutas, nRt)}${grupo('string', 'Strings', p.strings, nSt)}
       ${grupo('zona', 'Elementos (su nombre, si quieres ponerlo)', p.zonas, x => x.etqTxt || (ZONAS[x.k] || ZONAS.obs).n)}
@@ -1076,7 +1076,7 @@ function propsSel(s, { num, rango, seg }) {
   if (s.t === 'etq') { const ow = duenoEtq(s); if (!ow) return ''; const et = ow.etq || {};
     const txt = s.of === 'equipo' ? (ow.rotulo || '') : (ow.etqTxt || ''), ph = s.of === 'incl' || s.of === 'inclb' ? 'Inclinación (ej: 15º)' : s.of === 'equipo' ? EQUIPOS[ow.k]?.n : s.of === 'zona' ? (ZONAS[ow.k] || ZONAS.obs).n : s.of === 'string' ? `String ${p.strings.indexOf(ow) + 1}` : CANAL[ow.k]?.corto;
     return `<label class="f"><span>Texto</span><input class="in" data-campo="etq.txt" value="${esc(txt)}" placeholder="${esc(ph || '')}"></label>
-      ${rango('etq.tam', Math.round((et.tam || 1) * 100), 40, 400, 'Tamaño', ' %')}
+      ${rango('etq.tam', Math.round((et.tam || 1) * 100), 20, 1000, 'Tamaño', ' %')}
       <label class="chk"><input type="checkbox" data-campo="etq.fijo" ${et.fijo ? 'checked' : ''}> Fija (no se mueve con el mouse)</label>
       <p class="mut">Arrástrala para ponerla donde quieras; la línea guía la sigue.</p>
       <div class="row wrap">${et.dx != null ? '<button class="btn sm" data-act="etq-reset">Volver a su lugar</button>' : ''}<button class="btn sm del" data-act="etq-quitar">${ic('trash', 14)} Quitar etiqueta</button></div>`; }

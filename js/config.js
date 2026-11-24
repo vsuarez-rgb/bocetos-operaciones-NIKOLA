@@ -8,7 +8,7 @@
    Todo se guarda en este navegador (cuando exista Supabase, pasa a la cuenta de Ops).
    ========================================================================== */
 import { $, esc, fmt, ic, toast, parseNum } from './util.js';
-import { EQUIPOS, CANAL, INVERSORES, PANELES, OTROS_EMAT, EQUIPOS_USUARIO, cargarEquiposUsuario, guardarEquiposUsuario } from './catalogo.js';
+import { EQUIPOS, CANAL, INVERSORES, PANELES, OTROS_EMAT, EQUIPOS_USUARIO, cargarEquiposUsuario, guardarEquiposUsuario, guardarCorreccion, datoOriginal } from './catalogo.js';
 import { cargarNormas, guardarNormas, restaurarNormas, TIPOS_NORMA, AMBITOS, ORIGENES, textoFuente, esBase } from './normas.js';
 
 const C = { tab: 'normas', normas: null, filtro: { ambito: 'todos', clase: 'todas' }, volver: null };
@@ -99,16 +99,18 @@ function vistaEquipos() {
     </article>
     <article class="pl-card"><h2>Inversores</h2><p class="mut">Base EMAT con medidas de ficha técnica. El espacio libre sale de las figuras de instalación de los manuales; donde no está, rige el mínimo de RGR N°02/2024 (15 cm a cada lado).</p>
       <div class="cf-tw"><table class="cf-t"><thead><tr><th>Modelo</th><th>kW</th><th>Fase</th><th>Ancho × alto × prof.</th><th>Peso</th><th>Espacio libre (mm)</th><th>Confianza</th><th></th></tr></thead><tbody>
-      ${INVERSORES.map(x => `<tr><td><b>${esc(x.modelo)}</b>${x.nota ? `<div class="mut sm">${esc(x.nota)}</div>` : ''}</td><td class="nm">${fmt(x.kw, 0)}</td><td>${esc(x.fase)}</td><td class="nm">${med(x)}</td><td class="nm">${x.peso ? fmt(x.peso, 1) + ' kg' : '—'}</td><td class="sm">${libreTxt(x.libre)}</td><td>${conf(x.confianza)}</td><td>${fuenteLink(x.fuente)}</td></tr>`).join('')}</tbody></table></div></article>
+      ${INVERSORES.map(x => `<tr><td><b>${esc(x.modelo)}</b>${x.nota ? `<div class="mut sm">${esc(x.nota)}</div>` : ''}</td><td class="nm">${fmt(x.kw, 0)}</td><td>${esc(x.fase)}</td><td class="nm">${med(x)}</td><td class="nm">${x.peso ? fmt(x.peso, 1) + ' kg' : '—'}</td><td class="sm">${libreTxt(x.libre)}</td><td>${conf(x)}</td><td class="nw">${fuenteLink(x.fuente)}${btnEd('inv', INVERSORES.indexOf(x))}</td></tr>`).join('')}</tbody></table></div></article>
     ${Object.entries(grupos).map(([k, xs]) => `<article class="pl-card"><h2>${esc(EQUIPOS[k]?.n || ({ pasillo: 'Pasillos técnicos', bandeja: 'Bandejas' })[k] || k)}</h2>
       <div class="cf-tw"><table class="cf-t"><thead><tr><th>Equipo</th><th>Ancho × alto × prof.</th><th>Peso</th><th>Montaje</th><th>Confianza</th><th></th></tr></thead><tbody>
-      ${xs.map(x => `<tr><td><b>${esc(x.item)}</b>${x.nota ? `<div class="mut sm">${esc(x.nota)}</div>` : ''}${x.torre ? `<div class="mut sm">Torre: ${Object.entries(x.torre).map(([n, h]) => `${n} mód. ${fmt(h, 0)} mm`).join(' · ')}</div>` : ''}</td><td class="nm">${med(x)}</td><td class="nm">${x.peso ? fmt(x.peso, 1) + ' kg' : '—'}</td><td>${esc(x.montaje || '—')}</td><td>${conf(x.confianza)}</td><td>${fuenteLink(x.fuente)}</td></tr>`).join('')}</tbody></table></div></article>`).join('')}
+      ${xs.map(x => `<tr><td><b>${esc(x.item)}</b>${x.nota ? `<div class="mut sm">${esc(x.nota)}</div>` : ''}${x.torre ? `<div class="mut sm">Torre: ${Object.entries(x.torre).map(([n, h]) => `${n} mód. ${fmt(h, 0)} mm`).join(' · ')}</div>` : ''}</td><td class="nm">${med(x)}</td><td class="nm">${x.peso ? fmt(x.peso, 1) + ' kg' : '—'}</td><td>${esc(x.montaje || '—')}</td><td>${conf(x)}</td><td class="nw">${fuenteLink(x.fuente)}${btnEd('otro', OTROS_EMAT.indexOf(x))}</td></tr>`).join('')}</tbody></table></div></article>`).join('')}
     <article class="pl-card"><h2>Paneles</h2><div class="cf-tw"><table class="cf-t"><thead><tr><th>Panel</th><th>Largo × ancho × espesor</th><th>Peso</th><th>Wp</th><th>Confianza</th><th></th></tr></thead><tbody>
-      ${PANELES.map(x => `<tr><td><b>${esc(x.n)}</b><div class="mut sm">${esc(x.modelo || '')}</div></td><td class="nm">${mm(x.largo)} × ${mm(x.ancho)} × ${mm(x.espesor)}</td><td class="nm">${x.peso ? fmt(x.peso, 1) + ' kg' : '—'}</td><td class="nm">${x.wp}</td><td>${conf(x.confianza)}</td><td>${fuenteLink(x.fuente)}</td></tr>`).join('')}</tbody></table></div></article>
+      ${PANELES.map(x => `<tr><td><b>${esc(x.n)}</b><div class="mut sm">${esc(x.modelo || '')}</div></td><td class="nm">${mm(x.largo)} × ${mm(x.ancho)} × ${mm(x.espesor)}</td><td class="nm">${x.peso ? fmt(x.peso, 1) + ' kg' : '—'}</td><td class="nm">${x.wp}</td><td>${conf(x)}</td><td class="nw">${fuenteLink(x.fuente)}${btnEd('panel', PANELES.indexOf(x))}</td></tr>`).join('')}</tbody></table></div></article>
     <article class="pl-card"><h2>Símbolos genéricos</h2><p class="mut">Medida que toma un equipo cuando no se elige modelo (ancho × alto de frente × prof. en planta).</p>
       <div class="cf-tw"><table class="cf-t"><tbody>${Object.entries(EQUIPOS).filter(([, Q]) => !Q.soloRef).map(([k, Q]) => `<tr><td>${esc(Q.n)}</td><td class="nm">${mm(Q.w)} × ${mm(Q.a)} × ${mm(Q.h)}</td></tr>`).join('')}</tbody></table></div></article>`;
 }
-const conf = c => c ? `<span class="bd c-${c}">${c}</span>` : '—';
+const conf = x => (x.confianza ? `<span class="bd c-${x.confianza}">${x.confianza}</span>` : '—') + (x.corregido ? ' <span class="bd warn" title="Corregido por Operaciones">corregido</span>' : '');
+const btnEd = (g, i) => ` <button class="btn sm" data-cf="emat-ed" data-g="${g}" data-i="${i}" title="Corregir medidas o cambiar la ficha">Editar</button>`;
+const LISTA_EMAT = { inv: INVERSORES, otro: OTROS_EMAT, panel: PANELES };
 const fuenteLink = f => !f ? '' : /^https?:/.test(f) ? `<a href="${esc(f)}" target="_blank" rel="noopener" class="sm">Ficha</a>` : `<span class="mut sm">${esc(f)}</span>`;
 
 /* Diálogo para crear o editar un equipo de Mis equipos. inicial: datos que se proponen.
@@ -147,6 +149,37 @@ export function dialogoEquipo(inicial = {}, { titulo = 'Guardar como equipo', ti
   });
 }
 
+/* Diálogo para corregir un equipo de la base EMAT. Guarda solo lo que cambió respecto
+   al dato original; «Volver al dato original» borra la corrección. */
+function dialogoCorreccion(x, g) {
+  return new Promise(res => {
+    const O = datoOriginal(x), L = x.libre || {}, panel = g === 'panel';
+    const d = document.createElement('dialog'); d.className = 'dlg dlg-eq';
+    const n = (k, l, v, u = 'mm') => `<label class="f mini"><span>${l}</span><span class="fi"><input class="in" name="${k}" value="${v ?? ''}" inputmode="decimal"><em>${u}</em></span></label>`;
+    d.innerHTML = `<form method="dialog"><h2>Editar ${esc(x.modelo || x.item || x.n)}</h2>
+      <p class="mut">Corrige la medida o cambia la ficha técnica. El cambio vale para los equipos que pongas desde ahora; los ya dibujados conservan su medida.</p>
+      <div class="f"><span>Medida real</span><div class="row">${panel ? n('largo', 'Largo', x.largo) + n('ancho', 'Ancho', x.ancho) + n('espesor', 'Espesor', x.espesor) + n('wp', 'Potencia', x.wp, 'Wp')
+        : n('ancho', 'Ancho', x.ancho) + n('alto', 'Alto', x.alto) + n('prof', 'Profundidad', x.prof)}${n('peso', 'Peso', x.peso, 'kg')}</div></div>
+      ${panel ? '' : `<details ${L.arriba || L.abajo || L.lados || L.frente ? 'open' : ''}><summary>Espacio libre que pide el fabricante</summary><div class="row">${n('l_arriba', 'Arriba', L.arriba)}${n('l_abajo', 'Abajo', L.abajo)}${n('l_lados', 'Lados', L.lados)}${n('l_frente', 'Frente', L.frente)}</div></details>`}
+      <label class="f"><span>Ficha técnica (enlace o nombre del documento)</span><input class="in" name="fuente" value="${esc(x.fuente || '')}"></label>
+      <label class="f"><span>Nota</span><input class="in" name="nota" value="${esc(x.nota || '')}"></label>
+      ${x.corregido ? `<p class="mut sm">Dato original: ${panel ? `${mm(O.largo)} × ${mm(O.ancho)} × ${mm(O.espesor)}` : med(O)} mm${O.peso ? ` · ${fmt(O.peso, 1)} kg` : ''}</p>` : ''}
+      <div class="row end">${x.corregido ? '<button class="btn" value="orig" formnovalidate>Volver al dato original</button><span class="tb-sp"></span>' : ''}<button class="btn" value="cancel" formnovalidate>Cancelar</button><button class="btn pri" value="ok">Guardar</button></div></form>`;
+    document.body.appendChild(d); d.showModal();
+    d.addEventListener('close', async () => {
+      const v = d.returnValue, fd = new FormData(d.querySelector('form')); d.remove();
+      if (v === 'orig') { await guardarCorreccion(x, null); toast('Volvió al dato original'); return res(true); }
+      if (v !== 'ok') return res(false);
+      const nuevo = {}, num = k => { const t = fd.get(k); return t == null ? undefined : (parseNum(t) ?? null); };
+      (panel ? ['largo', 'ancho', 'espesor', 'wp', 'peso'] : ['ancho', 'alto', 'prof', 'peso']).forEach(k => { nuevo[k] = num(k); });
+      if (!panel) { const lb = {}; ['arriba', 'abajo', 'lados', 'frente'].forEach(k => { const w = num('l_' + k); if (w > 0) lb[k] = w; }); nuevo.libre = Object.keys(lb).length ? lb : undefined; }
+      nuevo.fuente = String(fd.get('fuente')).trim() || undefined; nuevo.nota = String(fd.get('nota')).trim() || undefined;
+      const corr = {}; Object.entries(nuevo).forEach(([k, w]) => { if (JSON.stringify(w ?? null) !== JSON.stringify(O[k] ?? null)) corr[k] = w ?? null; });
+      await guardarCorreccion(x, Object.keys(corr).length ? corr : null); toast(Object.keys(corr).length ? 'Equipo corregido' : 'Sin cambios'); res(true);
+    });
+  });
+}
+
 /* ---------------- Eventos ---------------- */
 document.addEventListener('click', async ev => {
   const b = ev.target.closest('[data-cf]'); if (!b || !$('.cf-main')) return;
@@ -158,6 +191,7 @@ document.addEventListener('click', async ev => {
     const ult = [...document.querySelectorAll('.cf-n')].pop(); if (ult) { ult.querySelector('details').open = true; ult.scrollIntoView({ block: 'center' }); } return; }
   if (a === 'n-base') { if (!confirm('¿Volver a las normas iniciales? Se pierden las que agregaste o cambiaste.')) return; C.normas = restaurarNormas(); pintar(); guardarLuego(); return; }
   if (a === 'n-borrar') { const el = b.closest('.cf-n'), n = C.normas[+el.dataset.i]; if (!n || !confirm(`¿Borrar «${n.nombre}»?`)) return; C.normas.splice(+el.dataset.i, 1); pintar(); guardarLuego(); return; }
+  if (a === 'emat-ed') { const x = LISTA_EMAT[b.dataset.g]?.[+b.dataset.i]; if (!x) return; if (await dialogoCorreccion(x, b.dataset.g)) pintar(); return; }
   if (a === 'eq-nuevo') { const r = await dialogoEquipo({}, { titulo: 'Agregar equipo' }); if (r) pintar(); return; }
   if (a === 'eq-ed') { const x = EQUIPOS_USUARIO[+b.dataset.i]; if (!x) return; const r = await dialogoEquipo(x, { titulo: 'Editar equipo' }); if (r) pintar(); return; }
   if (a === 'eq-del') { const x = EQUIPOS_USUARIO[+b.dataset.i]; if (!x || !confirm(`¿Borrar «${x.item}» de Mis equipos? Los proyectos que lo usan conservan su medida.`)) return; await guardarEquiposUsuario(EQUIPOS_USUARIO.filter(q => q !== x)); pintar(); return; }

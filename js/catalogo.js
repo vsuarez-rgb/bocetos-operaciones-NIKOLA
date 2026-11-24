@@ -54,8 +54,30 @@ export const EQUIPOS = {
    con su medida real. Se guardan en este navegador (ajuste 'equiposUsuario') y se cargan al abrir la app.
    Cada uno: { id, k, item, marca, modelo, ancho, alto, prof, peso, montaje, libre: {arriba, abajo, lados, frente}, fuente, nota, creado } */
 export const EQUIPOS_USUARIO = [];
-export async function cargarEquiposUsuario() { const x = await leerAjuste('equiposUsuario'); EQUIPOS_USUARIO.splice(0, EQUIPOS_USUARIO.length, ...(Array.isArray(x) ? x : [])); return EQUIPOS_USUARIO; }
+export async function cargarEquiposUsuario() { const x = await leerAjuste('equiposUsuario'); try { await cargarCorrecciones(); } catch (e) { } EQUIPOS_USUARIO.splice(0, EQUIPOS_USUARIO.length, ...(Array.isArray(x) ? x : [])); return EQUIPOS_USUARIO; }
 export async function guardarEquiposUsuario(lista) { EQUIPOS_USUARIO.splice(0, EQUIPOS_USUARIO.length, ...lista); await guardarAjuste('equiposUsuario', JSON.parse(JSON.stringify(lista))); }
+
+/* Correcciones de Ops a la base EMAT (medidas, peso, espacio libre, ficha, nota).
+   Se guardan aparte, por SKU o modelo, y se aplican encima de los datos de equipos-emat.js;
+   «Volver al dato original» las borra. Los proyectos ya dibujados conservan su medida. */
+export const CAMPOS_CORR = ['ancho', 'alto', 'prof', 'largo', 'espesor', 'peso', 'wp', 'libre', 'fuente', 'nota'];
+export const claveEmat = x => x.sku || x.modelo || x.item;
+export const CORRECCIONES = {};
+const ORIG = new WeakMap();
+function aplicarCorrecciones() {
+  [PANELES, INVERSORES, OTROS_EMAT].forEach(lista => lista.forEach(x => {
+    if (!ORIG.has(x)) ORIG.set(x, Object.fromEntries(CAMPOS_CORR.map(k => [k, x[k]])));
+    Object.assign(x, ORIG.get(x), CORRECCIONES[claveEmat(x)] || {});
+    x.corregido = !!CORRECCIONES[claveEmat(x)];
+    if (lista === PANELES) { x.w = x.ancho; x.h = x.largo; }
+  }));
+}
+export const datoOriginal = x => ORIG.get(x) || {};
+export async function cargarCorrecciones() { const c = await leerAjuste('equiposCorr'); Object.keys(CORRECCIONES).forEach(k => delete CORRECCIONES[k]); Object.assign(CORRECCIONES, c && typeof c === 'object' ? c : {}); aplicarCorrecciones(); }
+export async function guardarCorreccion(x, datos) {
+  const k = claveEmat(x); if (datos) CORRECCIONES[k] = datos; else delete CORRECCIONES[k];
+  await guardarAjuste('equiposCorr', JSON.parse(JSON.stringify(CORRECCIONES))); aplicarCorrecciones();
+}
 /* Id con que un equipo dibujado guarda su modelo (e.modelo) */
 export const idModelo = x => x.id || x.sku || x.item;
 export const modeloPorId = id => id ? (EQUIPOS_USUARIO.find(x => x.id === id) || OTROS_EMAT.find(x => idModelo(x) === id || (x.sku || x.item) === id)) : null;

@@ -74,3 +74,10 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - **Norte:** tamaño propio (`p.norte.tam`), a escala del dibujo como todo lo demás.
 - **Cajas** de paso y de derivación: se estiran desde sus esquinas. En la barra de Equipos y canalización van en un menú **Caja ▾**; los colores de "Otra línea" en otro menú chico.
 - La etiqueta de un equipo tampoco se muestra u oculta desde sus propiedades: solo en "Cotas, etiquetas y textos".
+
+## Corregir equipos de la base EMAT (Configuración › Equipos y medidas)
+
+- Cada inversor, panel y equipo de la base tiene **Editar**: medidas, peso, espacio libre (no en paneles), ficha técnica y nota.
+- La corrección se guarda aparte en este navegador (ajuste `equiposCorr`, por SKU o modelo). `js/equipos-emat.js` no se toca, y la tabla la marca como «corregido».
+- «Volver al dato original» borra la corrección. Los equipos ya dibujados conservan su medida; la corrección vale para los que se pongan después y para la norma de espacio libre.
+- Las etiquetas ahora llegan al 800 % (todas) y al 1000 % (cada una).
