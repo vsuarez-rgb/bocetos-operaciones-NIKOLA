@@ -59,3 +59,10 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - Contorno de los techos más delgado y con opción de ocultarlo fuera del paso Techos (`p.ocultarContornos`, por hoja).
 - Los elementos (obstáculos, zonas…) pueden mostrar su nombre desde el paso Cotas, etiquetas y textos; por defecto no lo muestran (`z.etq.ver`).
 - Letra del dibujo más fina, parecida a la de AutoCAD (Roboto Condensed 300), y rótulos de inclinación en blanco en vez de amarillo.
+
+# Pantalla del editor como AutoCAD (24-11-2026)
+- **Barra superior** (la "cinta" del paso): todo lo que se dibuja o inserta en ese paso, con sus opciones al lado. Equipos y conjuntos van en el menú **Insertar**.
+- **Barra lateral**: solo herramientas que sirven en cualquier paso: Seleccionar, Encuadre, Ajustar, **Medir** (DIST, dos clics, no deja nada dibujado) y Borrar. Nada del paso, para no repetir botones.
+- **Panel derecho** (paleta Propiedades): secciones fijas, sin desplegar: resumen del paso y propiedades de lo elegido. El **bloque de paneles** se edita aquí (ya no hay ventana flotante sobre el dibujo).
+- **Capas**: botón CAPAS en la barra de estado, con la lista flotante.
+- La etiqueta de una canalización ya no se muestra u oculta desde sus propiedades: eso se hace solo en "Cotas, etiquetas y textos".

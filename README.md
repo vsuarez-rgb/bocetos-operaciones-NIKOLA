@@ -25,7 +25,8 @@ Es un sitio **estático**: HTML, CSS y JavaScript sin compilación. No hay que i
 - **F3** referencia a objetos · **F7** rejilla de 1 m · **F8** orto
 - **Enter** termina / cierra · **Esc** cancela · **Supr** borra lo seleccionado
 - **Ctrl+Z / Ctrl+Y** deshacer / rehacer · **Ctrl+S** guardar
-- Línea de comandos: `TECHO`, `ZONA`, `COTA`, `TEXTO`, `NORTE`, `CC`, `CA`, `SUB`, `EQUIPO`, `BORRAR`, `ZOOM`, `STRING`, `AUTOSTRING`, `PASO 1-7`, `AYUDA`. Mientras dibujas, escribe un número (en metros) para el siguiente punto.
+- Pantalla como AutoCAD: **barra superior** = lo que se dibuja o inserta en cada paso (techo, tipos de zona, rieles y perfiles a mano, strings, Insertar equipos o conjuntos, canalizaciones, cotas y textos); **barra lateral** = Seleccionar, Encuadre, Ajustar, Medir (DIST) y Borrar; **panel derecho** = resumen del paso y propiedades de lo elegido (también del bloque de paneles); **CAPAS** en la barra de estado.
+- Línea de comandos: `TECHO`, `ZONA`, `COTA`, `DIST`, `TEXTO`, `NORTE`, `CC`, `CA`, `SUB`, `EQUIPO`, `BORRAR`, `ZOOM`, `STRING`, `AUTOSTRING`, `PASO 1-7`, `AYUDA`. Mientras dibujas, escribe un número (en metros) para el siguiente punto.
 
 ## Estructura
 
