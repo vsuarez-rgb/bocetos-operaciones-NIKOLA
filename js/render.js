@@ -273,7 +273,7 @@ export function rellenoArea(g, tipo, w, h, col, u = 1) {
 function etiqueta(g, o, { p, of, id, et = {}, txt, anchorF, def, izqDef, attach, k, V, u, plot, color }) {
   et = et || {}; if (et.oculta || !txt) return;
   const gen = (p && p.tamEtq) || 1, Tp = q => [q[0] * k - V.ox, q[1] * k - V.oy];
-  const size = et.escala ? Math.max(3, ((p && p.w) || 1000) / 110 * k * (et.tam || 1) * gen) : (plot ? 8 : 11) * u * (et.tam || 1) * gen;
+  const size = et.escala !== false ? Math.max(3, ((p && p.w) || 1000) / 110 * k * (et.tam || 1) * gen) : (plot ? 8 : 11) * u * (et.tam || 1) * gen;
   const L = et.dx != null ? Tp([anchorF[0] + et.dx, anchorF[1] + et.dy]) : def;
   g.font = fuente(size);
   const wt = g.measureText(txt).width + 4 * u, A = attach(L), izq = et.dx != null ? L[0] < A[0] : !!izqDef;

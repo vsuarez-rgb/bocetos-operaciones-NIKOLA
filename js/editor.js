@@ -142,7 +142,7 @@ function barraLineas() {
   return `<div class="subbar"><span class="subbar-t">Trazar</span>
     ${Object.entries(CANAL).filter(([k, C]) => !C.riel && !C.libre).map(([k, C]) => `<button class="sb-b" data-act="rutaK" data-k="${k}" aria-pressed="${act(k)}" title="${esc(C.n)}"><i style="border-top:3px ${C.dash.length ? 'dashed' : 'solid'} ${C.c}"></i>${esc(C.corto)}</button>`).join('')}
     <span class="sb-sep"></span>
-    <button class="sb-b" data-act="rutaK" data-k="perfil" aria-pressed="${E.tool === 'ruta' && E.rutaK === 'perfil'}" title="Perfil de estructura (losa plana): línea doble roja"><i class="sb-perfil"></i>Perfil</button>
+    <button class="sb-b" data-act="rutaK" data-k="perfil" aria-pressed="${E.tool === 'ruta' && E.rutaK === 'perfil'}" title="Perfil de estructura: rectángulo rojo"><i class="sb-perfil"></i>Perfil</button>
     <button class="sb-b" data-act="eqK" data-k="cp" data-m="real" aria-pressed="${E.tool === 'equipo' && E.eqK === 'cp'}" title="Caja de paso (medida real, clic donde va)"><i class="sb-cp"></i>Caja de paso</button>
     <span class="sb-sep"></span>
     <button class="sb-b" data-act="rutaK" data-k="otra" aria-pressed="${act('otra')}" title="Una línea cualquiera con el color que elijas"><i style="border-top:3px ${E.lineaDash ? 'dashed' : 'solid'} ${E.lineaColor}"></i>Otra línea</button>
@@ -916,7 +916,7 @@ function panel() {
       h += sec(`Rieles del techo ${ri + 1}`, `${seg('riel.modo', rm, [['no', 'Sin rieles'], ['perp', 'Perpendiculares'], ['paral', 'Paralelos']])}
         ${rm !== 'no' ? num('riel.d', rl.d ? fmt(rl.d / 10, 0) : '', { l: 'Distancia entre los 2 rieles', u: 'cm' }, `placeholder="${fmt((rm === 'paral' ? panelDe(p, r).w : panelDe(p, r).h) / 20, 0)} (la mitad del panel)"`) : ''}
         ${R.rieles && R.rieles.porTecho[ri] ? `<dl class="dl"><dt>Metros de riel (techo)</dt><dd>${fmt(R.rieles.porTecho[ri] / 1000, 1)} m</dd></dl>` : ''}`);
-      h += sec(`Perfiles del techo ${ri + 1} (losa plana)`, `<label class="chk"><input type="checkbox" data-campo="perf.on" ${pf.on ? 'checked' : ''}> Poner perfiles (se pueden usar junto con los rieles)</label>
+      h += sec(`Perfiles del techo ${ri + 1}`, `<label class="chk"><input type="checkbox" data-campo="perf.on" ${pf.on ? 'checked' : ''}> Poner perfiles (se pueden usar junto con los rieles)</label>
         ${pf.on ? `<label class="f"><span>Largo de los perfiles</span>${seg('perf.largo', pl, [['bloque', 'Sobresalen'], ['techo', 'Hasta el techo']])}</label>
           ${pl === 'bloque' ? num('perf.sob', pf.sob != null ? fmt(pf.sob / 10, 0) : '', { l: 'Cuánto sobresalen del bloque', u: 'cm' }, 'placeholder="15"') : ''}
           ${num('perf.d', pf.d ? fmt(pf.d / 10, 0) : '', { l: 'Distancia entre los 2 perfiles', u: 'cm' }, `placeholder="${fmt(panelDe(p, r).h / 20, 0)} (la mitad del panel)"`)}
@@ -1054,7 +1054,7 @@ function propsSel(s, { num, rango, seg }) {
     return `<label class="f"><span>Texto</span><input class="in" data-campo="etq.txt" value="${esc(txt)}" placeholder="${esc(ph || '')}"></label>
       ${rango('etq.tam', Math.round((et.tam || 1) * 100), 40, 400, 'Tamaño', ' %')}
       <label class="chk"><input type="checkbox" data-campo="etq.fijo" ${et.fijo ? 'checked' : ''}> Fija (no se mueve con el mouse)</label>
-      <label class="chk"><input type="checkbox" data-campo="etq.escala" ${et.escala ? 'checked' : ''}> Cambia de tamaño con el zoom (como parte del dibujo)</label>
+      <label class="chk"><input type="checkbox" data-campo="etq.escala" ${et.escala !== false ? 'checked' : ''}> Cambia de tamaño con el zoom (como parte del dibujo)</label>
       <p class="mut">Arrástrala para ponerla donde quieras; la línea guía la sigue.</p>
       <div class="row wrap">${et.dx != null ? '<button class="btn sm" data-act="etq-reset">Volver a su lugar</button>' : ''}<button class="btn sm del" data-act="etq-quitar">${ic('trash', 14)} Quitar etiqueta</button></div>`; }
   if (s.t === 'fig') { const f = (p.figPaneles || []).find(x => x.id === s.id); if (!f) return '';
@@ -1085,7 +1085,7 @@ function propsSel(s, { num, rango, seg }) {
       <div class="sub">Rieles</div>
       ${seg('riel.bModo', (b.rieles && b.rieles.modo !== 'perfil' && b.rieles.modo) || 'hereda', [['hereda', 'Del techo'], ['no', 'Sin'], ['perp', 'Perp.'], ['paral', 'Paral.']])}
       ${b.rieles && ['perp', 'paral'].includes(b.rieles.modo) ? num('riel.bD', b.rieles.d ? fmt(b.rieles.d / 10, 0) : '', { l: 'Distancia entre rieles', u: 'cm' }) : ''}
-      <div class="sub">Perfiles (losa plana)</div>
+      <div class="sub">Perfiles</div>
       ${(() => { const bp = b.perfiles || (b.rieles && b.rieles.modo === 'perfil' ? { on: true, largo: b.rieles.largo, sob: b.rieles.sob, d: b.rieles.d } : null), est = bp ? (bp.on ? 'si' : 'no') : 'hereda', bl = bp && bp.largo === 'techo' ? 'techo' : 'bloque';
         return `${seg('perf.bEstado', est, [['hereda', `Del techo (${perfilesDe(r).on ? 'con' : 'sin'})`], ['no', 'Sin'], ['si', 'Con perfiles']])}
         ${est === 'si' ? `${seg('perf.bLargo', bl, [['bloque', 'Sobresalen'], ['techo', 'Hasta el techo']])}
@@ -1221,7 +1221,7 @@ function aplicar(campo, v, desdeChange, vivo) {
   else if (pre === 'hoja' && ['verMedidas', 'tamSimb'].includes(k)) { if (k === 'verMedidas') { p.verMedidas = !!v; if (v) p.equipos.forEach(x => delete x.verMed); } else if (k === 'tamSimb') p.tamSimb = Math.max(.2, +v / 100); }
   else if (pre === 'etq') { const ow = duenoEtq(s); if (!ow) return; const et = (ow.etq ||= {});
     if (k === 'txt') { const t = String(v).trim(); if (s.of === 'equipo') { if (t) ow.rotulo = t; else delete ow.rotulo; } else { if (t) ow.etqTxt = t; else delete ow.etqTxt; } }
-    else if (k === 'tam') et.tam = Math.max(.2, +v / 100); else if (k === 'fijo') et.fijo = !!v; else if (k === 'escala') { if (v) et.escala = true; else delete et.escala; } }
+    else if (k === 'tam') et.tam = Math.max(.2, +v / 100); else if (k === 'fijo') et.fijo = !!v; else if (k === 'escala') { if (v) delete et.escala; else et.escala = false; } }
   else if (pre === 'hoja' && ['tamEtq', 'tamCotas'].includes(k)) { p[k] = Math.max(.2, +v / 100); }
   else if (pre === 'hoja' && k === 'vista') { p.vistaEquipos = v; }
   else if (pre === 'hoja' && k === 'encerrar') { if (v) delete p.encerrarStrings; else p.encerrarStrings = false; }
