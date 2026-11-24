@@ -5,7 +5,7 @@
    ========================================================================== */
 import { esc } from '../util.js';
 import { calcular, calcStrings, escala } from '../geom.js';
-import { dibujar, cargarImg } from '../render.js';
+import { vistaNitida, cargarImg } from '../render.js';
 import { vistaHoja, resolverHoja, TIPOS_HOJA } from '../hojas.js';
 import { lamina01, lamina02, unilinealSVG } from '../lamina.js';
 import { cargarDatosFicha } from '../ficha/datos.js';
@@ -90,12 +90,10 @@ export async function imagenHoja(p, id, wmm, hmm, { encuadre, foto, ventana, bor
   const clave = [id, Math.round(wmm), Math.round(hmm), foto, W.x0.toFixed(1), W.y0.toFixed(1), W.bw.toFixed(1), borrador ? 'b' : ''].join('|');
   if (cacheVistas.has(clave)) return cacheVistas.get(clave);
   await cargarImg(v.img);
-  const R = calcular(v), SI = calcStrings(v, R), asp = wmm / hmm;
-  const PX = borrador ? 700 : Math.max(600, Math.min(2800, Math.round(wmm * 11))), k = PX / W.bw, c = document.createElement('canvas');
-  c.width = PX; c.height = Math.round(PX / asp);
-  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
-  dibujar(g, v, { k, ox: W.x0 * k, oy: W.y0 * k }, { plot: true, R, SI, u: PX / wmm * .3, step: 'lamina', fotoAlpha: (foto ?? 100) / 100 });
-  const res = { url: c.toDataURL('image/jpeg', borrador ? .75 : .9), ventana: { ...W }, escala: escala(v) };
+  const R = calcular(v), SI = calcStrings(v, R);
+  const PX = borrador ? 700 : Math.max(800, Math.min(4200, Math.round(wmm * 16)));    // ~400 ppp
+  const im = vistaNitida(v, W, wmm, hmm, PX, { R, SI, fotoAlpha: (foto ?? 100) / 100, borrador });
+  const res = { url: im.foto, capa: im.capa, ventana: { ...W }, escala: escala(v) };
   if (!borrador) cacheVistas.set(clave, res);
   return res;
 }
@@ -118,7 +116,7 @@ async function interior(b, ctx) {
       const r = await imagenHoja(p, h.id, b.w, b.h, { encuadre: b.encuadre, foto: b.foto, ventana: b.ventana });
       if (!r) return editor ? `<div class="bq-vacio">Vista de hoja<b>La hoja no tiene foto</b><span>Súbela en el paso de la foto de esa hoja</span></div>` : '';
       if (ctx.ventanas) ctx.ventanas[b.id] = { ...r.ventana, escala: r.escala, hojaId: h.id };
-      return `<img class="bq-img" src="${r.url}" alt="" draggable="false">`;
+      return `<div class="bq-vista"><img class="bq-img" src="${r.url}" alt="" draggable="false">${r.capa ? `<img class="bq-capa" src="${r.capa}" alt="" draggable="false">` : ''}</div>`;
     }
     case 'tabla': {
       const filas = b.filas || [], n = Math.max(1, ...filas.map(f => f.length));
@@ -159,6 +157,8 @@ export const CSS_PAGINA = `
 .pg .con-borde { border: .3mm solid #111; }
 .pg .bq-tx { width: 100%; height: 100%; line-height: 1.35; overflow: hidden; overflow-wrap: anywhere; }
 .pg .bq-img { width: 100%; height: 100%; display: block; }
+.pg .bq-vista { position: relative; width: 100%; height: 100%; }
+.pg .bq-capa { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 .pg .bq-unilineal svg, .pg .bq-lamina svg { display: block; width: 100%; height: 100%; }
 .pg .bq-tb { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; font-family: 'Archivo Narrow', 'Arial Narrow', Arial, sans-serif; font-style: italic; }
 .pg .bq-tb th, .pg .bq-tb td { border: .25mm solid #111; padding: .6mm 1.4mm; text-align: left; vertical-align: middle; font-weight: 400; overflow-wrap: anywhere; }

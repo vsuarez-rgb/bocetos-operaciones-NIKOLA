@@ -1282,9 +1282,9 @@ async function subirFoto(file) {
   let meta = null; try { if (window.exifr) meta = await window.exifr.parse(file, { xmp: true, tiff: true, exif: true }); } catch (e) { meta = null; }
   const url = URL.createObjectURL(file), im = await new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = url; });
   if (!im) return toast('No se pudo leer la imagen');
-  const max = 2600, f = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)), w = Math.round(im.naturalWidth * f), h = Math.round(im.naturalHeight * f);
+  const max = 4096, f = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)), w = Math.round(im.naturalWidth * f), h = Math.round(im.naturalHeight * f);
   const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(im, 0, 0, w, h);
-  const src = c.toDataURL('image/jpeg', .88); URL.revokeObjectURL(url);
+  const src = c.toDataURL('image/jpeg', .92); URL.revokeObjectURL(url);
   antes();
   const habia = !!p.img;
   p.img = src; p.w = w; p.h = h;

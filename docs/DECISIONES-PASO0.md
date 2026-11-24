@@ -81,3 +81,11 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - La corrección se guarda aparte en este navegador (ajuste `equiposCorr`, por SKU o modelo). `js/equipos-emat.js` no se toca, y la tabla la marca como «corregido».
 - «Volver al dato original» borra la corrección. Los equipos ya dibujados conservan su medida; la corrección vale para los que se pongan después y para la norma de espacio libre.
 - Las etiquetas ahora llegan al 800 % (todas) y al 1000 % (cada una).
+
+## Planos profesionales · Fase A: nitidez y líneas finas
+
+- Las vistas del informe y la planta de la lámina se arman en dos capas: la foto en JPEG y el dibujo en un PNG transparente encima (`vistaNitida` en render.js). Así las líneas y los textos quedan nítidos sin que el archivo pese mucho.
+- Las vistas salen a unos 400 ppp (antes unos 280) y la planta de la lámina con 12 px por mm.
+- Las líneas al imprimir son más finas: el grosor por mm de hoja (`GROSOR`) pasó de 0,30 a 0,22.
+- Los paneles en los planos van con borde negro y achurado verde oscuro más tupido, como los planos de referencia.
+- Las fotos nuevas se guardan hasta 4096 px (antes 2600) en JPEG de calidad 0,92. Las fotos ya subidas no cambian.

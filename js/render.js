@@ -3,7 +3,7 @@
    Se usa en el editor (fondo oscuro, como AutoCAD) y para la lámina
    (modo plot: fondo blanco, colores de impresión).
    ========================================================================== */
-import { ZONAS, EQUIPOS, CANAL, COLORES_STRING } from './catalogo.js';
+import { ZONAS, EQUIPOS, CANAL, COLORES_STRING, CAPAS } from './catalogo.js';
 import { zonaPoly, escala, largoM, tamEquipoPx, altoTextoPx, esReal, inclPanelesDe } from './geom.js';
 import { hull, centroid, lerp, dist, fmt } from './util.js';
 
@@ -65,6 +65,7 @@ export function dibujar(g, p, V, o) {
   if (im && vis('foto')) { g.save(); g.globalAlpha = o.fotoAlpha ?? (plot ? .55 : .85); g.drawImage(im, -V.ox, -V.oy, p.w * k, p.h * k); g.restore(); }
   else if (!im && !plot) { g.strokeStyle = '#3a4652'; g.setLineDash([6, 6]); g.strokeRect(-V.ox, -V.oy, p.w * k, p.h * k); g.setLineDash([]); }
   if (plot && im && vis('foto')) { g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(-V.ox, -V.oy, p.w * k, p.h * k); }
+  if (o.soloFoto) return;
 
   // Techos
   if (vis('techos')) p.roofs.forEach((r, i) => {
@@ -111,16 +112,16 @@ export function dibujar(g, p, V, o) {
     R.panels.forEach(pn => {
       const pts = pn.q.map(T), sel = o.selPanels && o.selPanels.has(pn.key);
       if (pn.off) { if (plot) return; path(g, pts, true); g.setLineDash([3, 3]); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1; g.stroke(); g.setLineDash([]); return; }
-      const bad = pn.bad, verde = plot ? '#1d6b33' : '#2FD06B';
-      path(g, pts, true); g.fillStyle = bad ? 'rgba(255,70,70,.30)' : plot ? 'rgba(47,160,90,.18)' : 'rgba(47,208,107,.16)'; g.fill();
+      const bad = pn.bad, verde = plot ? '#111' : '#2FD06B';
+      path(g, pts, true); g.fillStyle = bad ? 'rgba(255,70,70,.30)' : plot ? 'rgba(40,140,90,.16)' : 'rgba(47,208,107,.16)'; g.fill();
       // achurado
-      g.save(); path(g, pts, true); g.clip(); g.strokeStyle = bad ? 'rgba(255,90,90,.7)' : (plot ? 'rgba(29,107,51,.75)' : 'rgba(47,208,107,.55)'); g.lineWidth = .7 * u;
+      g.save(); path(g, pts, true); g.clip(); g.strokeStyle = bad ? 'rgba(255,90,90,.7)' : (plot ? '#1B6B45' : 'rgba(47,208,107,.55)'); g.lineWidth = (plot ? .55 : .7) * u;
       const c = centroid(pts), L = Math.max(dist(pts[0], pts[2]), 4);
       const ax = norm([pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]]), ay = norm([pts[3][0] - pts[0][0], pts[3][1] - pts[0][1]]), dd = norm([ax[0] + ay[0], ax[1] + ay[1]]), pp = [-dd[1], dd[0]];
-      const paso = Math.max(4 * UD, L / 9);
+      const paso = Math.max((plot ? 2.5 : 4) * UD, L / (plot ? 14 : 9));
       for (let t = -L; t <= L; t += paso) { g.beginPath(); g.moveTo(c[0] + pp[0] * t - dd[0] * L, c[1] + pp[1] * t - dd[1] * L); g.lineTo(c[0] + pp[0] * t + dd[0] * L, c[1] + pp[1] * t + dd[1] * L); g.stroke(); }
       g.restore();
-      path(g, pts, true); g.lineWidth = (sel ? 2.4 : 1.3) * u; g.strokeStyle = sel ? '#FAB704' : bad ? '#FF5A5A' : verde; g.stroke();
+      path(g, pts, true); g.lineWidth = (sel ? 2.4 : plot ? 1 : 1.3) * u; g.strokeStyle = sel ? '#FAB704' : bad ? '#FF5A5A' : verde; g.stroke();
       // etiqueta del string dentro del panel ("1.1")
       const si = stringDe.get(pn.key), lado = Math.min(dist(pts[0], pts[1]), dist(pts[0], pts[3]));
       if (si && vis('strings') && lado > 14 * UD) {
@@ -314,13 +315,31 @@ function nombreDentro(g, txt, z, c, k, color, p, plot) {
 /* Un panel (o una figura) con el relleno y achurado verde de los paneles */
 export function panelDibujo(g, pts, { plot, u = 1, sel } = {}) {
   if (pts.length < 3) return;
-  path(g, pts, true); g.fillStyle = plot ? 'rgba(47,160,90,.18)' : 'rgba(47,208,107,.16)'; g.fill();
-  g.save(); path(g, pts, true); g.clip(); g.strokeStyle = plot ? 'rgba(29,107,51,.75)' : 'rgba(47,208,107,.55)'; g.lineWidth = .7 * u;
+  path(g, pts, true); g.fillStyle = plot ? 'rgba(40,140,90,.16)' : 'rgba(47,208,107,.16)'; g.fill();
+  g.save(); path(g, pts, true); g.clip(); g.strokeStyle = plot ? '#1B6B45' : 'rgba(47,208,107,.55)'; g.lineWidth = (plot ? .55 : .7) * u;
   const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const L = Math.max(x1 - x0, y1 - y0), paso = Math.max(4 * UD, Math.min(L / 9, 14 * UD));
+  const L = Math.max(x1 - x0, y1 - y0), paso = plot ? Math.max(2.5 * UD, Math.min(L / 14, 9 * UD)) : Math.max(4 * UD, Math.min(L / 9, 14 * UD));
   for (let t = -L; t <= L * 2; t += paso) { g.beginPath(); g.moveTo(x0 + t, y1); g.lineTo(x0 + t + (y1 - y0), y0); g.stroke(); }
   g.restore();
-  path(g, pts, true); g.lineWidth = 1.3 * u; g.strokeStyle = sel ? '#FAB704' : plot ? '#1d6b33' : '#2FD06B'; g.stroke();
+  path(g, pts, true); g.lineWidth = (plot ? 1 : 1.3) * u; g.strokeStyle = sel ? '#FAB704' : plot ? '#111' : '#2FD06B'; g.stroke();
+}
+
+/* Vista para informes y planos, nítida: la foto va en JPEG (liviana) y el dibujo en una capa PNG
+   transparente encima, así las líneas finas y los textos no se ven borrosos.
+   W = ventana { x0, y0, bw } en px de la foto; wmm × hmm = tamaño en la hoja; PX = ancho en px.
+   GROSOR: grosor de línea por mm de hoja (líneas finas, como un plot de AutoCAD). */
+export const GROSOR = .22;
+export function vistaNitida(p, W, wmm, hmm, PX, { R, SI, fotoAlpha = 1, borrador } = {}) {
+  const asp = wmm / hmm, k = PX / W.bw, V = { k, ox: W.x0 * k, oy: W.y0 * k }, H = Math.round(PX / asp);
+  const o = { plot: true, R, SI, u: PX / wmm * GROSOR, step: 'lamina', fotoAlpha };
+  const c = document.createElement('canvas'); c.width = PX; c.height = H;
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, PX, H);
+  if (borrador) { dibujar(g, p, V, o); return { foto: c.toDataURL('image/jpeg', .75), capa: null }; }
+  dibujar(g, p, V, { ...o, soloFoto: true });
+  const foto = c.toDataURL('image/jpeg', .9);
+  const c2 = document.createElement('canvas'); c2.width = PX; c2.height = H;
+  dibujar(c2.getContext('2d'), p, V, { ...o, capas: new Set(CAPAS.map(x => x.id).filter(id => id !== 'foto')) });
+  return { foto, capa: c2.toDataURL('image/png') };
 }
 /* Celdas de una figura de 4 esquinas (filas × columnas), repartidas en perspectiva */
 export function celdasFigura(f) {

@@ -410,7 +410,7 @@ async function refrescarVista() {    // dibujo rápido (borrador) mientras se en
   if (dibujando) { pendiente = true; return; }
   dibujando = true;
   const V = S.ventanas[b.id], r = await imagenHoja(S.p, V.hojaId, b.w, b.h, { foto: b.foto, ventana: b.ventana, borrador: true });
-  const img = S.el.querySelector(`.bq[data-b="${b.id}"] img`); if (r && img) img.src = r.url;
+  const img = S.el.querySelector(`.bq[data-b="${b.id}"] img`), capa = S.el.querySelector(`.bq[data-b="${b.id}"] .bq-capa`); if (r && img) { img.src = r.url; if (capa) capa.style.visibility = 'hidden'; }
   dibujando = false; if (pendiente) { pendiente = false; refrescarVista(); }
 }
 function fijarEscala(txt) {

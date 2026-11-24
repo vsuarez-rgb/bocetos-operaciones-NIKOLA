@@ -8,7 +8,7 @@
 import { esc, fmt, ic, toast, descargar, dist, centroid, hull } from './util.js';
 import { CANAL, EQUIPOS, PANELES } from './catalogo.js';
 import { escala, panelDe, inversorDe, calcCA, zonaPoly, CAIDA_MAX, medidaEquipo } from './geom.js';
-import { dibujar, cargarImg, colorString } from './render.js';
+import { dibujar, cargarImg, colorString, vistaNitida } from './render.js';
 import { hoy } from './store.js';
 import { dibujoLibre } from './uni-dibujo.js';
 
@@ -280,11 +280,9 @@ async function imagenPlanta(p, R, SI, vw, vh) {
   if (pts.length > 1) { x0 = Math.min(...pts.map(q => q[0])); x1 = Math.max(...pts.map(q => q[0])); y0 = Math.min(...pts.map(q => q[1])); y1 = Math.max(...pts.map(q => q[1])); const m = Math.max(x1 - x0, y1 - y0) * .12; x0 -= m; x1 += m; y0 -= m; y1 += m; }
   // misma proporción que el viewport de la lámina
   const asp = vw / vh; let bw = x1 - x0, bh = y1 - y0; if (bw / bh > asp) { const nh = bw / asp; y0 -= (nh - bh) / 2; bh = nh; } else { const nw = bh * asp; x0 -= (nw - bw) / 2; bw = nw; }
-  const PX = 3600, k = PX / bw, c = document.createElement('canvas'); c.width = PX; c.height = Math.round(PX / asp);
-  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
-  dibujar(g, p, { k, ox: x0 * k, oy: y0 * k }, { plot: true, R, SI, u: PX / vw * .3, step: 'lamina', fotoAlpha: .62 });
+  const im = vistaNitida(p, { x0, y0, bw }, vw, vh, Math.min(6000, Math.round(vw * 12)), { R, SI, fotoAlpha: .62 });
   const s = escala(p), mmPorMmHoja = s ? bw * s / vw : null;   // escala real del viewport
-  return { url: c.toDataURL('image/jpeg', .9), escalaReal: mmPorMmHoja };
+  return { url: im.foto, capa: im.capa, escalaReal: mmPorMmHoja };
 }
 
 /* ---------- Lámina 01 y 02 ---------- */
@@ -300,7 +298,7 @@ export async function lamina01(p, R, SI) {
   const ku = 1.45, uw = vx - M - 10, uh = 456;
   s += Rc(M + 4, M + 4, uw, uh, { st: '#666', sw: .2 }) + T(M + 7, M + 9, 'LÍMITES DEL PROYECTO', 1.8);
   s += `<g transform="translate(${M + 4} ${M + 4}) scale(${ku})">${unilineal(p, D, SI, 0, 4, uw / ku, uh / ku - 4)}</g>`;
-  s += `<image href="${img.url}" x="${vx}" y="${vy}" width="${vw}" height="${vh}" preserveAspectRatio="none"/>` + Rc(vx, vy, vw, vh, { sw: .35 });
+  s += `<image href="${img.url}" x="${vx}" y="${vy}" width="${vw}" height="${vh}" preserveAspectRatio="none"/>` + (img.capa ? `<image href="${img.capa}" x="${vx}" y="${vy}" width="${vw}" height="${vh}" preserveAspectRatio="none"/>` : '') + Rc(vx, vy, vw, vh, { sw: .35 });
   if (img.escalaReal) { const e = Math.round(img.escalaReal / 10) * 10; s += T(vx + 3, vy + vh - 3, `PLANTA DE TECHUMBRE · ESCALA APROX. 1:${e}`, 2.2, { fill: '#111' }); }
   s += simbologia(vx, vy + vh + 6, 160, 62);
   s += notas(p, D, vx + 172, vy + vh + 12, W - M - 4 - (vx + 172));
