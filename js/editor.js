@@ -639,6 +639,8 @@ function textoRapido(sp) {
   return null;
 }
 function cerrarRapido() { const d = $('#editRap'); if (d) d.remove(); }
+/* Botón «borrar» del cuadrito: la etiqueta se oculta (se vuelve a mostrar desde el panel); la cota y el texto se borran enteros */
+const BORRA_RAP = { etq: ['Quitar', 'Quitar esta etiqueta'], cota: ['Borrar cota', 'Borrar la cota entera'], texto: ['Borrar', 'Borrar este texto'] };
 function editarRapido(sp) {
   cerrarRapido(); const D = textoRapido(sp); if (!D) return;
   E.sel = D.sel; if (D.strAct) E.strAct = D.strAct; panel(); dibujarTodo();
@@ -647,7 +649,7 @@ function editarRapido(sp) {
   div.innerHTML = `<b>${esc(D.titulo)}</b>${D.multi ? `<textarea class="in" rows="${Math.min(5, String(val).split('\n').length + 1)}">${esc(val)}</textarea>` : `<input class="in" value="${esc(val)}">`}
     ${T.num ? `<label class="f"><span>Altura</span><span class="fi"><input class="in er-tam" value="${T.val}" inputmode="decimal"><em>${T.u}</em></span></label>`
       : `<label class="f"><span>Tamaño</span><span class="fr"><input type="range" class="er-tam" min="${T.min}" max="${T.max}" step="1" value="${T.val}"><output>${T.val}${T.u}</output></span></label>`}
-    ${D.nota ? `<p class="mut">${D.nota}</p>` : ''}<div class="row"><button class="btn sm pri" data-er="ok">Guardar (Enter)</button>${D.propio && !D.multi ? '<button class="btn sm" data-er="auto">Automático</button>' : ''}<button class="btn sm" data-er="no">Cancelar</button></div>`;
+    ${D.nota ? `<p class="mut">${D.nota}</p>` : ''}<div class="row"><button class="btn sm pri" data-er="ok">Guardar (Enter)</button>${D.propio && !D.multi ? '<button class="btn sm" data-er="auto">Automático</button>' : ''}<button class="btn sm" data-er="no">Cancelar</button>${BORRA_RAP[D.sel?.t] ? `<button class="btn sm del" data-er="del" title="${BORRA_RAP[D.sel.t][1]}">${ic('trash', 13)} ${BORRA_RAP[D.sel.t][0]}</button>` : ''}</div>`;
   document.body.appendChild(div);
   const x = Math.min(rc.left + sp[0] + 14, innerWidth - div.offsetWidth - 8), y = Math.min(rc.top + sp[1] + 14, innerHeight - div.offsetHeight - 8);
   div.style.left = Math.max(8, x) + 'px'; div.style.top = Math.max(8, y) + 'px';
@@ -662,7 +664,8 @@ function editarRapido(sp) {
     else if (ev.key === 'Enter' && !(D.multi && ev.shiftKey) && ev.target !== tam) { ev.preventDefault(); guardar(inp.value); }
     else if (ev.key === 'Enter' && ev.target === tam) { ev.preventDefault(); aplicar(T.campo, tam.value); cambioTam = true; } });
   div.addEventListener('click', ev => { const b = ev.target.closest('[data-er]'); if (!b) return; const k = b.dataset.er;
-    if (k === 'ok') { if (T.num && tam.value !== String(T.val)) aplicar(T.campo, tam.value); guardar(inp.value); } else if (k === 'auto') { aplicar(D.campo, ''); cerrarRapido(); } else cancelar(); });
+    if (k === 'ok') { if (T.num && tam.value !== String(T.val)) aplicar(T.campo, tam.value); guardar(inp.value); } else if (k === 'auto') { aplicar(D.campo, ''); cerrarRapido(); }
+    else if (k === 'del') { if (cambioTam) deshacer(); cerrarRapido(); E.sel = D.sel; borrarSel(); $('#cv')?.focus(); } else cancelar(); });
 }
 function zonaDeArrastre(a, b) {
   const z = { k: E.zonaK, forma: E.zonaForma, ang: 0 };

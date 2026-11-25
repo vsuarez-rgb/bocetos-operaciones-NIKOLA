@@ -140,6 +140,7 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - Usa los mismos campos que el panel derecho. Campos nuevos, todos opcionales: `cota.tam` (tamaño propio de la cota, sobre el general de la hoja), `equipo.medW` / `medH` / `tamMed`, `string.numTxt` / `tamNum` (el círculo crece con el número), `detalle.rot` / `tamRot`, y en la hoja `pisoTxt` / `pisoTam`.
 - Si no se cambia el texto, no se guarda nada: una cota sigue la medida real hasta que se escriba otra.
 - El render deja la caja de cada texto en `o.hits` (con `t: 'txt'`) solo en el editor; la búsqueda de etiquetas filtra `t: 'etq'`. El DXF usa el texto de la cota y del string tal como se ve.
+- El cuadrito tiene un botón para borrar: en una **etiqueta** la quita (queda oculta y se vuelve a mostrar desde el panel), en una **cota** borra la cota entera (línea y texto) y en un **texto** lo borra. Usa el mismo borrado que Supr, así que se deshace con Ctrl+Z.
 
 ## Unilineal como los planos de Ops · E1: estilo base y composición (26-11-2026)
 
