@@ -49,6 +49,16 @@ function texto(g, txt, x, y, { size = 12, color = '#fff', halo = null, align = '
 /* Color de un texto: sin color propio es blanco en pantalla y negro al imprimir (como el color 7 de AutoCAD);
    con color elegido sale de ese color en los dos. */
 export const INTERLINEA = 1.45;
+/* Burbuja de detalle: R = radio del círculo (px de la foto), z = aumento exacto. La zona ampliada mide R / z.
+   Las burbujas antiguas guardaban r (radio de la zona): su círculo era r × z. */
+export const radioBurbuja = d => d.R ?? (d.r || 30) * (d.z || 3);
+/* Rótulo bajo la burbuja: en informes y planos, si la hoja tiene escala, la escala real del detalle (1:N);
+   si no, el aumento (×3). o.mmPx = mm de hoja por px del dibujo (lo pone vistaNitida). */
+function rotuloBurbuja(p, d, k, o) {
+  const z = d.z || 3, s = escala(p);
+  if (o.plot && s && o.mmPx) { const n = s / (k * o.mmPx) / z, paso = n > 200 ? 10 : n > 20 ? 5 : 1; return `DETALLE  ESC. 1:${Math.max(1, Math.round(n / paso) * paso)}`; }
+  return `DETALLE  ×${fmt(z, z % 1 ? 1 : 0)}`;
+}
 export const colorTexto = (c, plot) => c || (plot ? '#111' : '#fff');
 const haloDe = c => { const h = /^#([0-9a-f]{6})$/i.exec(c || ''); if (!h) return 'rgba(0,0,0,.7)'; const n = parseInt(h[1], 16), l = .3 * (n >> 16) + .59 * ((n >> 8) & 255) + .11 * (n & 255); return l < 90 ? 'rgba(255,255,255,.65)' : 'rgba(0,0,0,.7)'; };
 const path = (g, pts, close) => { g.beginPath(); pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); if (close) g.closePath(); };
@@ -262,7 +272,7 @@ export function dibujar(g, p, V, o) {
 
   // Burbujas de detalle: un círculo que muestra ampliada una parte del dibujo, con línea hasta el lugar
   if (!o.sinDetalles && vis('textos')) (p.detalles || []).forEach(d => {
-    const z = d.z || 3, C = T(d.p), S = T(d.c), rs = d.r * k, Rb = d.r * z * k, sel = esSel(o, 'det', d.id), ud = UD;
+    const z = d.z || 3, C = T(d.p), S = T(d.c), Rb = radioBurbuja(d) * k, rs = Rb / z, sel = esSel(o, 'det', d.id), ud = UD;
     const col = sel ? '#FAB704' : plot ? '#111' : '#fff', dd = Math.hypot(C[0] - S[0], C[1] - S[1]) || 1, ux = (C[0] - S[0]) / dd, uy = (C[1] - S[1]) / dd;
     g.strokeStyle = col; g.lineWidth = .9 * u;
     if (dd > rs + Rb) { g.beginPath(); g.moveTo(S[0] + ux * rs, S[1] + uy * rs); g.lineTo(C[0] - ux * Rb, C[1] - uy * Rb); g.stroke(); }
@@ -273,6 +283,7 @@ export function dibujar(g, p, V, o) {
     dibujar(g, p, { k: k2, ox: d.c[0] * k2 - C[0], oy: d.c[1] * k2 - C[1] }, { ...o, sinDetalles: true, soloFoto: false, sel: null, hits: null, temp: null, capas });
     g.restore(); UD = ud;
     g.beginPath(); g.arc(C[0], C[1], Rb, 0, 7); g.strokeStyle = col; g.lineWidth = 1.3 * u; g.stroke();
+    if (d.ver !== false) texto(g, rotuloBurbuja(p, d, k, o), C[0], C[1] + Rb + 4 * UD, { size: 10 * UD, color: plot ? '#111' : '#fff', halo: plot ? null : 'rgba(0,0,0,.7)', align: 'center', base: 'top' });
     if (sel) grips(g, [S]);
   });
 
@@ -362,7 +373,7 @@ function monocromo(c) {
 }
 export function vistaNitida(p, W, wmm, hmm, PX, { R, SI, fotoAlpha = 1, borrador, bn } = {}) {
   const asp = wmm / hmm, k = PX / W.bw, V = { k, ox: W.x0 * k, oy: W.y0 * k }, H = Math.round(PX / asp);
-  const o = { plot: true, R, SI, u: PX / wmm * GROSOR, step: 'lamina', fotoAlpha, bn: !!bn };
+  const o = { plot: true, R, SI, u: PX / wmm * GROSOR, step: 'lamina', fotoAlpha, bn: !!bn, mmPx: wmm / PX };
   const c = document.createElement('canvas'); c.width = PX; c.height = H;
   const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, PX, H);
   if (borrador) { dibujar(g, p, V, o); return { foto: c.toDataURL('image/jpeg', .75), capa: null }; }

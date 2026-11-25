@@ -6,7 +6,7 @@
 import { $, $$, esc, fmt, parseNum, uid, clone, dist, lerp, rotP, centroid, pointInPoly, distSeg, edgeAngle, anguloBordeCercano, ic, toast, descargar } from './util.js';
 import { PANELES, INVERSORES, ZONAS, EQUIPOS, CANAL, CAPAS, ESTADOS, COLORES_STRING, GAP_FILA, MODELOS_EQUIPO, idModelo, modeloPorId, cargarEquiposUsuario } from './catalogo.js';
 import { esReal, simboloCuadrado, nPanelesFig, inclPanelesDe, vistaEq, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo, tamEquipoPx, altoTextoPx, perfilesDe, rielesDe } from './geom.js';
-import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota, lineaDoble, mediaPerfil } from './render.js';
+import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota, lineaDoble, mediaPerfil, radioBurbuja } from './render.js';
 import { vistaUnilineal, panelUnilineal, accionUnilineal } from './unilineal.js';
 import { CONJUNTOS_INCLUIDOS, insertarConjunto, conjuntoDeHoja } from './conjuntos.js';
 import { leerAjuste, guardarAjuste } from './ajustes.js';
@@ -397,7 +397,7 @@ const cotaEn = q => E.p.cotas.find(c => distSeg(q, c.a, c.b) < tol());
 function textoEn(q) { return E.p.textos.find(t => { const h = Math.max(altoTextoPx(E.p, t), 7 / E.V.k), L = String(t.s).split('\n'), a = t.guia ? 0 : (t.ang || 0) * Math.PI / 180, m = 3 / E.V.k;
   const dx = q[0] - t.p[0], dy = q[1] - t.p[1], x = dx * Math.cos(a) - dy * Math.sin(a), y = dx * Math.sin(a) + dy * Math.cos(a);
   return x >= -m && x <= Math.max(...L.map(l => l.length)) * h * .55 && y >= -h && y <= (L.length - 1) * h * 1.45 + m; }); }
-const detEn = q => [...(E.p.detalles || [])].reverse().find(d => dist(q, d.p) < d.r * (d.z || 3));
+const detEn = q => [...(E.p.detalles || [])].reverse().find(d => dist(q, d.p) < radioBurbuja(d));
 const rectLibreE = e => !esReal(E.p, e) || ['bpc', 'tg', 'tfv', 'cp', 'cdj'].includes(e.k);   // de referencia, bandeja, tableros y cajas: se estiran desde sus esquinas
 const figEn = q => [...(E.p.figPaneles || [])].reverse().find(f => f.pts.length >= 3 && pointInPoly(q, f.pts));
 const norteEn = q => E.p.norte && dist(q, [E.p.norte.x, E.p.norte.y]) < Math.max(36 / E.V.k, (E.p.w || 1000) / 1210 * 38 * (E.p.norte.tam || 1));   // su tamaño es parte del dibujo
@@ -408,7 +408,7 @@ function gripEn(q) {
   if (s.t === 'ruta') { const r = E.p.rutas.find(x => x.id === s.id); const i = r ? r.pts.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: r.pts, i }; }
   if (s.t === 'fig') { const f = (E.p.figPaneles || []).find(x => x.id === s.id); const i = f ? f.pts.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: f.pts, i }; }
   if (s.t === 'texto') { const t = E.p.textos.find(x => x.id === s.id); if (t && t.guia && dist(t.guia, q) < d) return { obj: t, k: 'guia' }; }
-  if (s.t === 'det') { const b = (E.p.detalles || []).find(x => x.id === s.id); if (b && dist(b.c, q) < Math.max(d, b.r)) return { obj: b, k: 'c' }; }
+  if (s.t === 'det') { const b = (E.p.detalles || []).find(x => x.id === s.id); if (b && dist(b.c, q) < Math.max(d, radioBurbuja(b) / (b.z || 3))) return { obj: b, k: 'c' }; }
   if (s.t === 'cota') { const c = E.p.cotas.find(x => x.id === s.id); if (c) { if (dist(c.a, q) < d) return { obj: c, k: 'a' }; if (dist(c.b, q) < d) return { obj: c, k: 'b' }; } }
   // ubicación propuesta y bandeja: cada esquina estira el rectángulo (la esquina opuesta queda fija)
   if (s.t === 'equipo') { const e = E.p.equipos.find(x => x.id === s.id); if (e && rectLibreE(e)) { const Q = tamEquipoPx(E.p, e), w = Q.w / 2, h = Q.h / 2;
@@ -469,7 +469,7 @@ function down(ev) {
   if (E.tool === 'texto') { const s = window.prompt('Texto:'); if (s) { antes(); const t = { id: uid('x'), p: q, s, h: 400 }; p.textos.push(t); E.sel = { t: 'texto', id: t.id }; E.tool = 'sel'; despues(); render(); } return; }
   if (E.tool === 'detalle') {
     if (!E.temp) { E.temp = { tipo: 'linea', a: q }; prompt('DETALLE  Clic donde va la burbuja:'); dibujarTodo(); return; }
-    antes(); const d = { id: uid('d'), c: E.temp.a, p: q, r: Math.round((p.w || 1000) * .035), z: 3 }; (p.detalles ||= []).push(d); p.detalles = p.detalles;
+    antes(); const d = { id: uid('d'), c: E.temp.a, p: q, R: Math.round((p.w || 1000) * .1), z: 3 }; (p.detalles ||= []).push(d); p.detalles = p.detalles;
     E.temp = null; E.sel = { t: 'det', id: d.id }; E.tool = 'sel'; prompt('Comando:'); despues(); render(); return; }
   if (E.tool === 'norte') { antes(); p.norte = { x: q[0], y: q[1], ang: p.norte ? p.norte.ang : 0 }; E.sel = { t: 'norte' }; E.tool = 'sel'; despues(); render(); return; }
   if (E.tool === 'roof') {
@@ -1105,7 +1105,9 @@ function propsSel(s, { num, rango, seg }) {
     const colTx = `<div class="f"><span>Color</span><div class="colores">${[['', 'Automático: blanco en pantalla, negro al imprimir'], ['#FFFFFF', 'Blanco'], ['#FFE14D', 'Amarillo'], ['#111111', 'Negro'], ['#FF3B3B', 'Rojo'], ['#00E5FF', 'Cian'], ['#FF3DFF', 'Magenta'], ['#2FD06B', 'Verde'], ['#FF9E3D', 'Naranjo'], ['#3D6BFF', 'Azul']].map(([c, n]) => `<button data-act="set" data-campo="tx.c" data-v="${c}" aria-pressed="${(t.c || '') === c}" style="--c:${c || 'linear-gradient(135deg,#fff 50%,#111 50%)'}" title="${n}"></button>`).join('')}</div></div>`;
     return `<label class="f"><span>Texto (Enter = otra línea)</span><textarea class="in tx-area" data-campo="tx.s" rows="${Math.min(6, String(t.s).split('\n').length + 1)}">${esc(t.s)}</textarea></label>${escala(p) ? num('tx.h', fmt((t.h || 400) / 1000, 2), { l: 'Altura', u: 'm' }) : rango('tx.f', Math.round((t.f || 1) * 100), 20, 600, 'Tamaño', ' %')}${colTx}${t.guia ? guiaHtml : rango('tx.ang', Math.round(t.ang || 0), -180, 180, 'Giro')}${del}`; }
   if (s.t === 'det') { const d = (p.detalles || []).find(x => x.id === s.id); if (!d) return '';
-    return `<p class="mut">Arrastra el círculo para moverlo; el punto azul marca lo que se amplía (arrástralo para cambiarlo).</p>${rango('det.r', Math.max(1, Math.round(d.r / (p.w || 1000) * 100)), 1, 30, 'Tamaño de la zona ampliada', ' %')}${rango('det.z', Math.round((d.z || 3) * 100), 150, 800, 'Aumento', ' %')}${del}`; }
+    return `<p class="mut">Arrastra el círculo para moverlo; el punto azul marca lo que se amplía (arrástralo para cambiarlo).</p>${rango('det.R', Math.max(2, Math.round(radioBurbuja(d) / (p.w || 1000) * 100)), 2, 60, 'Tamaño de la burbuja', ' %')}${num('det.z', fmt(d.z || 3, (d.z || 3) % 1 ? 2 : 0), { l: 'Aumento exacto (no cambia el tamaño de la burbuja)', u: '×' })}
+      <label class="chk"><input type="checkbox" data-campo="det.ver" ${d.ver !== false ? 'checked' : ''}> Escribir el aumento bajo la burbuja</label>
+      <p class="mut">${escala(p) ? 'En el informe y los planos se escribe la escala real del detalle (por ejemplo ESC. 1:50), según la escala de cada vista.' : 'Se escribe como «DETALLE ×3».'}</p>${del}`; }
   if (s.t === 'norte') return `${rango('norte.ang', Math.round(p.norte.ang), 0, 359, 'Giro del norte')}${rango('norte.tam', Math.round((p.norte.tam || 1) * 100), 20, 500, 'Tamaño del norte', ' %')}${del}`;
   if (s.t === 'cota') { const c = p.cotas.find(x => x.id === s.id); if (!c) return ''; const sc = escala(p), med = sc ? fmt(dist(c.a, c.b) * sc / 1000, 2) : '';
     return `${sc ? `<dl class="dl"><dt>Largo medido</dt><dd>${fmt(dist(c.a, c.b) * sc / 1000, 3)} m</dd></dl>` : ''}
@@ -1280,7 +1282,8 @@ function aplicar(campo, v, desdeChange, vivo) {
     else { const pf = (tgt.perfiles ||= { on: true }); if (kk === 'on') pf.on = !!v; else if (kk === 'largo') { if (v === 'bloque') delete pf.largo; else pf.largo = v; } else if (kk === 'sob') { if (n != null && n >= 0) pf.sob = n * 10; else delete pf.sob; } else if (kk === 'd') { if (n > 0) pf.d = n * 10; else delete pf.d; } } }
   else if (pre === 'riel') { const tgt = k.startsWith('b') ? bloqueSel() : r; if (!tgt) return; migrarPerfiles(tgt); const kk = k.replace(/^b/, '').toLowerCase(); tgt.rieles ||= {}; if (kk === 'modo') { if (v === 'hereda') delete tgt.rieles; else tgt.rieles.modo = v; } else if (kk === 'largo') { if (v === 'bloque') delete tgt.rieles.largo; else tgt.rieles.largo = v; } else if (kk === 'sob') { if (n != null && n >= 0) tgt.rieles.sob = n * 10; else delete tgt.rieles.sob; } else { if (n > 0) tgt.rieles.d = n * 10; else delete tgt.rieles.d; } }
   else if (pre === 'tx') { const t = obj.tx(); if (!t) return; if (k === 'h') t.h = (n || .4) * 1000; else if (k === 'f') t.f = Math.max(.1, +v / 100); else if (k === 'ang') { if (+v) t.ang = +v; else delete t.ang; } else if (k === 'c') { if (v) t.c = v; else delete t.c; } else t.s = v; }
-  else if (pre === 'det') { const d = obj.det(); if (!d) return; if (k === 'r') d.r = Math.max(1, (p.w || 1000) * +v / 100); else if (k === 'z') d.z = Math.max(1.2, +v / 100); }
+  else if (pre === 'det') { const d = obj.det(); if (!d) return; if (d.R == null) { d.R = radioBurbuja(d); delete d.r; }   // burbuja antigua: pasa a radio propio
+    if (k === 'R') d.R = Math.max(1, (p.w || 1000) * +v / 100); else if (k === 'z') { if (n >= 1) d.z = Math.min(50, n); } else if (k === 'ver') { if (v) delete d.ver; else d.ver = false; } }
   else if (pre === 'norte') { if (k === 'tam') { const t = Math.max(.2, +v / 100); if (Math.abs(t - 1) < .001) delete p.norte.tam; else p.norte.tam = t; } else p.norte.ang = +v; }
   else if (pre === 'str') { const st = obj.str(); if (!st) return; if (k === 'mppt') { st.mppt = +v; st.num = p.strings.filter(x => x !== st && x.mppt === +v).length + 1; } else if (k === 'largo') st.largo = n; else if (k === 'seccion') st.seccion = n || 6; }
   else if (k === 'estado') p.estado = v;

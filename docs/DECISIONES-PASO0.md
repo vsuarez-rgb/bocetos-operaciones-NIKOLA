@@ -103,3 +103,4 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
   - Se crea con «Detalle» en Cotas, etiquetas y textos; el punto azul mueve la zona.
 - **Vista en blanco y negro** (opción del bloque Vista del informe): todo el dibujo pasa a negro y lo blanco queda blanco. La foto no cambia. En las burbujas se ve solo el dibujo.
 - **Norte**: al imprimir, la rosa de los vientos queda roja y negra, como en los planos de referencia.
+- **Burbuja con aumento exacto** (25-11-2026): la burbuja guarda su propio radio `R` y el aumento `z`, que se escribe exacto (×2,5, ×5…). Cambiar uno no cambia el otro, y la zona ampliada mide R / z. Bajo la burbuja se escribe «DETALLE ×3». En informes y planos, si la hoja tiene escala, se escribe la escala real del detalle según la escala de cada vista («DETALLE ESC. 1:50»). Las burbujas antiguas (`r`) se leen igual y pasan a `R` al editarlas.
