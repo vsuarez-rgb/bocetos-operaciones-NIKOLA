@@ -8,7 +8,7 @@
 import { esc, fmt, ic, toast, descargar, dist, centroid, hull } from './util.js';
 import { CANAL, EQUIPOS, PANELES } from './catalogo.js';
 import { escala, panelDe, inversorDe, calcCA, zonaPoly, CAIDA_MAX, medidaEquipo } from './geom.js';
-import { dibujar, cargarImg, colorString, vistaNitida, rectDe, esCerrada } from './render.js';
+import { dibujar, cargarImg, colorString, vistaNitida, rectDe, esCerrada, textoCota } from './render.js';
 import { hoy } from './store.js';
 import { dibujoLibre, VB_UNI, vbLibre } from './uni-dibujo.js';
 
@@ -493,7 +493,7 @@ function dxf(p, R, SI) {
   p.roofs.filter(r => r.closed).forEach(r => poly(r.poly, 'TECHOS'));
   p.zonas.forEach(z => poly(zonaPoly(z), 'ZONAS'));
   const strDe = new Map(); SI.lista.forEach(x => x.st.panels.forEach(k => strDe.set(k, x)));
-  R.validos.forEach(pn => { poly(pn.q, 'PANELES'); const x = strDe.get(pn.key); if (x) txt(centroid(pn.q), 180, x.etq, 'STRINGS', true); });
+  R.validos.forEach(pn => { poly(pn.q, 'PANELES'); const x = strDe.get(pn.key); if (x) txt(centroid(pn.q), 180, x.st.numTxt || x.etq, 'STRINGS', true); });
   const cols = [4, 6, 3, 2, 30, 5, 210, 130];
   SI.lista.forEach((x, i) => { const pts = x.st.panels.map(k => R.porKey.get(k)).filter(Boolean).flatMap(pn => pn.q); if (pts.length > 2) { const h = hull(pts); poly(h, 'STRINGS', true, cols[i % cols.length]); const top = h.reduce((m, q) => q[1] < m[1] ? q : m, h[0]); txt([top[0], top[1] - 400 / s], 300, `String ${i + 1}`, 'STRINGS'); } });
   p.rutas.forEach(r => poly(r.pts, { cc: 'CANAL-CC', ca: 'CANAL-CA', sub: 'CANAL-SUB', tie: 'TIERRA' }[r.k] || 'CANAL-CA', false));
@@ -501,7 +501,7 @@ function dxf(p, R, SI) {
   (p.figuras || []).forEach(f => { if (f.pts.length < 2) return;
     if (f.f === 'circ') e += `0\nCIRCLE\n8\nFIGURAS\n10\n${X(f.pts[0])}\n20\n${Y(f.pts[0])}\n30\n0\n40\n${(dist(f.pts[0], f.pts[1]) * s).toFixed(1)}\n`;
     else poly(f.f === 'rect' ? rectDe(f.pts[0], f.pts[1]) : f.pts, 'FIGURAS', esCerrada(f)); });
-  p.cotas.forEach(c => { poly([c.a, c.b], 'COTAS', false); txt([(c.a[0] + c.b[0]) / 2, (c.a[1] + c.b[1]) / 2], 200, `${fmt(dist(c.a, c.b) * s / 1000, 2)} m`, 'COTAS', true); });
+  p.cotas.forEach(c => { poly([c.a, c.b], 'COTAS', false); txt([(c.a[0] + c.b[0]) / 2, (c.a[1] + c.b[1]) / 2], 200, textoCota(p, c), 'COTAS', true); });
   p.textos.forEach(t => { const h = t.h || 400, ang = t.guia ? 0 : (t.ang || 0), a = ang * Math.PI / 180, d = h / s * 1.45;   // un TEXT por renglón, con su giro
     String(t.s).split('\n').forEach((l, i) => txt([t.p[0] + i * d * Math.sin(a), t.p[1] + i * d * Math.cos(a)], h, l, 'TEXTOS', false, ang)); });
   const tabla = capas.map(([n, c]) => `0\nLAYER\n2\n${n}\n70\n0\n62\n${c}\n6\nCONTINUOUS\n`).join('');

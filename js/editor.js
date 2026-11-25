@@ -451,7 +451,7 @@ function gripEn(q) {
 }
 const listaEtq = of => of === 'equipo' ? E.p.equipos : of === 'string' ? E.p.strings : of === 'incl' ? E.p.roofs : of === 'inclb' ? E.p.roofs.flatMap(r => r.bloques || []) : of === 'zona' ? E.p.zonas : E.p.rutas;
 const duenoEtq = s => s && s.t === 'etq' ? listaEtq(s.of).find(x => x.id === s.id) : null;
-function etqEn(q) { const sq = aPant(q); return [...(E.hits || [])].reverse().find(h => sq[0] >= h.caja[0] && sq[0] <= h.caja[2] && sq[1] >= h.caja[1] && sq[1] <= h.caja[3]); }
+function etqEn(q) { const sq = aPant(q); return [...(E.hits || [])].reverse().find(h => h.t === 'etq' && sq[0] >= h.caja[0] && sq[0] <= h.caja[2] && sq[1] >= h.caja[1] && sq[1] <= h.caja[3]); }
 function objetoEn(q) {
   if (E.step === 'etiquetas') { const et = etqEn(q); if (et) return { t: 'etq', of: et.of, id: et.id };
     if (norteEn(q)) return { t: 'norte' }; const dt = detEn(q); if (dt) return { t: 'det', id: dt.id }; const tx = textoEn(q); if (tx) return { t: 'texto', id: tx.id }; const ct = cotaEn(q); if (ct) return { t: 'cota', id: ct.id }; const fm = E.capas.has('figuras') && formaEn(q); if (fm) return { t: 'forma', id: fm.id }; return null; }
@@ -472,6 +472,7 @@ function objetoEn(q) {
 
 /* ---------- Puntero ---------- */
 function down(ev) {
+  cerrarRapido();
   const cv = $('#cv'); try { cv.setPointerCapture(ev.pointerId); } catch (e) { /* evento sintético */ } cv.focus({ preventScroll: true });
   const sp = ptEv(ev); E.mouse = sp;
   if (ev.button === 1 || E.tool === 'pan' || E.espacio) { E.D = { kind: 'pan', s: sp, o: [E.V.ox, E.V.oy] }; return; }
@@ -615,7 +616,54 @@ function up(ev) {
   dibujarTodo();
 }
 function wheel(ev) { ev.preventDefault(); const sp = ptEv(ev); zoom(ev.deltaY < 0 ? 1.15 : 1 / 1.15, sp[0], sp[1]); }
-function dbl() { if (['ruta', 'figura'].includes(E.tool) && E.temp && E.temp.pts) { E.temp.pts.pop(); terminar(); } }
+function dbl(ev) { if (['ruta', 'figura'].includes(E.tool) && E.temp && E.temp.pts) { E.temp.pts.pop(); terminar(); return; } if (!E.temp) editarRapido(ptEv(ev)); }
+/* ---------- Edición rápida: doble clic sobre cualquier texto o número del dibujo ----------
+   Abre un cuadrito junto al texto con el texto y su tamaño. Enter guarda · Esc cancela · vacío = valor automático.
+   Reutiliza los campos del panel (aplicar), así queda igual que editarlo desde la derecha. */
+function textoRapido(sp) {
+  const p = E.p, h = [...(E.hits || [])].reverse().find(x => (x.t === 'etq' || x.t === 'txt') && sp[0] >= x.caja[0] && sp[0] <= x.caja[2] && sp[1] >= x.caja[1] && sp[1] <= x.caja[3]);
+  const pc = (campo, val, min, max) => ({ campo, val: Math.round((val || 1) * 100), min, max, u: ' %' });
+  if (h && h.t === 'etq') { const ow = duenoEtq({ t: 'etq', of: h.of, id: h.id }); if (!ow) return null;
+    return { sel: { t: 'etq', of: h.of, id: h.id }, titulo: 'Etiqueta', txt: h.txt, propio: h.of === 'equipo' ? ow.rotulo : ow.etqTxt, campo: 'etq.txt', tam: pc('etq.tam', ow.etq && ow.etq.tam, 20, 1000) }; }
+  if (h && h.k === 'cota') { const c = p.cotas.find(x => x.id === h.id); if (!c) return null;
+    return { sel: { t: 'cota', id: c.id }, titulo: 'Cota', txt: h.txt, propio: c.txt, campo: 'cota.txt', tam: pc('cota.tam', c.tam, 20, 500), nota: escala(p) ? 'Vacío = la medida automática.' : 'En metros (o un texto).' }; }
+  if (h && (h.k === 'medW' || h.k === 'medH')) { const e = p.equipos.find(x => x.id === h.id); if (!e) return null;
+    return { sel: { t: 'equipo', id: e.id }, titulo: h.k === 'medW' ? 'Medida del ancho' : 'Medida del alto', txt: h.txt, propio: e[h.k], campo: 'eq.' + h.k, tam: pc('eq.tamMed', e.tamMed, 30, 400), nota: 'Solo cambia lo escrito; vacío = la medida del equipo.' }; }
+  if (h && h.k === 'strnum') { const st = p.strings.find(x => x.id === h.id); if (!st) return null;
+    return { sel: null, strAct: st.id, titulo: 'Número del string', txt: h.txt, propio: st.numTxt, campo: 'str.numTxt', tam: pc('str.tamNum', st.tamNum, 40, 250), nota: 'Se aplica a todos los paneles del string.' }; }
+  if (h && h.k === 'det') { const d = (p.detalles || []).find(x => x.id === h.id); if (!d) return null;
+    return { sel: { t: 'det', id: d.id }, titulo: 'Rótulo de la burbuja', txt: h.txt, propio: d.rot, campo: 'det.rot', tam: pc('det.tamRot', d.tamRot, 30, 400), nota: 'Vacío = el aumento o la escala automática.' }; }
+  if (h && h.k === 'piso') return { sel: null, titulo: 'Nivel de piso', txt: h.txt, propio: p.pisoTxt, campo: 'hoja.pisoTxt', tam: pc('hoja.pisoTam', p.pisoTam, 30, 400) };
+  const t = textoEn(aFoto(...sp)); if (t) return { sel: { t: 'texto', id: t.id }, titulo: 'Texto', txt: t.s, propio: t.s, multi: true, campo: 'tx.s',
+    tam: escala(p) ? { campo: 'tx.h', val: fmt((t.h || 400) / 1000, 2), num: true, u: 'm' } : pc('tx.f', t.f, 20, 600) };
+  return null;
+}
+function cerrarRapido() { const d = $('#editRap'); if (d) d.remove(); }
+function editarRapido(sp) {
+  cerrarRapido(); const D = textoRapido(sp); if (!D) return;
+  E.sel = D.sel; if (D.strAct) E.strAct = D.strAct; panel(); dibujarTodo();
+  const rc = $('#cv').getBoundingClientRect(), div = document.createElement('div'); div.id = 'editRap'; div.className = 'edit-rap';
+  const T = D.tam, val = D.propio != null && D.propio !== '' ? D.propio : D.txt;
+  div.innerHTML = `<b>${esc(D.titulo)}</b>${D.multi ? `<textarea class="in" rows="${Math.min(5, String(val).split('\n').length + 1)}">${esc(val)}</textarea>` : `<input class="in" value="${esc(val)}">`}
+    ${T.num ? `<label class="f"><span>Altura</span><span class="fi"><input class="in er-tam" value="${T.val}" inputmode="decimal"><em>${T.u}</em></span></label>`
+      : `<label class="f"><span>Tamaño</span><span class="fr"><input type="range" class="er-tam" min="${T.min}" max="${T.max}" step="1" value="${T.val}"><output>${T.val}${T.u}</output></span></label>`}
+    ${D.nota ? `<p class="mut">${D.nota}</p>` : ''}<div class="row"><button class="btn sm pri" data-er="ok">Guardar (Enter)</button>${D.propio && !D.multi ? '<button class="btn sm" data-er="auto">Automático</button>' : ''}<button class="btn sm" data-er="no">Cancelar</button></div>`;
+  document.body.appendChild(div);
+  const x = Math.min(rc.left + sp[0] + 14, innerWidth - div.offsetWidth - 8), y = Math.min(rc.top + sp[1] + 14, innerHeight - div.offsetHeight - 8);
+  div.style.left = Math.max(8, x) + 'px'; div.style.top = Math.max(8, y) + 'px';
+  const inp = div.querySelector('textarea, input:not(.er-tam)'), tam = div.querySelector('.er-tam'); let cambioTam = false;
+  inp.focus(); inp.select();
+  const guardar = v => { const t = String(v).trim(); if (D.multi ? t && t !== D.propio : t !== D.txt || D.propio) aplicar(D.campo, D.multi ? v : (!D.propio && t === D.txt ? '' : t)); cerrarRapido(); $('#cv')?.focus(); };
+  const cancelar = () => { if (cambioTam) deshacer(); cerrarRapido(); $('#cv')?.focus(); };
+  tam.addEventListener('input', () => { if (T.num) return; cambioTam = true; div.querySelector('output').textContent = tam.value + T.u; aplicar(T.campo, tam.value, false, true); });
+  tam.addEventListener('change', () => { cambioTam = true; aplicar(T.campo, tam.value); });
+  div.addEventListener('keydown', ev => { ev.stopPropagation();
+    if (ev.key === 'Escape') { ev.preventDefault(); cancelar(); }
+    else if (ev.key === 'Enter' && !(D.multi && ev.shiftKey) && ev.target !== tam) { ev.preventDefault(); guardar(inp.value); }
+    else if (ev.key === 'Enter' && ev.target === tam) { ev.preventDefault(); aplicar(T.campo, tam.value); cambioTam = true; } });
+  div.addEventListener('click', ev => { const b = ev.target.closest('[data-er]'); if (!b) return; const k = b.dataset.er;
+    if (k === 'ok') { if (T.num && tam.value !== String(T.val)) aplicar(T.campo, tam.value); guardar(inp.value); } else if (k === 'auto') { aplicar(D.campo, ''); cerrarRapido(); } else cancelar(); });
+}
 function zonaDeArrastre(a, b) {
   const z = { k: E.zonaK, forma: E.zonaForma, ang: 0 };
   if (E.zonaForma === 'circ') { const r = dist(a, b); return { ...z, x: a[0] - r, y: a[1] - r, w: 2 * r, h: 2 * r }; }
@@ -843,7 +891,7 @@ function borrarSel() {
 }
 
 /* ---------- Pasos ---------- */
-function irPaso(k) { E.step = k; E.tool = HERR_DEF[k]; E.temp = null; E.D = null; if (k !== 'paneles' && E.sel && E.sel.t === 'bloque') E.sel = null; if (!['techos', 'paneles'].includes(k) && E.sel && E.sel.t === 'roof') E.sel = null; render(); pista(); programarGuardado(); }
+function irPaso(k) { cerrarRapido(); E.step = k; E.tool = HERR_DEF[k]; E.temp = null; E.D = null; if (k !== 'paneles' && E.sel && E.sel.t === 'bloque') E.sel = null; if (!['techos', 'paneles'].includes(k) && E.sel && E.sel.t === 'roof') E.sel = null; render(); pista(); programarGuardado(); }
 function pista() {
   const h = $('#hint'); if (!h) return;
   const p = E.p, t = E.tool;
@@ -1169,6 +1217,7 @@ function propsSel(s, { num, rango, seg }) {
     return `${sc ? `<dl class="dl"><dt>Largo medido</dt><dd>${fmt(dist(c.a, c.b) * sc / 1000, 3)} m</dd></dl>` : ''}
       <label class="f"><span>Medida que se muestra</span><input class="in" data-campo="cota.txt" value="${esc(c.txt || '')}" placeholder="${sc ? med + ' (medida automática)' : 'Ej: 2,35 (en metros) o un texto'}"></label>
       <p class="mut">${sc ? 'Vacío = la medida automática según la escala.' : 'La hoja no tiene escala: escribe la medida real en metros.'}</p>
+      ${rango('cota.tam', Math.round((c.tam || 1) * 100), 20, 500, 'Tamaño de esta cota', ' %')}<p class="mut">Doble clic sobre cualquier texto o número del dibujo lo edita ahí mismo.</p>
       ${!sc && parseNum(c.txt) > 0 ? `<button class="btn sm" data-act="cota-escala">${ic('ruler', 14)} Usar esta cota como escala de la hoja</button>` : ''}${del}`; }
   if (s.t === 'ref') return `<p class="mut">Arrastra los extremos para ajustar la línea.</p>${del}`;
   if (s.t === 'roof') { const r = p.roofs.find(x => x.id === s.id); if (!r) return ''; const i = p.roofs.indexOf(r);
@@ -1317,15 +1366,19 @@ function aplicar(campo, v, desdeChange, vivo) {
     else if (k === 'mw' || k === 'mh') { if (n > 0) e[k] = Math.round(n); else delete e[k]; }
     else if (k === 'f') e.f = Math.max(.1, +v / 100);
     else if (k === 'verMed') e.verMed = !!v;
+    else if (k === 'medW' || k === 'medH') { const t = String(v).trim(); if (t) e[k] = t; else delete e[k]; }
+    else if (k === 'tamMed') { const t = +v / 100; if (Math.abs(t - 1) < .001) delete e.tamMed; else e.tamMed = Math.max(.2, t); }
     else if (k === 'modelo') { if (v) e.modelo = v; else delete e.modelo; const M = modeloPorId(v); if (M) e.modeloDatos = datosModelo(M); else if (!v) delete e.modeloDatos; }
     else e[k] = k === 'ang' ? +v : v; }
-  else if (pre === 'cota') { const c = s && p.cotas.find(x => x.id === s.id); if (!c) return; const t = String(v).trim(); if (t) c.txt = t; else delete c.txt; }
+  else if (pre === 'cota') { const c = s && p.cotas.find(x => x.id === s.id); if (!c) return; if (k === 'tam') { const t = +v / 100; if (Math.abs(t - 1) < .001) delete c.tam; else c.tam = Math.max(.2, t); } else { const t = String(v).trim(); if (t) c.txt = t; else delete c.txt; } }
   else if (pre === 'hoja' && ['verMedidas', 'tamSimb'].includes(k)) { if (k === 'verMedidas') { p.verMedidas = !!v; if (v) p.equipos.forEach(x => delete x.verMed); } else if (k === 'tamSimb') p.tamSimb = Math.max(.2, +v / 100); }
   else if (pre === 'etq') { const ow = duenoEtq(s); if (!ow) return; const et = (ow.etq ||= {});
     if (k === 'txt') { const t = String(v).trim(); if (s.of === 'equipo') { if (t) ow.rotulo = t; else delete ow.rotulo; } else { if (t) ow.etqTxt = t; else delete ow.etqTxt; } }
     else if (k === 'tam') et.tam = Math.max(.2, +v / 100); else if (k === 'fijo') et.fijo = !!v; else if (k === 'escala') { if (v) delete et.escala; else et.escala = false; } }
   else if (pre === 'hoja' && ['tamEtq', 'tamCotas'].includes(k)) { p[k] = Math.max(.2, +v / 100); }
   else if (pre === 'hoja' && k === 'vista') { p.vistaEquipos = v; }
+  else if (pre === 'hoja' && k === 'pisoTxt') { const t = String(v).trim(); if (t) p.pisoTxt = t; else delete p.pisoTxt; }
+  else if (pre === 'hoja' && k === 'pisoTam') { const t = +v / 100; if (Math.abs(t - 1) < .001) delete p.pisoTam; else p.pisoTam = Math.max(.2, t); }
   else if (pre === 'hoja' && k === 'encerrar') { if (v) delete p.encerrarStrings; else p.encerrarStrings = false; }
   else if (pre === 'hoja' && k === 'nombreDentro') { if (v) p.nombreDentro = true; else delete p.nombreDentro; }
   else if (pre === 'hoja' && k === 'contornos') { if (v) delete p.ocultarContornos; else p.ocultarContornos = true; }
@@ -1345,9 +1398,11 @@ function aplicar(campo, v, desdeChange, vivo) {
   else if (pre === 'riel') { const tgt = k.startsWith('b') ? bloqueSel() : r; if (!tgt) return; migrarPerfiles(tgt); const kk = k.replace(/^b/, '').toLowerCase(); tgt.rieles ||= {}; if (kk === 'modo') { if (v === 'hereda') delete tgt.rieles; else tgt.rieles.modo = v; } else if (kk === 'largo') { if (v === 'bloque') delete tgt.rieles.largo; else tgt.rieles.largo = v; } else if (kk === 'sob') { if (n != null && n >= 0) tgt.rieles.sob = n * 10; else delete tgt.rieles.sob; } else { if (n > 0) tgt.rieles.d = n * 10; else delete tgt.rieles.d; } }
   else if (pre === 'tx') { const t = obj.tx(); if (!t) return; if (k === 'h') t.h = (n || .4) * 1000; else if (k === 'f') t.f = Math.max(.1, +v / 100); else if (k === 'ang') { if (+v) t.ang = +v; else delete t.ang; } else if (k === 'c') { if (v) t.c = v; else delete t.c; } else t.s = v; }
   else if (pre === 'det') { const d = obj.det(); if (!d) return; if (d.R == null) { d.R = radioBurbuja(d); delete d.r; }   // burbuja antigua: pasa a radio propio
-    if (k === 'R') d.R = Math.max(1, (p.w || 1000) * +v / 100); else if (k === 'z') { if (n >= 1) d.z = Math.min(50, n); } else if (k === 'ver') { if (v) delete d.ver; else d.ver = false; } }
+    if (k === 'R') d.R = Math.max(1, (p.w || 1000) * +v / 100); else if (k === 'z') { if (n >= 1) d.z = Math.min(50, n); } else if (k === 'ver') { if (v) delete d.ver; else d.ver = false; }
+    else if (k === 'rot') { const t = String(v).trim(); if (t) d.rot = t; else delete d.rot; } else if (k === 'tamRot') { const t = +v / 100; if (Math.abs(t - 1) < .001) delete d.tamRot; else d.tamRot = Math.max(.2, t); } }
   else if (pre === 'norte') { if (k === 'tam') { const t = Math.max(.2, +v / 100); if (Math.abs(t - 1) < .001) delete p.norte.tam; else p.norte.tam = t; } else p.norte.ang = +v; }
-  else if (pre === 'str') { const st = obj.str(); if (!st) return; if (k === 'mppt') { st.mppt = +v; st.num = p.strings.filter(x => x !== st && x.mppt === +v).length + 1; } else if (k === 'largo') st.largo = n; else if (k === 'seccion') st.seccion = n || 6; }
+  else if (pre === 'str') { const st = obj.str(); if (!st) return; if (k === 'mppt') { st.mppt = +v; st.num = p.strings.filter(x => x !== st && x.mppt === +v).length + 1; } else if (k === 'largo') st.largo = n; else if (k === 'seccion') st.seccion = n || 6;
+    else if (k === 'numTxt') { const t = String(v).trim(); if (t) st.numTxt = t; else delete st.numTxt; } else if (k === 'tamNum') { const t = +v / 100; if (Math.abs(t - 1) < .001) delete st.tamNum; else st.tamNum = Math.max(.3, t); } }
   else if (k === 'estado') p.estado = v;
   else if (k === 'inversor') p.inversor = v;
   else if (k === 'cantInv') p.cantInv = Math.max(1, Math.round(n || 1));

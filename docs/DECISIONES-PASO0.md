@@ -132,3 +132,11 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - Se guardan en `p.figuras` (también por hoja): `{ id, f, pts, col, dash?, gr?, rel? }`. `f` puede ser `linea` o `flecha` (puntos abiertos; la punta va en el último), `poly` (cerrada), `rect` (2 esquinas opuestas) o `circ` (centro y un punto del borde). Los campos son opcionales y los proyectos anteriores no cambian.
 - Se seleccionan, mueven, estiran desde sus puntos y se editan en el panel derecho (forma, color, grosor, trazo, relleno y su medida si la hoja tiene escala). El blanco sale negro al imprimir. Capa nueva **FIGURAS**; en el DXF van en la capa FIGURAS (el círculo como CIRCLE).
 - «Otra línea» del paso Equipos sigue igual (es una canalización libre con etiqueta).
+
+## Edición rápida de textos y números (26-11-2026)
+
+- **Doble clic** sobre cualquier texto o número del dibujo abre un cuadrito al lado con el texto y su **tamaño**. Enter guarda, Esc cancela (también deshace el tamaño) y «Automático» vuelve al valor calculado.
+- Sirve para: etiquetas, cotas, textos libres (Mayús + Enter = otra línea), medidas de los equipos, números de string dentro de los paneles, rótulo de la burbuja y nivel de piso.
+- Usa los mismos campos que el panel derecho. Campos nuevos, todos opcionales: `cota.tam` (tamaño propio de la cota, sobre el general de la hoja), `equipo.medW` / `medH` / `tamMed`, `string.numTxt` / `tamNum` (el círculo crece con el número), `detalle.rot` / `tamRot`, y en la hoja `pisoTxt` / `pisoTam`.
+- Si no se cambia el texto, no se guarda nada: una cota sigue la medida real hasta que se escriba otra.
+- El render deja la caja de cada texto en `o.hits` (con `t: 'txt'`) solo en el editor; la búsqueda de etiquetas filtra `t: 'etq'`. El DXF usa el texto de la cota y del string tal como se ve.

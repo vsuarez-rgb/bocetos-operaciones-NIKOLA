@@ -24,6 +24,7 @@ Es un sitio **estático**: HTML, CSS y JavaScript sin compilación. No hay que i
 - Rueda del mouse: zoom en el cursor · botón del medio o barra espaciadora: mover la vista
 - **F3** referencia a objetos · **F7** rejilla de 1 m · **F8** orto
 - **Enter** termina / cierra · **Esc** cancela · **Supr** borra lo seleccionado
+- **Doble clic** sobre cualquier texto o número del dibujo (etiqueta, cota, medida, número de string, rótulo): se edita ahí mismo, con su tamaño al lado
 - **Ctrl+Z / Ctrl+Y** deshacer / rehacer · **Ctrl+S** guardar
 - Pantalla como AutoCAD: **barra superior** = lo que se dibuja o inserta en cada paso (techo, tipos de zona, rieles y perfiles a mano, strings, Insertar equipos o conjuntos, canalizaciones, cotas y textos); **barra lateral** = Seleccionar, Encuadre, Ajustar, Medir (DIST), **Figura** (línea, flecha, rectángulo, círculo o figura libre, con color, trazo, grosor y relleno, en cualquier paso) y Borrar; **panel derecho** = resumen del paso y propiedades de lo elegido (también del bloque de paneles); **CAPAS** en la barra de estado.
 - Línea de comandos: `TECHO`, `ZONA`, `COTA`, `DIST`, `TEXTO`, `NORTE`, `CC`, `CA`, `SUB`, `EQUIPO`, `BORRAR`, `ZOOM`, `STRING`, `AUTOSTRING`, `PASO 1-7`, `AYUDA`. Mientras dibujas, escribe un número (en metros) para el siguiente punto.

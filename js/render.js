@@ -46,6 +46,17 @@ function texto(g, txt, x, y, { size = 12, color = '#fff', halo = null, align = '
   if (halo) { g.lineWidth = Math.max(1.5, size / 6); g.strokeStyle = halo; g.lineJoin = 'round'; g.strokeText(txt, x, y); }
   g.fillStyle = color; g.fillText(txt, x, y);
 }
+/* Caja de un texto ya dibujado (px de pantalla, aunque esté girado) para editarlo con doble clic en el editor.
+   info = { k: qué texto es, id }. Solo en el editor (o.hits). */
+function hitTexto(g, o, info, txt, x, y, size, align = 'left', base = 'alphabetic') {
+  if (!o.hits || !txt) return;
+  g.font = fuente(size); const w = g.measureText(txt).width, x0 = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  const y0 = base === 'middle' ? y - size / 2 : base === 'top' ? y : base === 'bottom' ? y - size : y - size * .8;
+  const M = g.getTransform(), d = globalThis.devicePixelRatio || 1;
+  const pts = [[x0, y0], [x0 + w, y0], [x0 + w, y0 + size], [x0, y0 + size]].map(([a, b]) => [(M.a * a + M.c * b + M.e) / d, (M.b * a + M.d * b + M.f) / d]);
+  const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
+  o.hits.push({ t: 'txt', ...info, txt, caja: [Math.min(...xs) - 3, Math.min(...ys) - 3, Math.max(...xs) + 3, Math.max(...ys) + 3] });
+}
 /* Color de un texto: sin color propio es blanco en pantalla y negro al imprimir (como el color 7 de AutoCAD);
    con color elegido sale de ese color en los dos. */
 export const INTERLINEA = 1.45;
@@ -140,8 +151,8 @@ export function dibujar(g, p, V, o) {
       // etiqueta del string dentro del panel ("1.1")
       const si = stringDe.get(pn.key), lado = Math.min(dist(pts[0], pts[1]), dist(pts[0], pts[3]));
       if (si && vis('strings') && lado > 14 * UD) {
-        const r = lado * .22; g.beginPath();   /* r proporcional al panel: mismo tamaño en el dibujo, el informe y la lámina */ g.arc(c[0], c[1], r, 0, 7); g.fillStyle = plot ? '#fff' : 'rgba(10,20,28,.85)'; g.fill(); g.lineWidth = .9 * u; g.strokeStyle = plot ? '#222' : colorString(p, si.st); g.stroke();
-        texto(g, si.etq, c[0], c[1] + .5, { size: r * 1.05, color: plot ? '#111' : '#fff', align: 'center', base: 'middle' });
+        const r = lado * .22 * (si.st.tamNum || 1), tn = si.st.numTxt || si.etq; g.beginPath();   /* r proporcional al panel: mismo tamaño en el dibujo, el informe y la lámina */ g.arc(c[0], c[1], r, 0, 7); g.fillStyle = plot ? '#fff' : 'rgba(10,20,28,.85)'; g.fill(); g.lineWidth = .9 * u; g.strokeStyle = plot ? '#222' : colorString(p, si.st); g.stroke();
+        texto(g, tn, c[0], c[1] + .5, { size: r * 1.05, color: plot ? '#111' : '#fff', align: 'center', base: 'middle' }); hitTexto(g, o, { k: 'strnum', id: si.st.id }, tn, c[0], c[1], r * 1.05, 'center', 'middle');
       }
     });
     if (R.bloques && (plot || o.rotulos || o.step === 'paneles')) R.bloques.forEach(B => {
@@ -205,14 +216,14 @@ export function dibujar(g, p, V, o) {
     // Medidas del equipo (ancho × profundidad en mm), como cotas pegadas al símbolo
     const real = esReal(p, e);
     if (real && (e.verMed === true || (e.verMed !== false && p.verMedidas))) {
-      const col = plot ? '#111' : '#FAB704', off = 9 * UD, tk = 3 * UD, fs = 9.5 * UD;
+      const col = plot ? '#111' : '#FAB704', off = 9 * UD, tk = 3 * UD, fs = 9.5 * UD * (e.tamMed || 1), tW = e.medW || fmt(md.w, 0), tH = e.medH || fmt(md.h, 0);
       g.strokeStyle = col; g.lineWidth = .8 * u; g.beginPath();
       g.moveTo(-w / 2, -h / 2 - off); g.lineTo(w / 2, -h / 2 - off); g.moveTo(-w / 2, -h / 2 - off - tk); g.lineTo(-w / 2, -h / 2 - 2 * UD); g.moveTo(w / 2, -h / 2 - off - tk); g.lineTo(w / 2, -h / 2 - 2 * UD);
       g.moveTo(w / 2 + off, -h / 2); g.lineTo(w / 2 + off, h / 2); g.moveTo(w / 2 + 2 * UD, -h / 2); g.lineTo(w / 2 + off + tk, -h / 2); g.moveTo(w / 2 + 2 * UD, h / 2); g.lineTo(w / 2 + off + tk, h / 2);
       g.stroke();
       [[-w / 2, -h / 2 - off], [w / 2, -h / 2 - off], [w / 2 + off, -h / 2], [w / 2 + off, h / 2]].forEach(q => { g.beginPath(); g.moveTo(q[0] - 2 * UD, q[1] + 2 * UD); g.lineTo(q[0] + 2 * UD, q[1] - 2 * UD); g.stroke(); });
-      texto(g, `${fmt(md.w, 0)}`, 0, -h / 2 - off - 2 * UD, { size: fs, color: col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' });
-      g.save(); g.translate(w / 2 + off + 2 * UD, 0); g.rotate(Math.PI / 2); texto(g, `${fmt(md.h, 0)}`, 0, 0, { size: fs, color: col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); g.restore();
+      texto(g, tW, 0, -h / 2 - off - 2 * UD, { size: fs, color: col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); hitTexto(g, o, { k: 'medW', id: e.id }, tW, 0, -h / 2 - off - 2 * UD, fs, 'center', 'bottom');
+      g.save(); g.translate(w / 2 + off + 2 * UD, 0); g.rotate(Math.PI / 2); texto(g, tH, 0, 0, { size: fs, color: col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); hitTexto(g, o, { k: 'medH', id: e.id }, tH, 0, 0, fs, 'center', 'bottom'); g.restore();
     }
     const frente = real;
     if (frente) equipoFrente(g, e, E, md, w, h, plot, u);
@@ -238,21 +249,23 @@ export function dibujar(g, p, V, o) {
   // Nivel de piso (para medir alturas en la vista de frente)
   if (p.suelo != null) { const y = p.suelo * k - V.oy, x0 = -V.ox, x1 = (p.w || 1000) * k - V.ox;
     g.setLineDash([10 * u, 5 * u]); g.lineWidth = 1.2 * u; g.strokeStyle = plot ? '#555' : 'rgba(255,255,255,.75)'; g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke(); g.setLineDash([]);
-    texto(g, 'NIVEL DE PISO ±0,00', x0 + 6 * UD, y - 4 * UD, { size: 10 * UD, color: plot ? '#333' : '#fff', halo: plot ? null : 'rgba(0,0,0,.75)' }); }
+    const tp = p.pisoTxt || 'NIVEL DE PISO ±0,00', fp = 10 * UD * (p.pisoTam || 1);
+    texto(g, tp, x0 + 6 * UD, y - 4 * UD, { size: fp, color: plot ? '#333' : '#fff', halo: plot ? null : 'rgba(0,0,0,.75)' }); hitTexto(g, o, { k: 'piso' }, tp, x0 + 6 * UD, y - 4 * UD, fp); }
 
   // Cotas
   if (vis('cotas')) {
-    const cota = (A, B, txt, col, ref) => {
+    const cota = (A, B, txt, col, ref, ct) => {
       const a = T(A), b = T(B), ang = Math.atan2(b[1] - a[1], b[0] - a[0]), nx = -Math.sin(ang) * 6 * UD, ny = Math.cos(ang) * 6 * UD;
       g.strokeStyle = col; g.lineWidth = 1.2 * u; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]);
       g.moveTo(a[0] - nx, a[1] - ny); g.lineTo(a[0] + nx, a[1] + ny); g.moveTo(b[0] - nx, b[1] - ny); g.lineTo(b[0] + nx, b[1] + ny); g.stroke();
       // tics oblicuos estilo arquitectura
       [a, b].forEach(q => { g.beginPath(); g.moveTo(q[0] - 4 * UD, q[1] + 4 * UD); g.lineTo(q[0] + 4 * UD, q[1] - 4 * UD); g.stroke(); });
       const m = lerp(a, b, .5); let rot = ang; if (rot > Math.PI / 2 || rot < -Math.PI / 2) rot += Math.PI;
-      g.save(); g.translate(m[0] - nx * 1.2, m[1] - ny * 1.2); g.rotate(rot); texto(g, txt, 0, -2 * UD, { size: 11 * UD * (p.tamCotas || 1), color: plot ? '#111' : col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); g.restore();
+      g.save(); g.translate(m[0] - nx * 1.2, m[1] - ny * 1.2); g.rotate(rot); const fs = 11 * UD * (p.tamCotas || 1) * ((ct && ct.tam) || 1); texto(g, txt, 0, -2 * UD, { size: fs, color: plot ? '#111' : col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' });
+      if (ct) hitTexto(g, o, { k: 'cota', id: ct.id }, txt, 0, -2 * UD, fs, 'center', 'bottom'); g.restore();
     };
     if (p.ref && !plot && (o.step === 'escala' || o.verRef)) cota(p.ref.a, p.ref.b, p.ref.mm ? `${fmt(p.ref.mm / 1000, 2)} m · REF` : '? m', '#FAB704', true);
-    p.cotas.forEach(ct => { const sel = esSel(o, 'cota', ct.id); cota(ct.a, ct.b, textoCota(p, ct), sel ? '#FAB704' : (plot ? '#111' : '#FFFFFF')); if (sel) grips(g, [T(ct.a), T(ct.b)]); });
+    p.cotas.forEach(ct => { const sel = esSel(o, 'cota', ct.id); cota(ct.a, ct.b, textoCota(p, ct), sel ? '#FAB704' : (plot ? '#111' : '#FFFFFF'), false, ct); if (sel) grips(g, [T(ct.a), T(ct.b)]); });
   }
 
   // Textos (alto en mm reales, como TEXT de AutoCAD)
@@ -285,7 +298,7 @@ export function dibujar(g, p, V, o) {
     dibujar(g, p, { k: k2, ox: d.c[0] * k2 - C[0], oy: d.c[1] * k2 - C[1] }, { ...o, sinDetalles: true, soloFoto: false, sel: null, hits: null, temp: null, capas });
     g.restore(); UD = ud;
     g.beginPath(); g.arc(C[0], C[1], Rb, 0, 7); g.strokeStyle = col; g.lineWidth = 1.3 * u; g.stroke();
-    if (d.ver !== false) texto(g, rotuloBurbuja(p, d, k, o), C[0], C[1] + Rb + 4 * UD, { size: 10 * UD, color: plot ? '#111' : '#fff', halo: plot ? null : 'rgba(0,0,0,.7)', align: 'center', base: 'top' });
+    if (d.ver !== false) { const tr = d.rot || rotuloBurbuja(p, d, k, o), fr = 10 * UD * (d.tamRot || 1); texto(g, tr, C[0], C[1] + Rb + 4 * UD, { size: fr, color: plot ? '#111' : '#fff', halo: plot ? null : 'rgba(0,0,0,.7)', align: 'center', base: 'top' }); hitTexto(g, o, { k: 'det', id: d.id }, tr, C[0], C[1] + Rb + 4 * UD, fr, 'center', 'top'); }
     if (sel) grips(g, [S]);
   });
 
@@ -360,7 +373,7 @@ function etiqueta(g, o, { p, of, id, et = {}, txt, anchorF, def, izqDef, attach,
   g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(L[0], L[1]); g.lineTo(izq ? x0 : x1, L[1]); g.strokeStyle = plot ? '#222' : '#fff'; g.lineWidth = .8 * u; g.stroke();
   texto(g, txt, izq ? x1 - 2 * ue : x0 + 2 * ue, L[1] - 3 * ue, { size, color, halo: plot ? null : 'rgba(0,0,0,.75)', align: izq ? 'right' : 'left' });
   const caja = [x0 - 2, L[1] - size - 4 * ue, x1 + 2, L[1] + 3];
-  if (o.hits) o.hits.push({ t: 'etq', of, id, caja, anchor: anchorF, pos: [(L[0] + V.ox) / k, (L[1] + V.oy) / k] });
+  if (o.hits) o.hits.push({ t: 'etq', of, id, caja, txt, anchor: anchorF, pos: [(L[0] + V.ox) / k, (L[1] + V.oy) / k] });
   if (!plot && o.sel && o.sel.t === 'etq' && o.sel.of === of && o.sel.id === id) { g.setLineDash([4, 3]); g.strokeStyle = et.fijo ? '#9DB0BD' : '#FAB704'; g.lineWidth = 1; g.strokeRect(caja[0], caja[1], caja[2] - caja[0], caja[3] - caja[1]); g.setLineDash([]); }
 }
 /* Nombre de un elemento (zona) escrito dentro de su área, en su color, en hasta 3 líneas. Busca el tamaño más
