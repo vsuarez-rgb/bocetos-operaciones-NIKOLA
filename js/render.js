@@ -217,13 +217,14 @@ export function dibujar(g, p, V, o) {
     const real = esReal(p, e);
     if (real && (e.verMed === true || (e.verMed !== false && p.verMedidas))) {
       const col = plot ? '#111' : '#FAB704', off = 9 * UD, tk = 3 * UD, fs = 9.5 * UD * (e.tamMed || 1), tW = e.medW || fmt(md.w, 0), tH = e.medH || fmt(md.h, 0);
+      const verW = e.sinMed !== 'w', verH = e.sinMed !== 'h';   // e.sinMed: una de las dos cotas quitada a mano
       g.strokeStyle = col; g.lineWidth = .8 * u; g.beginPath();
-      g.moveTo(-w / 2, -h / 2 - off); g.lineTo(w / 2, -h / 2 - off); g.moveTo(-w / 2, -h / 2 - off - tk); g.lineTo(-w / 2, -h / 2 - 2 * UD); g.moveTo(w / 2, -h / 2 - off - tk); g.lineTo(w / 2, -h / 2 - 2 * UD);
-      g.moveTo(w / 2 + off, -h / 2); g.lineTo(w / 2 + off, h / 2); g.moveTo(w / 2 + 2 * UD, -h / 2); g.lineTo(w / 2 + off + tk, -h / 2); g.moveTo(w / 2 + 2 * UD, h / 2); g.lineTo(w / 2 + off + tk, h / 2);
+      if (verW) { g.moveTo(-w / 2, -h / 2 - off); g.lineTo(w / 2, -h / 2 - off); g.moveTo(-w / 2, -h / 2 - off - tk); g.lineTo(-w / 2, -h / 2 - 2 * UD); g.moveTo(w / 2, -h / 2 - off - tk); g.lineTo(w / 2, -h / 2 - 2 * UD); }
+      if (verH) { g.moveTo(w / 2 + off, -h / 2); g.lineTo(w / 2 + off, h / 2); g.moveTo(w / 2 + 2 * UD, -h / 2); g.lineTo(w / 2 + off + tk, -h / 2); g.moveTo(w / 2 + 2 * UD, h / 2); g.lineTo(w / 2 + off + tk, h / 2); }
       g.stroke();
-      [[-w / 2, -h / 2 - off], [w / 2, -h / 2 - off], [w / 2 + off, -h / 2], [w / 2 + off, h / 2]].forEach(q => { g.beginPath(); g.moveTo(q[0] - 2 * UD, q[1] + 2 * UD); g.lineTo(q[0] + 2 * UD, q[1] - 2 * UD); g.stroke(); });
-      texto(g, tW, 0, -h / 2 - off - 2 * UD, { size: fs, color: col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); hitTexto(g, o, { k: 'medW', id: e.id }, tW, 0, -h / 2 - off - 2 * UD, fs, 'center', 'bottom');
-      g.save(); g.translate(w / 2 + off + 2 * UD, 0); g.rotate(Math.PI / 2); texto(g, tH, 0, 0, { size: fs, color: col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); hitTexto(g, o, { k: 'medH', id: e.id }, tH, 0, 0, fs, 'center', 'bottom'); g.restore();
+      [...(verW ? [[-w / 2, -h / 2 - off], [w / 2, -h / 2 - off]] : []), ...(verH ? [[w / 2 + off, -h / 2], [w / 2 + off, h / 2]] : [])].forEach(q => { g.beginPath(); g.moveTo(q[0] - 2 * UD, q[1] + 2 * UD); g.lineTo(q[0] + 2 * UD, q[1] - 2 * UD); g.stroke(); });
+      if (verW) { texto(g, tW, 0, -h / 2 - off - 2 * UD, { size: fs, color: col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); hitTexto(g, o, { k: 'medW', id: e.id }, tW, 0, -h / 2 - off - 2 * UD, fs, 'center', 'bottom'); }
+      if (verH) { g.save(); g.translate(w / 2 + off + 2 * UD, 0); g.rotate(Math.PI / 2); texto(g, tH, 0, 0, { size: fs, color: col, halo: plot ? null : 'rgba(0,0,0,.8)', align: 'center', base: 'bottom' }); hitTexto(g, o, { k: 'medH', id: e.id }, tH, 0, 0, fs, 'center', 'bottom'); g.restore(); }
     }
     const frente = real;
     if (frente) equipoFrente(g, e, E, md, w, h, plot, u);

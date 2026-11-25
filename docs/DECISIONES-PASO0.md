@@ -141,6 +141,7 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - Si no se cambia el texto, no se guarda nada: una cota sigue la medida real hasta que se escriba otra.
 - El render deja la caja de cada texto en `o.hits` (con `t: 'txt'`) solo en el editor; la búsqueda de etiquetas filtra `t: 'etq'`. El DXF usa el texto de la cota y del string tal como se ve.
 - El cuadrito tiene un botón para borrar: en una **etiqueta** la quita (queda oculta y se vuelve a mostrar desde el panel), en una **cota** borra la cota entera (línea y texto) y en un **texto** lo borra. Usa el mismo borrado que Supr, así que se deshace con Ctrl+Z.
+- En la **medida de un equipo** (ancho o alto) el botón es «Quitar cota»: saca solo esa cota y el equipo queda. Campo opcional `equipo.sinMed` = `'w'` | `'h'`; si se quitan las dos, el equipo queda con `verMed = false`, y al volver a mostrar sus medidas (o «Mostrar» todas) reaparecen las dos.
 
 ## Unilineal como los planos de Ops · E1: estilo base y composición (26-11-2026)
 

@@ -628,7 +628,7 @@ function textoRapido(sp) {
   if (h && h.k === 'cota') { const c = p.cotas.find(x => x.id === h.id); if (!c) return null;
     return { sel: { t: 'cota', id: c.id }, titulo: 'Cota', txt: h.txt, propio: c.txt, campo: 'cota.txt', tam: pc('cota.tam', c.tam, 20, 500), nota: escala(p) ? 'Vacío = la medida automática.' : 'En metros (o un texto).' }; }
   if (h && (h.k === 'medW' || h.k === 'medH')) { const e = p.equipos.find(x => x.id === h.id); if (!e) return null;
-    return { sel: { t: 'equipo', id: e.id }, titulo: h.k === 'medW' ? 'Medida del ancho' : 'Medida del alto', txt: h.txt, propio: e[h.k], campo: 'eq.' + h.k, tam: pc('eq.tamMed', e.tamMed, 30, 400), nota: 'Solo cambia lo escrito; vacío = la medida del equipo.' }; }
+    return { sel: { t: 'equipo', id: e.id }, titulo: h.k === 'medW' ? 'Medida del ancho' : 'Medida del alto', txt: h.txt, propio: e[h.k], campo: 'eq.' + h.k, tam: pc('eq.tamMed', e.tamMed, 30, 400), nota: 'Solo cambia lo escrito; vacío = la medida del equipo. «Quitar cota» saca solo esta cota, no el equipo.', quitaMed: h.k === 'medW' ? 'w' : 'h' }; }
   if (h && h.k === 'strnum') { const st = p.strings.find(x => x.id === h.id); if (!st) return null;
     return { sel: null, strAct: st.id, titulo: 'Número del string', txt: h.txt, propio: st.numTxt, campo: 'str.numTxt', tam: pc('str.tamNum', st.tamNum, 40, 250), nota: 'Se aplica a todos los paneles del string.' }; }
   if (h && h.k === 'det') { const d = (p.detalles || []).find(x => x.id === h.id); if (!d) return null;
@@ -639,6 +639,13 @@ function textoRapido(sp) {
   return null;
 }
 function cerrarRapido() { const d = $('#editRap'); if (d) d.remove(); }
+/* Quitar una de las dos cotas de un equipo (ancho «w» o alto «h») sin borrar el equipo. Si ya faltaba la otra,
+   se apagan sus medidas (verMed = false); al volver a mostrarlas aparecen las dos. */
+function quitarMedida(id, lado) {
+  const e = E.p.equipos.find(x => x.id === id); if (!e) return;
+  antes(); if (e.sinMed && e.sinMed !== lado) { delete e.sinMed; e.verMed = false; } else e.sinMed = lado;
+  log(`COTA del equipo quitada (${lado === 'w' ? 'ancho' : 'alto'})`); despues();
+}
 /* Botón «borrar» del cuadrito: la etiqueta se oculta (se vuelve a mostrar desde el panel); la cota y el texto se borran enteros */
 const BORRA_RAP = { etq: ['Quitar', 'Quitar esta etiqueta'], cota: ['Borrar cota', 'Borrar la cota entera'], texto: ['Borrar', 'Borrar este texto'] };
 function editarRapido(sp) {
@@ -649,7 +656,7 @@ function editarRapido(sp) {
   div.innerHTML = `<b>${esc(D.titulo)}</b>${D.multi ? `<textarea class="in" rows="${Math.min(5, String(val).split('\n').length + 1)}">${esc(val)}</textarea>` : `<input class="in" value="${esc(val)}">`}
     ${T.num ? `<label class="f"><span>Altura</span><span class="fi"><input class="in er-tam" value="${T.val}" inputmode="decimal"><em>${T.u}</em></span></label>`
       : `<label class="f"><span>Tamaño</span><span class="fr"><input type="range" class="er-tam" min="${T.min}" max="${T.max}" step="1" value="${T.val}"><output>${T.val}${T.u}</output></span></label>`}
-    ${D.nota ? `<p class="mut">${D.nota}</p>` : ''}<div class="row"><button class="btn sm pri" data-er="ok">Guardar (Enter)</button>${D.propio && !D.multi ? '<button class="btn sm" data-er="auto">Automático</button>' : ''}<button class="btn sm" data-er="no">Cancelar</button>${BORRA_RAP[D.sel?.t] ? `<button class="btn sm del" data-er="del" title="${BORRA_RAP[D.sel.t][1]}">${ic('trash', 13)} ${BORRA_RAP[D.sel.t][0]}</button>` : ''}</div>`;
+    ${D.nota ? `<p class="mut">${D.nota}</p>` : ''}<div class="row"><button class="btn sm pri" data-er="ok">Guardar (Enter)</button>${D.propio && !D.multi ? '<button class="btn sm" data-er="auto">Automático</button>' : ''}<button class="btn sm" data-er="no">Cancelar</button>${D.quitaMed ? `<button class="btn sm del" data-er="med" title="Quitar esta cota del equipo (el equipo queda)">${ic('trash', 13)} Quitar cota</button>` : ''}${BORRA_RAP[D.sel?.t] ? `<button class="btn sm del" data-er="del" title="${BORRA_RAP[D.sel.t][1]}">${ic('trash', 13)} ${BORRA_RAP[D.sel.t][0]}</button>` : ''}</div>`;
   document.body.appendChild(div);
   const x = Math.min(rc.left + sp[0] + 14, innerWidth - div.offsetWidth - 8), y = Math.min(rc.top + sp[1] + 14, innerHeight - div.offsetHeight - 8);
   div.style.left = Math.max(8, x) + 'px'; div.style.top = Math.max(8, y) + 'px';
@@ -665,6 +672,7 @@ function editarRapido(sp) {
     else if (ev.key === 'Enter' && ev.target === tam) { ev.preventDefault(); aplicar(T.campo, tam.value); cambioTam = true; } });
   div.addEventListener('click', ev => { const b = ev.target.closest('[data-er]'); if (!b) return; const k = b.dataset.er;
     if (k === 'ok') { if (T.num && tam.value !== String(T.val)) aplicar(T.campo, tam.value); guardar(inp.value); } else if (k === 'auto') { aplicar(D.campo, ''); cerrarRapido(); }
+    else if (k === 'med') { if (cambioTam) deshacer(); cerrarRapido(); quitarMedida(D.sel.id, D.quitaMed); $('#cv')?.focus(); }
     else if (k === 'del') { if (cambioTam) deshacer(); cerrarRapido(); E.sel = D.sel; borrarSel(); $('#cv')?.focus(); } else cancelar(); });
 }
 function zonaDeArrastre(a, b) {
@@ -1299,8 +1307,8 @@ document.addEventListener('click', ev => {
     case 'config': abrirConfig(b.dataset.k || 'normas'); break;
     case 'relleno': E.rellenoK = k; E.tool = 'relleno'; E.temp = null; render(); pista(); break;
     case 'guia-quitar': { const t = E.sel && p.textos.find(x => x.id === E.sel.id); if (t) { antes(); delete t.guia; despues(); } break; }
-    case 'medidas-todas': { antes(); const on = b.dataset.k === '1'; p.verMedidas = on; p.equipos.forEach(x => delete x.verMed); despues(); break; }
-    case 'med-ojo': { const e2 = p.equipos.find(x => x.id === b.dataset.id); if (!e2) break; antes(); const visible = e2.verMed === true || (e2.verMed !== false && p.verMedidas); e2.verMed = !visible; despues(); break; }
+    case 'medidas-todas': { antes(); const on = b.dataset.k === '1'; p.verMedidas = on; p.equipos.forEach(x => { delete x.verMed; delete x.sinMed; }); despues(); break; }
+    case 'med-ojo': { const e2 = p.equipos.find(x => x.id === b.dataset.id); if (!e2) break; antes(); const visible = e2.verMed === true || (e2.verMed !== false && p.verMedidas); e2.verMed = !visible; if (!visible) delete e2.sinMed; despues(); break; }
     case 'etq-sel': E.sel = { t: 'etq', of: b.dataset.of, id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'sel-obj': E.sel = { t: b.dataset.t, id: b.dataset.id }; panel(); dibujarTodo(); break;
     case 'etq-ojo': { const ow = listaEtq(b.dataset.of).find(x => x.id === b.dataset.id); if (!ow) break; antes(); const et = (ow.etq ||= {});
@@ -1368,7 +1376,7 @@ function aplicar(campo, v, desdeChange, vivo) {
     else if (k === 'modo') { e.modo = v; delete e.mw; delete e.mh; delete e.f; }
     else if (k === 'mw' || k === 'mh') { if (n > 0) e[k] = Math.round(n); else delete e[k]; }
     else if (k === 'f') e.f = Math.max(.1, +v / 100);
-    else if (k === 'verMed') e.verMed = !!v;
+    else if (k === 'verMed') { e.verMed = !!v; if (v) delete e.sinMed; }
     else if (k === 'medW' || k === 'medH') { const t = String(v).trim(); if (t) e[k] = t; else delete e[k]; }
     else if (k === 'tamMed') { const t = +v / 100; if (Math.abs(t - 1) < .001) delete e.tamMed; else e.tamMed = Math.max(.2, t); }
     else if (k === 'modelo') { if (v) e.modelo = v; else delete e.modelo; const M = modeloPorId(v); if (M) e.modeloDatos = datosModelo(M); else if (!v) delete e.modeloDatos; }
