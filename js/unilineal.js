@@ -279,7 +279,8 @@ export function panelUnilineal(p) {
   h += sec('Empalme', `${inp('L.empalme', 'Tipo de empalme', L.empalme, 'S-9-40')}<div class="row">${inp('L.tarifa', 'Tarifa', L.tarifa, 'BT1')}${inp('L.nCliente', 'N° de cliente', L.nCliente, '')}</div>
     <div class="row">${inp('L.marcaEmp', 'Marca protección', L.marcaEmp, '')}${inp('L.kAEmp', 'Poder de corte', L.kAEmp, '10', 'kA')}</div>${inp('p.distrib', 'Distribuidora (bajo el medidor)', p.distrib, 'ENEL, CGE…')}`, false);
   h += sec('Tierra de servicio y protección', `${inp('L.tierraCond', 'Conductor', L.tierraCond, 'Evaflex 2x6 mm² (N+T)')}<div class="row">${inp('L.tierraL', 'Largo', L.tierraL, '', 'm')}${inp('L.tierraR', 'Resistencia', L.tierraR, '18,3', 'Ω')}</div>
-    ${inp('L.tierraMet', 'Método de medición', L.tierraMet, 'Método de pinza')}`, false);
+    ${inp('L.tierraMet', 'Método de medición', L.tierraMet, 'Método de pinza')}
+    <div class="sub">Tierra de los strings (T.P.)</div><div class="row">${inp('L.tierraStrCond', 'Conductor', L.tierraStrCond, 'Evaflex 1x6 mm²')}${inp('L.tierraRstr', 'Resistencia', L.tierraRstr, '', 'Ω')}</div>`, false);
   h += sec('Conductores en CA', `${inp('L.largo_inv-tg', 'Largo Inversor – TGFV', L['largo_inv-tg'], `${fmt(ca.tramos[0].auto, 0)} según el dibujo`, 'm')}${inp('L.largo_tg-emp', 'Largo TG – Empalme', L['largo_tg-emp'], `${fmt(ca.tramos[1].auto, 0)} según el dibujo`, 'm')}
     <dl class="dl"><dt>Caída total</dt><dd>${fmt(ca.totalP, 2)} %</dd></dl>`, false);
   h += sec('Strings', SI.lista.length ? `<div class="uni-str">${SI.lista.map(x => `<div class="uni-str-f"><b>${esc(x.nombre)}</b><span>${x.n} mód.</span>
@@ -288,9 +289,9 @@ export function panelUnilineal(p) {
       <label class="f mini"><span>Sección</span><span class="fi"><input class="in" data-uni="s.${x.st.id}.seccion" value="${x.seccion}" inputmode="decimal"><em>mm²</em></span></label></div>`).join('')}</div>` : '<p class="mut">Sin strings: se arman en el paso Strings.</p>', false);
   h += sec('Qué se muestra', `${chk('u.consumo', 'Circuito de consumo', U.consumo !== false)}${chk('u.tierra', 'Tierra de servicio', U.tierra !== false)}${chk('u.dcSwitch', 'DC switch del inversor', U.dcSwitch !== false)}
     <div class="sub">Agregar</div>
-    ${chk('x.bat', 'Batería', U.extras.bat)}${U.extras.bat ? `<div class="row">${inp('x.batModelo', 'Modelo', U.extras.batModelo, 'LUNA2000')}${inp('x.batCap', 'Capacidad', U.extras.batCap, '10 kWh')}</div>` : ''}
-    ${chk('x.sg', 'SmartGuard (respaldo)', U.extras.sg)}
-    ${chk('x.ev', 'Circuito del cargador EV', U.extras.ev)}${U.extras.ev ? inp('x.evProt', 'Protección del cargador', U.extras.evProt, '2x32 A Curva C') : ''}`);
+    ${chk('x.bat', 'Batería', U.extras.bat)}${U.extras.bat || B.bat ? `<div class="row">${inp('x.batModelo', 'Modelo', U.extras.batModelo, 'LUNA2000')}${inp('x.batCap', 'Energía total', U.extras.batCap, '10 kWh')}</div><div class="row">${inp('x.batPmax', 'Potencia máx.', U.extras.batPmax, '5 kW')}${inp('x.batV', 'Tensión de operación', U.extras.batV, '350–560 V')}</div>` : ''}
+    ${chk('x.sg', 'SmartGuard (respaldo)', U.extras.sg)}${U.extras.sg || B.sg ? inp('x.sgModelo', 'Modelo del SmartGuard', U.extras.sgModelo, '') : ''}
+    ${chk('x.ev', 'Circuito del cargador EV', U.extras.ev)}${U.extras.ev ? `<div class="row">${inp('x.evProt', 'Protección', U.extras.evProt, '2x32 A Curva C')}${inp('x.evDif', 'Diferencial', U.extras.evDif, '2x40 A 30 mA Tipo A-SI')}</div><div class="row">${inp('x.evMarca', 'Marca del cargador', U.extras.evMarca, '')}${inp('x.evKw', 'Potencia', U.extras.evKw, '7,4', 'kW')}</div>` : ''}`);
   h += sec(`Textos cambiados a mano${mods.length ? ` (${mods.length})` : ''}`, mods.length ? `<div class="uni-mods">${mods.map(([k, v]) => `<div class="row uni-mod"><span title="${esc(k)}">${esc(v.trim() ? v : '(oculto)')}</span><button class="btn sm" data-act="uni-reset" data-k="${esc(k)}" title="Volver al texto calculado">↺</button></div>`).join('')}</div>
     <button class="btn sm" data-act="uni-reset-all">Volver todos al texto calculado</button>` : '<p class="mut">Ninguno. Haz clic en un texto del diagrama para escribirlo (los cambiados se ven en azul aquí, no en el PDF). Déjalo vacío para volver al calculado; escribe un espacio para ocultarlo.</p>', mods.length > 0);
   return h;

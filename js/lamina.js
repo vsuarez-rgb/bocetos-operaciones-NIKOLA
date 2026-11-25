@@ -175,6 +175,9 @@ function unilineal(p, D, SI, x0, y0, w, h) {
   const difer = (x, y, k, def) => dif(x, y) + rotulo(x + 3, y + .9, k, lineasDif(def, L.marcaDif));          // diferencial (y = borde superior)
   const circuito = (Xc, yb, yfin, k, def, izq, num) => ln(Xc, yb, Xc, yb + 2) + breaker(Xc, yb + 6) + ln(Xc, yb + 10, Xc, yfin) +
     `<circle cx="${Xc}" cy="${yfin + 1.6}" r="1.6" fill="none" stroke="#111" stroke-width="${LW}"/>` + (num ? T(Xc, yfin + 2.25, num, 1.8, { a: 'middle', it: false, ff: FSERIF }) : TU(k, Xc + (izq ? -2.6 : 2.6), yfin + 2.2, def, FU, izq ? { a: 'end' } : {}));
+  /* Circuito del cargador EV dentro del tablero general: interruptor + diferencial 30 mA Tipo A-SI y el cargador bajo el tablero */
+  const circuitoEV = (Xc, yb, yBase) => ln(Xc, yb, Xc, yb + 2) + prot(Xc, yb + 6, 'ev.prot', U.extras.evProt || `${polos}x32 A Curva C`) + ln(Xc, yb + 10, Xc, yb + 12.5) +
+    difer(Xc, yb + 12.5, 'ev.dif', U.extras.evDif || `${polos}x40 A 30 mA Tipo A-SI`) + ln(Xc, yb + 15.5, Xc, yBase + 4) + cargador(Xc, yBase + 4, 'ev.cg', U.extras.evMarca || 'Marca (pendiente)', U.extras.evKw || '—');
   /* Leyenda «① Consumo» a la izquierda del tablero general */
   const leyenda = (x, y, k, n, def) => Rc(x, y, 26, 7, { st: '#111', sw: LW }) + `<circle cx="${x + 3.4}" cy="${y + 3.5}" r="1.5" fill="none" stroke="#111" stroke-width="${LW}"/>` +
     T(x + 3.4, y + 4.15, n, 1.7, { a: 'middle', it: false, ff: FSERIF }) + TU(k, x + 6.2, y + 4.4, def, 2.4, { it: false, ff: FSERIF });
@@ -207,7 +210,7 @@ function unilineal(p, D, SI, x0, y0, w, h) {
 
   /* ---- Alturas: bloques fijos y huecos repartidos (el dibujo llena la hoja) ---- */
   const conTFV = !!B.tfv;
-  const hTG = B.soloEV ? 40 : conTFV ? 30 : 44, hTFV = 28, hInv = conTFV ? 40 : 44, hStr = conTFV ? 46 : 50, hArr = B.offgrid ? 12 : ey + eh - y0 + 2;
+  const hTG = B.soloEV ? 40 : conTFV ? (X.ev ? 38 : 30) : 44, hTFV = 28, hInv = conTFV ? 40 : 44, hStr = conTFV ? 46 : 50, hArr = B.offgrid ? 12 : ey + eh - y0 + 2;
   const nGap = B.soloEV ? 2 : conTFV ? 3 : 2;
   const gap = Math.max(18, Math.min(40, (h - hArr - hTG - (conTFV ? hTFV : 0) - (B.soloEV ? 30 : hInv + hStr)) / nGap));
   const tw = Math.min(w * .42, 120), tx = cx - tw / 2;
@@ -235,7 +238,7 @@ function unilineal(p, D, SI, x0, y0, w, h) {
     s += ln(tx + 8, ty + 16, tx + tw - 8, ty + 16, C.barra) + TU('tg.barra', tx + tw - 9, ty + 15.2, 'Barra repartidora de cobre', 1.3, { a: 'end' });
     s += ln(cx, ty + 16, cx, ty + 18) + prot(cx, ty + 22, 'tg.fvp', `${L.disyuntor || disyDef(D)}`) + ln(cx, ty + 26, cx, ty + 29) + difer(cx, ty + 29, 'tg.dif', `${L.diferencial || difDef(D)}`);
     if (U.consumo !== false) s += circuito(cx + tw * .32, ty + 16, ty + hTG + 6, 'tg.consumo', 'Consumo', false, '1') + leyenda(tx - 36, ty + hTG - 10, 'tg.consumo', '1', 'Consumo');
-    if (X.ev) s += circuito(cx - tw * .32, ty + 16, ty + hTG + 6, 'ev.titulo', 'Cargador EV', true) + TU('ev.prot', cx - tw * .32 - 2.6, ty + hTG + 10.4, U.extras.evProt || '2x32 A Curva C', FU, { a: 'end' });
+    if (X.ev) s += circuitoEV(cx - tw * .32, ty + 16, ty + hTG);
     if (B.evTablero) s += tableroEV(ty + 16, ty);
     yFin = ty + 32;
   } else {
@@ -244,16 +247,36 @@ function unilineal(p, D, SI, x0, y0, w, h) {
     s += ln(tx + 8, ty + 14, tx + tw - 8, ty + 14, C.barra) + TU('tg.barra', tx + tw - 9, ty + 13.2, 'Barra repartidora de cobre', 1.3, { a: 'end' });
     s += ln(cx, ty + 14, cx, ty + 16) + prot(cx, ty + 20, 'tg.alim', disyDef(D));
     if (U.consumo !== false) s += circuito(cx + tw * .32, ty + 14, ty + hTG + 4, 'tg.consumo', 'Consumo', false, '1') + leyenda(tx - 36, ty + hTG - 10, 'tg.consumo', '1', 'Consumo');
-    if (X.ev) s += circuito(cx - tw * .32, ty + 14, ty + hTG + 4, 'ev.titulo', 'Cargador EV', true) + TU('ev.prot', cx - tw * .32 - 2.6, ty + hTG + 8.4, U.extras.evProt || '2x32 A Curva C', FU, { a: 'end' });
+    if (X.ev) s += circuitoEV(cx - tw * .32, ty + 14, ty + hTG);
     const t2 = ty + hTG + gap, tw2 = Math.min(tw * .6, 70);
-    s += ln(cx, ty + 24, cx, t2) + `<circle cx="${cx}" cy="${ty + hTG + gap * .5}" r=".6" fill="#fff" stroke="${C.guia}" stroke-width="${LW}"/>` + TU('ctg.0', cx - 2.6, ty + hTG + gap * .5 - .5, `RVK ${polos}x8,37 mm² · Tub. EMT Ø32 mm`, FU, { a: 'end' });
+    s += ln(cx, ty + 24, cx, t2) + `<circle cx="${cx}" cy="${ty + hTG + gap * .5}" r=".6" fill="#fff" stroke="${C.guia}" stroke-width="${LW}"/>` + TU('ctg.0', cx + (X.ev ? 2.6 : -2.6), ty + hTG + gap * .5 - .5, `RVK ${polos}x8,37 mm² · Tub. EMT Ø32 mm`, FU, X.ev ? {} : { a: 'end' });
     s += tablero(cx - tw2 / 2, t2, tw2, hTFV, 'tfv', 'TABLERO FOTOVOLTAICO (TFV)');
     s += ln(cx, t2, cx, t2 + 4) + prot(cx, t2 + 8, 'tg.disy', `${L.disyuntor || disyDef(D)}`) + ln(cx, t2 + 12, cx, t2 + 16) + difer(cx, t2 + 16, 'tg.dif', `${L.diferencial || difDef(D)}`);
     yFin = t2 + 19;
   }
-  // Tablero de electromovilidad (a la derecha, alimentado desde la barra del tablero general)
+  if (X.sg && !B.offgrid) s += smartGuard(conTFV ? ty + 14 : ty + 16);
+  /* Smart Guard: tablero magenta propio arriba a la derecha (como en el ON 909). GRID desde la acometida,
+     BACKUP → ② consumos con respaldo, NON BACKUP → ③ consumos sin respaldo, FV ↔ barra del tablero general. */
+  function smartGuard(yB) {
+    const sw = 72, sh = 26, gx = cx + 40, gy = yE + 8, xs = [gx + 6, gx + 24, gx + 42, gx + 62], yb = gy + 15, yJ = gy - 5, p63 = `${polos}x63 A Curva C`;
+    const carga = (x, y, n, k, def) => `<circle cx="${x}" cy="${y}" r="1.6" fill="none" stroke="#111" stroke-width="${LW}"/>` + T(x, y + .65, n, 1.8, { a: 'middle', it: false, ff: FSERIF }) + TU(k, x + 2.6, y + .6, def, FU);
+    let t = Rc(gx, gy, sw, sh, { st: C.equipo, sw: LW }) + TU('sg.titulo', gx + sw + 2, gy + 4, 'Smart Guard', FT, { b: true, ff: FSERIF }) + TU('sg.modelo', gx + sw + 2, gy + 7, U.extras.sgModelo || '', FU);
+    t += ln(gx + 2, yb, gx + sw - 2, yb, C.barra);
+    t += TU('sg.grid', xs[0] + .8, gy + 2.3, 'GRID', 1.3) + TU('sg.bk', xs[2] + .8, gy + 2.3, 'BACKUP', 1.3) + TU('sg.fv', xs[1] - .8, gy + sh - .8, 'FV', 1.3, { a: 'end' }) + TU('sg.nbk', xs[3] - .8, gy + sh - .8, 'NON BACKUP', 1.3, { a: 'end' });
+    t += ln(xs[0], gy, xs[0], gy + 4) + prot(xs[0], gy + 8, 'sg.p1', p63) + ln(xs[0], gy + 12, xs[0], yb);              // GRID
+    t += ln(xs[2], gy, xs[2], gy + 4) + prot(xs[2], gy + 8, 'sg.p2', p63) + ln(xs[2], gy + 12, xs[2], yb);              // BACKUP
+    t += ln(xs[1], yb, xs[1], gy + 16) + prot(xs[1], gy + 20, 'sg.p3', p63) + ln(xs[1], gy + 24, xs[1], gy + sh);       // FV
+    t += ln(xs[3], yb, xs[3], gy + sh);                                                                               // NON BACKUP
+    t += codo(cx, yJ, xs[0], gy) + `<circle cx="${cx}" cy="${yJ}" r=".55" fill="#111"/>`;                              // desde la acometida
+    t += ln(xs[2], gy, xs[2], gy - 3) + carga(xs[2], gy - 4.6, '2', 'sg.c2', 'Consumos con respaldo');
+    t += ln(xs[3], gy + sh, xs[3], gy + sh + 3) + carga(xs[3], gy + sh + 4.6, '3', 'sg.c3', 'Consumos sin respaldo');
+    const xb = tx + tw - 8;                                                                                          // FV baja a la barra del tablero general
+    t += `<path d="M${xs[1]} ${gy + sh}V${yB - 2}Q${xs[1]} ${yB} ${xs[1] - 2} ${yB}H${xb}" fill="none" stroke="${C.cond}" stroke-width="${LW}"/><circle cx="${xb}" cy="${yB}" r=".55" fill="#111"/>`;
+    return t;
+  }
+  // Tablero de electromovilidad (a la derecha, alimentado bajando desde la barra del tablero general)
   function tableroEV(yBarra, tyy) {
-    const bw = 44, bx = Math.min(x0 + w - bw - 30, tx + tw + 40), by = tyy, bh = 30;
+    const bw = 44, bx = Math.min(x0 + w - bw - 30, tx + tw + 40), by = tyy + 22, bh = 30;
     let t = codo(tx + tw - 8, yBarra, bx + bw / 2, by);
     t += tablero(bx, by, bw, bh, 'tev', 'TABLERO ELECTROMOVILIDAD', false);
     t += ln(bx + bw / 2, by, bx + bw / 2, by + 4) + prot(bx + bw / 2, by + 8, 'ev.prot', U.extras.evProt || '2x32 A Curva C') + ln(bx + bw / 2, by + 12, bx + bw / 2, by + 16) + difer(bx + bw / 2, by + 16, 'tev.dif', '2x40 A 30 mA Tipo A-SI') + ln(bx + bw / 2, by + 19, bx + bw / 2, by + bh + 14);
@@ -263,37 +286,48 @@ function unilineal(p, D, SI, x0, y0, w, h) {
   /* ---- Inversor: marco magenta, símbolo en el eje, MPPT y DC SWITCH ---- */
   const iy = yFin + gap + (conTFV ? hTFV - 19 : hTG - 32), nM = I.mppt, iw = Math.min(w * .62, Math.max(96, nM * 32)), ix = cx - iw / 2, ih = hInv;
   s += ln(cx, yFin, cx, iy + 4) + cond(cx, yFin + (iy - yFin) * .5, ca.tramos[0], I, 'c1', TU, 1);
-  if (X.sg) { const gx = tx + tw + 10, gy = yFin + 4; s += Rc(gx, gy, 30, 14, { st: C.equipo, sw: LW }) + TU('sg.titulo', gx + 15, gy - 1.6, 'Smart Guard', 2.2, { a: 'middle', b: true, ff: FSERIF }) + TU('sg.modelo', gx + 15, gy + 8, 'Respaldo', FU, { a: 'middle' }) + ln(gx, gy + 7, cx, gy + 7); }
   s += Rc(ix, iy, iw, ih, { st: C.equipo, sw: LW });
   s += TU('inv.1', ix + 2.5, iy + 3.6, B.offgrid ? 'INVERSOR HÍBRIDO (OFF GRID)' : 'INVERSOR', FU) + TU('inv.2', ix + 2.5, iy + 5.8, `${I.marca} ${I.modelo}${(p.cantInv || 1) > 1 ? ` (x${p.cantInv})` : ''}`, FU) + TU('inv.3', ix + 2.5, iy + 8, `POT. NOMINAL ${I.kw} kW`, FU) + TU('inv.4', ix + 2.5, iy + 10.2, 'Perfil de red: Chile (CL)', FU);
   s += Rc(cx - 3.5, iy + 4, 7, 7, { st: C.equipo, sw: LW }) + Ln(cx - 3.5, iy + 11, cx + 3.5, iy + 4, { st: C.equipo, sw: LW }) + T(cx - 2.7, iy + 6.6, '~', 2.2, { it: false, fill: C.equipo }) + T(cx + .6, iy + 10.4, '=', 2, { it: false, fill: C.equipo });
   const paso = (iw - 14) / nM, sx = i => ix + 10 + paso * (i + .5), yBus = iy + 16;
   s += ln(cx, iy + 11, cx, yBus) + ln(sx(0) - 4, yBus, sx(nM - 1) + 4, yBus, C.barra);
-  for (let i = 0; i < nM; i++) s += ln(sx(i), yBus, sx(i), iy + 19, C.equipo) + Rc(sx(i) - 3, iy + 19, 6, 5.4, { st: C.equipo, sw: LW }) + T(sx(i), iy + 21.3, 'MPPT', 1.3, { a: 'middle' }) + T(sx(i), iy + 23.4, String(i + 1), 1.3, { a: 'middle' });
+  /* Entradas: cada MPPT con su sub-barra y una entrada por string (interruptor verde en el DC SWITCH);
+     las que no tienen string salen como «VACANTE», como en el unilineal DC nuevo */
+  const nIn = Math.max(1, I.strPorMppt || 1), off = Math.min(14, paso / (nIn + .5)), xIn = (i, j) => sx(i) + j * off, yIn = nIn > 1 ? iy + 26.5 : iy + 24.4;
+  const sy = iy + ih + 4, fs = nM > 5 ? 1.35 : FU, dcsw = U.dcSwitch !== false;
+  const lista = SI.lista.length ? SI.lista : Array.from({ length: nM }, (_, i) => ({ st: { id: 'v' + i, mppt: i + 1, num: 1 }, vacio: true, nombre: `A.${i + 1}.1` }));
+  const usadas = new Set(lista.map(x => `${Math.min(nM - 1, (x.st.mppt || 1) - 1)}:${(x.st.num || 1) - 1}`));
+  for (let i = 0; i < nM; i++) { s += ln(sx(i), yBus, sx(i), iy + 19, C.equipo) + Rc(sx(i) - 3, iy + 19, 6, 5.4, { st: C.equipo, sw: LW }) + T(sx(i), iy + 21.3, 'MPPT', 1.3, { a: 'middle' }) + T(sx(i), iy + 23.4, String(i + 1), 1.3, { a: 'middle' });
+    if (nIn > 1) s += ln(sx(i), iy + 24.4, sx(i), yIn) + ln(sx(i) - 2, yIn, xIn(i, nIn - 1) + 2, yIn, C.barra); }
   const yDC = iy + 31;
-  if (U.dcSwitch !== false) s += Rc(sx(0) - 6, yDC, sx(nM - 1) - sx(0) + 12, 5.6, { st: C.equipo, sw: LW }) + TU('inv.dcsw', sx(0) - 7.5, yDC + 2.3, 'DC SWITCH', FU, { a: 'end' }) + T(sx(0) - 7.5, yDC + 4.5, '1', FU, { a: 'end' });
-  for (let i = 0; i < nM; i++) s += ln(sx(i), iy + 24.4, sx(i), yDC, C.equipo) + (U.dcSwitch !== false ? `<path d="M${sx(i) - .9} ${yDC + 4.4}l1.8 -3.2" stroke="${C.prot}" stroke-width="${LW}"/>` : '');
-  // Batería: a la derecha del inversor, desde el bus de CC
-  if (X.bat) { const bx = Math.min(ix + iw + 12, x0 + w - 40), by = iy + 14;
-    s += codo(sx(nM - 1) + 4, yBus, bx + 4.5, by) + Ln(cx + 3.5, iy + 7.5, bx + 7, iy + 7.5, { st: C.bat, sw: LW }) + Ln(bx + 7, iy + 7.5, bx + 7, by, { st: C.bat, sw: LW });
-    s += Rc(bx, by, 9, 18, { st: C.equipo, sw: LW }) + T(bx + 2.2, by + 15, '+', 2, { it: false }) + T(bx + 5.2, by + 15, '–', 2, { it: false });
-    s += TU('bat.titulo', bx + 11, by + 2, 'Batería', FU) + TU('bat.modelo', bx + 11, by + 4.2, U.extras.batModelo || 'LUNA2000', FU) + TU('bat.cap', bx + 11, by + 6.4, U.extras.batCap || '', FU); }
+  if (dcsw) s += Rc(sx(0) - 6, yDC, xIn(nM - 1, nIn - 1) - sx(0) + 12, 5.6, { st: C.equipo, sw: LW }) + TU('inv.dcsw', sx(0) - 7.5, yDC + 2.3, 'DC SWITCH', FU, { a: 'end' }) + T(sx(0) - 7.5, yDC + 4.5, '1', FU, { a: 'end' });
+  for (let i = 0; i < nM; i++) for (let j = 0; j < nIn; j++) { const x = xIn(i, j);
+    s += ln(x, yIn, x, dcsw ? yDC + 1 : yIn) + (dcsw ? swDC(x, yDC + 1) : '');
+    if (!usadas.has(`${i}:${j}`)) s += ln(x, dcsw ? yDC + 4.6 : yIn, x, sy - .5) + `<path d="M${x - .9} ${sy - 1.2}l1.8 -1M${x - .9} ${sy - .5}l1.8 -1" stroke="${C.cond}" stroke-width="${LW}"/>` + T(x, sy + 1.6, 'VACANTE', 1.2, { a: 'middle' }); }
+  // Batería: a la derecha del inversor, desde el bus de CC, con su DC SWITCH arriba
+  if (X.bat) { const bx = Math.min(ix + iw + 12, x0 + w - 40), by = iy + 22, E = U.extras;
+    s += codo(sx(nM - 1) + 4, yBus, bx + 3, by) + Ln(cx + 3.5, iy + 7.5, bx + 7, iy + 7.5, { st: C.bat, sw: LW }) + Ln(bx + 7, iy + 7.5, bx + 7, by, { st: C.bat, sw: LW });
+    s += Rc(bx, by, 9, 18, { st: C.equipo, sw: LW }) + Ln(bx, by + 5.6, bx + 9, by + 5.6, { st: C.equipo, sw: LW }) + swDC(bx + 3, by + 1) + TU('bat.dcsw', bx - 1.5, by + 3.4, 'DC SWITCH', 1.3, { a: 'end' });
+    s += T(bx + 2.2, by + 10, '+', 2, { it: false }) + T(bx + 5.6, by + 10, '–', 2, { it: false });
+    s += [['bat.titulo', 'Módulo DC/DC + batería'], ['bat.modelo', E.batModelo || 'LUNA2000'], ['bat.cap', `E total = ${E.batCap || '—'}`], ['bat.pmax', `P máx = ${E.batPmax || '—'}`], ['bat.vop', `V op = ${E.batV || '—'}`]]
+      .map(([k, d], i) => TU(k, bx + 11, by + 2 + i * 2.2, d, FU)).join(''); }
 
   /* ---- Strings: rojo continuo, canalización común con un círculo en cada cruce, módulo vertical ---- */
-  const sy = iy + ih + 4, off = Math.min(14, paso / ((I.strPorMppt || 1) + .5)), fs = nM > 5 ? 1.35 : FU;
-  const lista = SI.lista.length ? SI.lista : Array.from({ length: nM }, (_, i) => ({ st: { id: 'v' + i, mppt: i + 1, num: 1 }, vacio: true, nombre: `A.${i + 1}.1` }));
-  const xsDe = x => sx(Math.min(nM - 1, (x.st.mppt || 1) - 1)) + ((x.st.num || 1) - 1) * off;
+  const xsDe = x => xIn(Math.min(nM - 1, (x.st.mppt || 1) - 1), Math.min(nIn - 1, (x.st.num || 1) - 1));
   const xs = lista.map(xsDe), xMin = Math.min(...xs), xMax = Math.max(...xs);
   s += Ln(xMin - 8, sy + 3, xMax + 8, sy + 3, { st: '#111', sw: LW }) + TU('str.ducto1', xMin - 10, sy + 2.2, 'Tub. EMT Ø32 mm', fs, { a: 'end' }) + TU('str.ducto2', xMin - 10, sy + 4.4, 'Tub. Metálica Flex. Heavy Duty Ø32 mm', fs, { a: 'end' });
   lista.forEach(x => {
     const Xs = xsDe(x), k = `s.${x.st.id}.`, ym = sy + 15;
-    s += ln(Xs, U.dcSwitch !== false ? yDC + 5.6 : iy + 24.4, Xs, ym) + `<circle cx="${Xs}" cy="${sy + 3}" r=".6" fill="#fff" stroke="#111" stroke-width="${LW}"/>`;
+    s += ln(Xs, dcsw ? yDC + 4.6 : yIn, Xs, ym) + `<circle cx="${Xs}" cy="${sy + 3}" r=".6" fill="#fff" stroke="#111" stroke-width="${LW}"/>`;
     s += Rc(Xs - 1.9, ym, 3.8, 5.4, { st: C.prot, sw: LW }) + `<path d="M${Xs - 1.9} ${ym}L${Xs} ${ym + 2.7}L${Xs + 1.9} ${ym}" fill="none" stroke="${C.prot}" stroke-width="${LW}"/>`;
     if (x.vacio) { s += T(Xs - 3, ym + 8, `Str.${x.nombre}`, fs, { a: 'end' }); return; }
     s += TU(k + 'largo', Xs + 1.2, sy + 9.6, `L=${fmt(x.largo, 0)} m`, fs) + TU(k + 'cond', Xs + 1.2, sy + 11.8, `PV1-F 2x${x.seccion} mm²`, fs);
     s += TU(k + 'pmax', Xs + 3, ym + 2.2, `Ptotal=${fmt(x.pw / 1000, 2)} kWp`, fs) + TU(k + 'pmod', Xs + 3, ym + 4.4, `Pmód=${x.P.wp} Wp`, fs);
     s += TU(k + 'nombre', Xs - 3, ym + 8, `Str.${x.nombre}`, fs, { a: 'end' }) + TU(k + 'mods', Xs - 3, ym + 10.2, `${x.n} módulos`, fs, { a: 'end' });
-    s += `<circle cx="${Xs + 1.9}" cy="${ym + 5.4}" r=".45" fill="#111"/>` + Ln(Xs + 1.9, ym + 5.4, Xs + 3.2, ym + 5.4, { st: '#111', sw: LW }) + Ln(Xs + 3.2, ym + 5.4, Xs + 3.2, ym + 10, { st: '#111', sw: LW }) + tierraP(Xs + 3.2, ym + 10) + TU(k + 'tp', Xs + 3.2, ym + 16, 'T.P.', 1.4, { a: 'middle' });
+    s += `<circle cx="${Xs + 1.9}" cy="${ym + 5.4}" r=".45" fill="#111"/>` + Ln(Xs + 1.9, ym + 5.4, Xs + 3.2, ym + 5.4, { st: '#111', sw: LW }) + Ln(Xs + 3.2, ym + 5.4, Xs + 3.2, ym + 10, { st: '#111', sw: LW }) + tierraP(Xs + 3.2, ym + 10) + TU(k + 'tp', Xs + 3.2, ym + 15.6, 'T.P.', 1.3, { a: 'middle' });
+    // bloque de tierra del string: conductor y resistencia medida, separados por una raya
+    const ct = U.textos[k + 'tp2'] ?? (L.tierraStrCond || 'Evaflex 1x6 mm²'), an = anchoT(ct, 1.3) + 2;
+    s += TU(k + 'tp2', Xs + 3.2, ym + 17.6, ct, 1.3, { a: 'middle' }) + Ln(Xs + 3.2 - an / 2, ym + 18.2, Xs + 3.2 + an / 2, ym + 18.2, { st: '#111', sw: LW }) + TU(k + 'tpR', Xs + 3.2, ym + 19.9, `R = ${L.tierraRstr || '—'} Ω`, 1.3, { a: 'middle' });
   });
   return s;
 }
@@ -317,6 +351,8 @@ export function lineasDif(def, marca) {
 const breaker = (x, y, c = UC.prot) => { const a = 1.85; return `<g fill="none" stroke-width="${LW}"><path d="M${x} ${y - 4}V${y - a - .35}M${x} ${y + a + .35}V${y + 4}" stroke="${UC.cond}"/><circle cx="${x}" cy="${y - a}" r=".35" stroke="${c}"/><circle cx="${x}" cy="${y + a}" r=".35" stroke="${c}"/><path d="M${x + .3} ${y - a + .2}Q${x + 2.5} ${y} ${x + .3} ${y + a - .2}" stroke="${c}"/><path d="M${x + 1.25} ${y - .38}h.9M${x + 1.25} ${y + .38}h.9" stroke="${c}"/></g>`; };
 /* Diferencial: cuadrado de 3 × 3 con diagonal y «P» / «D» (y = borde superior) */
 const dif = (x, y) => `<g fill="none" stroke="#111" stroke-width="${LW}"><rect x="${x - 1.5}" y="${y}" width="3" height="3"/><path d="M${x - 1.5} ${y + 3}l3 -3"/></g>` + T(x - 1.25, y + 1.15, 'P', .95, { it: false, b: true, ff: FSERIF }) + T(x + .45, y + 2.85, 'D', .95, { it: false, b: true, ff: FSERIF });
+/* Interruptor del DC SWITCH (verde): borne arriba en y, borne abajo en y + 3,6 y la cuchilla en diagonal */
+const swDC = (x, y) => `<g fill="none" stroke="${UC.prot}" stroke-width="${LW}"><circle cx="${x}" cy="${y}" r=".3"/><circle cx="${x}" cy="${y + 3.6}" r=".3"/><path d="M${x} ${y + 3.3}l1.5 -2.7"/></g>`;
 const tierra = (x, y) => `<path d="M${x} ${y}v2.4M${x - 2.4} ${y + 2.4}h4.8M${x - 1.6} ${y + 3.4}h3.2M${x - .8} ${y + 4.4}h1.6" stroke="#111" stroke-width="${LW}" stroke-dasharray=".6 .3"/>`;
 const tierraP = (x, y) => '<g>' + `<path d="M${x} ${y}v1.4M${x - 2.6} ${y + 1.4}h5.2" stroke="#111" stroke-width="${LW}"/>` + Array.from({ length: 6 }, (_, i) => `<path d="M${x - 2.4 + i * 1} ${y + 1.4}l-.8 1.1" stroke="#111" stroke-width="${LW}"/>`).join('') + '</g>';
 /* Etiqueta de un conductor: círculo sobre el cable y guía gris que subraya la primera línea; lado −1 = a la izquierda */

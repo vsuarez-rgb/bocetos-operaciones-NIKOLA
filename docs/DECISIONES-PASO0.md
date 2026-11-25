@@ -162,3 +162,12 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - **Empalme**: tarifa, «EXISTENTE» y N° de cliente a la izquierda de la acometida; la protección del empalme también con rótulo de 4 líneas. El N° de cliente vive solo en el proyecto del usuario, nunca en el repo.
 - **Tierra de servicio y protección**: 6 líneas alineadas a la derecha bajo los símbolos (existente, conductor, L, R, método).
 - **Consumo**: la carga lleva «1» dentro del círculo y una leyenda «① Consumo» a la izquierda del tablero general.
+
+## Unilineal como los planos de Ops · E3: lado DC, Smart Guard, batería y EV (26-11-2026)
+
+- **Entradas del inversor**: cada MPPT tiene su sub-barra (si admite más de un string) y una entrada por string, con su interruptor verde dentro del DC SWITCH. Las entradas sin string salen como «VACANTE» con la marca «//», como en el unilineal DC nuevo. Los strings se ubican en su entrada (MPPT y número).
+- **Tierra de cada string**: T.P. / conductor / R, con una raya bajo el conductor. Campos opcionales `p.lamina.tierraStrCond` y `tierraRstr`.
+- **Smart Guard**: tablero magenta propio arriba a la derecha (ya no cruza el tablero general). GRID desde la acometida, BACKUP → ② consumos con respaldo, NON BACKUP → ③ consumos sin respaldo y FV hacia la barra del tablero general; cada puerto con su protección y rótulo de 4 líneas. Es un esquema: los textos se cambian con un clic.
+- **Batería**: DC SWITCH propio arriba, «+ / –» y 5 líneas (módulo, modelo, energía, potencia máx., tensión); lo que falta sale «—». Campos opcionales `uni.extras.batPmax`, `batV`.
+- **EV en el tablero general**: interruptor + diferencial 30 mA Tipo A-SI + el cargador dibujado bajo el tablero (`extras.evDif`, `evMarca`, `evKw`). El tablero de electromovilidad se alimenta bajando desde la barra del tablero general.
+- Las claves de texto antiguas se conservan donde se pudo (`ev.prot`, `sg.titulo`, `bat.*`).
