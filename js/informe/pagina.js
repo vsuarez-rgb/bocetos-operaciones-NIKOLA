@@ -7,7 +7,7 @@ import { esc } from '../util.js';
 import { calcular, calcStrings, escala } from '../geom.js';
 import { vistaNitida, cargarImg } from '../render.js';
 import { vistaHoja, resolverHoja, TIPOS_HOJA } from '../hojas.js';
-import { lamina01, lamina02, unilinealSVG } from '../lamina.js';
+import { lamina01, lamina02, unilinealSVG, cajetinSVG, simbologiaSVG, notasSVG, cuadroSVG } from '../lamina.js';
 import { cargarDatosFicha } from '../ficha/datos.js';
 import { calcularFicha } from '../ficha/motor.js';
 import { medida, esFijo } from './modelo.js';
@@ -116,7 +116,7 @@ async function interior(b, ctx) {
       const r = await imagenHoja(p, h.id, b.w, b.h, { encuadre: b.encuadre, foto: b.foto, ventana: b.ventana, bn: b.bn });
       if (!r) return editor ? `<div class="bq-vacio">Vista de hoja<b>La hoja no tiene foto</b><span>Súbela en el paso de la foto de esa hoja</span></div>` : '';
       if (ctx.ventanas) ctx.ventanas[b.id] = { ...r.ventana, escala: r.escala, hojaId: h.id };
-      return `<div class="bq-vista"><img class="bq-img" src="${r.url}" alt="" draggable="false">${r.capa ? `<img class="bq-capa" src="${r.capa}" alt="" draggable="false">` : ''}</div>`;
+      return `<div class="bq-vis"><img class="bq-img" src="${r.url}" alt="" draggable="false">${r.capa ? `<img class="bq-capa" src="${r.capa}" alt="" draggable="false">` : ''}</div>`;
     }
     case 'tabla': {
       const filas = b.filas || [], n = Math.max(1, ...filas.map(f => f.length));
@@ -135,6 +135,15 @@ async function interior(b, ctx) {
       const svg = await (b.lamina === '02' ? lamina02 : lamina01)(p, R, SI);
       return svg.replace(/width="841mm" height="594mm"/, 'width="100%" height="100%" preserveAspectRatio="xMidYMid meet"');
     }
+    case 'cajetin': {
+      const R = calcular(p), SI = calcStrings(p, R), pg = ctx.pg || {}, lams = (ctx.paginas || [pg]).filter(x => (x.bloques || []).some(y => y.tipo === 'cajetin'));
+      const dos = n => String(n).padStart(2, '0'), i = Math.max(0, lams.indexOf(pg)), tot = Math.max(1, lams.length);
+      const titulo = b.titulo || [pg.nombre, p.codigo, p.cliente, p.comuna].filter(Boolean).join(' – ').toUpperCase();
+      return cajetinSVG(p, R, SI, { titulo, n: dos(i + 1), total: dos(tot), lista: lams.map((x, j) => [`${dos(j + 1)} DE ${dos(tot)}`, (x.nombre || '').toUpperCase()]), int: !!b.int, escala: b.escala || (p.lamina && p.lamina.escala) || 'S/E', formato: pg.tamano || 'A1' });
+    }
+    case 'simbologia': return simbologiaSVG(b.w, b.h);
+    case 'notas': { const R = calcular(p); return notasSVG(p, R, calcStrings(p, R), b.w, b.h); }
+    case 'cuadro': { const R = calcular(p); return cuadroSVG(p, R, calcStrings(p, R), b.cuadro); }
     case 'recuadro': return '';
   }
   return '';
@@ -144,7 +153,7 @@ export async function htmlPagina(pg, ctx) {
   const [W, H] = medida(pg);
   const bloques = [];
   for (const b of pg.bloques || []) {
-    let dentro; try { dentro = await interior(b, ctx); } catch (e) { console.error(e); dentro = ctx.editor ? `<div class="bq-vacio">No se pudo dibujar<b>${esc(e.message)}</b></div>` : ''; }
+    let dentro; try { dentro = await interior(b, { ...ctx, pg }); } catch (e) { console.error(e); dentro = ctx.editor ? `<div class="bq-vacio">No se pudo dibujar<b>${esc(e.message)}</b></div>` : ''; }
     bloques.push(`<div class="bq bq-${b.tipo}${b.borde ? ' con-borde' : ''}${ctx.sel === b.id ? ' sel' : ''}${ctx.editor && esFijo(b) ? ' fijo' : ''}" data-b="${b.id}" style="left:${b.x}mm;top:${b.y}mm;width:${b.w}mm;height:${b.h}mm">${dentro}${ctx.editor && !esFijo(b) ? '<i class="bq-h" title="Arrastra para cambiar el tamaño"></i>' : ''}</div>`);
   }
   return `<div class="pg" data-pg="${pg.id}" style="width:${W}mm;height:${H}mm">${bloques.join('')}</div>`;
@@ -157,9 +166,9 @@ export const CSS_PAGINA = `
 .pg .con-borde { border: .3mm solid #111; }
 .pg .bq-tx { width: 100%; height: 100%; line-height: 1.35; overflow: hidden; overflow-wrap: anywhere; }
 .pg .bq-img { width: 100%; height: 100%; display: block; }
-.pg .bq-vista { position: relative; width: 100%; height: 100%; }
+.pg .bq-vis { position: relative; width: 100%; height: 100%; }
 .pg .bq-capa { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
-.pg .bq-unilineal svg, .pg .bq-lamina svg { display: block; width: 100%; height: 100%; }
+.pg .bq-unilineal svg, .pg .bq-lamina svg, .pg .bq-cajetin svg, .pg .bq-simbologia svg, .pg .bq-notas svg, .pg .bq-cuadro svg { display: block; width: 100%; height: 100%; }
 .pg .bq-tb { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; font-family: 'Archivo Narrow', 'Arial Narrow', Arial, sans-serif; font-style: italic; }
 .pg .bq-tb th, .pg .bq-tb td { border: .25mm solid #111; padding: .6mm 1.4mm; text-align: left; vertical-align: middle; font-weight: 400; overflow-wrap: anywhere; }
 .pg .bq-tb th { text-align: center; font-style: normal; font-family: Arial, sans-serif; }

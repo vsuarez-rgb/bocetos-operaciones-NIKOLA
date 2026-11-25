@@ -41,7 +41,8 @@ const disyDef = D => `${D.inv.fase === 'Trifásico' ? '4' : '2'}x${D.ca.prot} A 
 const difDef = D => D.inv.dif || `${D.inv.fase === 'Trifásico' ? '4' : '2'}x63 A 300 mA Tipo A`;
 
 /* ---------- Cajetín y franja inferior (igual en las dos láminas) ---------- */
-function franja(p, D, nLam) {
+function franja(p, D, o) {
+  if (typeof o === 'string') o = { n: o, total: '02', lista: [['01 DE 02', 'PLANTA DE TECHUMBRE Y DIAGRAMA UNILINEAL'], ['02 DE 02', 'CUADROS DE CARGA']], escala: o === '01' ? (D.L.escala || 'S/E') : 'NO A ESCALA' };
   const y0 = 476, h = H - M - y0, L = D.L; let s = '';
   // Revisiones + logo + firmas
   const revs = (L.revs || []).slice(-3);
@@ -60,13 +61,24 @@ function franja(p, D, nLam) {
   const I = D.inv, pi = [['RANGO DE TENSIÓN MPP', `${I.vmin} – ${I.vmax} [V]`], ['CORRIENTE MÁXIMA\nENTRADA POR MPP', I.imax ? `${I.imax} [A]` : '—'], ['CORRIENTE\nCORTOCIRCUITO', `${I.isc} [A]`], ['POTENCIA NOMINAL', `${I.kw} [kW]`], ['MARCA', I.marca.toUpperCase()], ['MODELO', I.modelo]];
   const xi = xp + 78; s += Rc(xi, y0, 82, 8) + T(xi + 41, y0 + 5.3, 'PARÁMETROS INVERSOR', 2.3, { a: 'middle' });
   pi.forEach(([a, b], i) => { const yy = y0 + 8 + i * 8.17; s += Rc(xi, yy, 38, 8.17) + Rc(xi + 38, yy, 44, 8.17); a.split('\n').forEach((l, j, arr) => { s += T(xi + 2, yy + 4.6 + (j - (arr.length - 1) / 2) * 2.3, l, 1.8); }); s += T(xi + 40, yy + 4.9, b, 2); });
+  // Parámetros de los interruptores (lámina del unilineal)
+  if (o.int) {
+    const disy = L.disyuntor || disyDef(D), dif = L.diferencial || difDef(D), num = (re, t, u) => { const m = re.exec(t); return m ? `${m[1]} [${u}]` : '—'; };
+    const xq = xi + 92, wq = 62, bloque = (y, t1, t2, filas) => { s += Rc(xq, y, wq, 8) + T(xq + wq / 2, y + 3.4, t1, 1.9, { a: 'middle' }) + T(xq + wq / 2, y + 6.8, t2, 1.9, { a: 'middle' });
+      filas.forEach(([a, b], i) => { const yy = y + 8 + i * 6; s += Rc(xq, yy, 20, 6) + Rc(xq + 20, yy, wq - 20, 6) + T(xq + 1.5, yy + 4, a, 1.8) + T(xq + 21.5, yy + 4, b, 1.6); }); };
+    bloque(y0, 'PARÁMETROS INT.', 'TERMOMAGNÉTICO', [['Marca', L.marcaDisy || '—'], ['Modelo', disy], ['Capacidad', num(/(\d+)\s*A\b/i, disy, 'A')]]);
+    bloque(y0 + 30, 'PARÁMETROS INT.', 'DIFERENCIAL', [['Marca', L.marcaDif || '—'], ['I máx. fuga', num(/(\d+)\s*mA/i, dif, 'mA')], ['Capacidad', num(/(\d+)\s*A\b/i, dif, 'A')]]);
+  }
   // Cuadro resumen de láminas
-  const xl = xi + 92, yl = y0 + 30; s += Rc(xl, yl, 120, 8) + T(xl + 60, yl + 5.3, 'CUADRO RESUMEN DE LÁMINAS', 2.3, { a: 'middle' });
+  const xl = xi + 92 + (o.int ? 68 : 0), yl = y0 + 30; s += Rc(xl, yl, 120, 8) + T(xl + 60, yl + 5.3, 'CUADRO RESUMEN DE LÁMINAS', 2.3, { a: 'middle' });
   s += Rc(xl, yl + 8, 25, 6) + Rc(xl + 25, yl + 8, 95, 6) + T(xl + 12.5, yl + 12, 'N° DE LÁMINA', 1.8, { a: 'middle' }) + T(xl + 72, yl + 12, 'DESCRIPCIÓN', 1.8, { a: 'middle' });
-  [['01 DE 02', 'PLANTA DE TECHUMBRE Y DIAGRAMA UNILINEAL'], ['02 DE 02', 'CUADROS DE CARGA']].forEach(([a, b], i) => { const yy = yl + 14 + i * 9; s += Rc(xl, yy, 25, 9) + Rc(xl + 25, yy, 95, 9) + T(xl + 12.5, yy + 5.6, a, 1.9, { a: 'middle' }) + T(xl + 30, yy + 5.6, b, 1.9); });
+  const rh = Math.min(9, (h - 46) / Math.max(1, o.lista.length));
+  o.lista.forEach(([a, b], i) => { const yy = yl + 14 + i * rh; s += Rc(xl, yy, 25, rh) + Rc(xl + 25, yy, 95, rh) + T(xl + 12.5, yy + rh / 2 + .7, a, 1.9, { a: 'middle' }) + T(xl + 30, yy + rh / 2 + .7, b, 1.9); });
   // Croquis ubicación + inscripción
   const xc = 585; s += Rc(xc, y0, 70, h) + Rc(xc, y0, 70, 8) + T(xc + 35, y0 + 5.3, 'CROQUIS UBICACIÓN', 2.3, { a: 'middle' });
-  s += `<circle cx="${xc + 35}" cy="${y0 + 52}" r="27" fill="#EEF2F4" stroke="#999" stroke-width=".25"/>` + Ln(xc + 10, y0 + 45, xc + 60, y0 + 60, { st: '#bbb', sw: 1.2 }) + Ln(xc + 22, y0 + 28, xc + 44, y0 + 78, { st: '#bbb', sw: 1.2 }) + `<path d="M${xc + 37} ${y0 + 46}c-2.4 0-4 1.8-4 4 0 3 4 7 4 7s4-4 4-7c0-2.2-1.6-4-4-4z" fill="#E5484D"/>`;
+  if (L.croquis) { const id = `crq${o.n || ''}`; s += `<clipPath id="${id}"><circle cx="${xc + 35}" cy="${y0 + 52}" r="27"/></clipPath><image href="${L.croquis}" x="${xc + 8}" y="${y0 + 25}" width="54" height="54" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/><circle cx="${xc + 35}" cy="${y0 + 52}" r="27" fill="none" stroke="#555" stroke-width=".25"/>`; }
+  else s += `<circle cx="${xc + 35}" cy="${y0 + 52}" r="27" fill="#EEF2F4" stroke="#999" stroke-width=".25"/>` + Ln(xc + 10, y0 + 45, xc + 60, y0 + 60, { st: '#bbb', sw: 1.2 }) + Ln(xc + 22, y0 + 28, xc + 44, y0 + 78, { st: '#bbb', sw: 1.2 });
+  s += `<path d="M${xc + 37} ${y0 + 46}c-2.4 0-4 1.8-4 4 0 3 4 7 4 7s4-4 4-7c0-2.2-1.6-4-4-4z" fill="#E5484D"/>`;
   s += T(xc + 4, y0 + h - 7, `LATITUD Y LONGITUD: ${L.latlon || '—'}`, 1.6) + T(xc + 4, y0 + h - 3.5, 'DATUM: WGS84', 1.6);
   s += `<g transform="translate(${xc + 7} ${y0 + 16})">${rosaSVG(5)}</g>`;
   const xn = xc + 70; s += Rc(xn, y0, 60, h) + Rc(xn, y0, 60, 8) + T(xn + 30, y0 + 5.3, 'INSCRIPCIÓN', 2.3, { a: 'middle' }) + T(xn + 3, y0 + h - 9, 'N°:', 1.9) + T(xn + 3, y0 + h - 4, 'FECHA:', 1.9);
@@ -75,8 +87,8 @@ function franja(p, D, nLam) {
   s += T(xt + wt / 2, y0 + 8, `PROYECTO FOTOVOLTAICO ${fmt(D.kwn, D.kwn % 1 ? 1 : 0)} kW`, 3.4, { a: 'middle' }) + T(xt + wt / 2, y0 + 13.5, `${p.codigo || 'ON ---'} — ${p.cliente || ''}`, 3.2, { a: 'middle' });
   s += Ln(xt, y0 + 17, xt + wt, y0 + 17);
   const yd = y0 + 21; [`DIRECCIÓN: ${p.direccion || ''}`, `COMUNA: ${p.comuna || ''}`, `REGIÓN: ${p.region || ''}`, `PROPIETARIO: ${L.propietario || ''}`, `RUT: ${L.rutProp || ''}`].forEach((l, i) => s += T(xt + 2, yd + i * 3, l.toUpperCase(), 1.7));
-  const xr = xt + wt * .55; s += Rc(xr, y0 + 17, wt * .45, 7) + T(xr + wt * .225, y0 + 21.8, `LÁMINA ${nLam} DE 02`, 2, { a: 'middle' });
-  s += Rc(xr, y0 + 24, wt * .2, 6) + T(xr + wt * .1, y0 + 28, `ESCALA ${nLam === '01' ? (L.escala || 'S/E') : 'NO A ESCALA'}`, 1.7, { a: 'middle' }) + Rc(xr + wt * .2, y0 + 24, wt * .25, 6) + T(xr + wt * .21, y0 + 26.5, (L.fechaLamina || hoy()).toUpperCase(), 1.6) + T(xr + wt * .21, y0 + 29.3, 'FORMATO A1', 1.6);
+  const xr = xt + wt * .55; s += Rc(xr, y0 + 17, wt * .45, 7) + T(xr + wt * .225, y0 + 21.8, `LÁMINA ${o.n} DE ${o.total}`, 2, { a: 'middle' });
+  s += Rc(xr, y0 + 24, wt * .2, 6) + T(xr + wt * .1, y0 + 28, `ESCALA ${o.escala || 'S/E'}`, 1.7, { a: 'middle' }) + Rc(xr + wt * .2, y0 + 24, wt * .25, 6) + T(xr + wt * .21, y0 + 26.5, (L.fechaLamina || hoy()).toUpperCase(), 1.6) + T(xr + wt * .21, y0 + 29.3, `FORMATO ${o.formato || 'A1'}`, 1.6);
   s += T(xr + 1, y0 + 33, `PROYECTISTA: ${(L.proyectista || '').toUpperCase()}`, 1.7);
   s += Ln(xt, y0 + 37, xt + wt, y0 + 37) + T(xr + 1, y0 + 40.5, `INSTALADOR: ${(L.instalador || '').toUpperCase()}`, 1.7) + T(xr + 1, y0 + 43.5, `RUT: ${L.rutInst || ''}`, 1.7);
   s += Ln(xt + 6, y0 + h - 12, xt + wt * .45 - 6, y0 + h - 12) + T(xt + wt * .225, y0 + h - 9, 'FIRMA PROPIETARIO', 1.8, { a: 'middle' });
@@ -305,20 +317,20 @@ export async function lamina01(p, R, SI) {
   s += franja(p, D, '01');
   return svgHoja(s);
 }
-export async function lamina02(p, R, SI) {
-  const D = datos(p, R, SI), I = D.inv; let s = marco();
+/* Cuadros de carga: t1 = generación CC (strings), t2 = generación CA (inversor), t3 = caída de tensión del alimentador.
+   solo = cada tabla desde 0,0 (para los bloques «Cuadro» del informe). */
+function cuadros(D, SI, solo = false) {
+  const I = D.inv;
   const filasCC = SI.lista.map(x => ['A', x.nombre, x.P.tipo, x.P.wp, x.P.imp, x.P.voc, x.P.vmp, x.P.isc, '-', x.n, fmt(x.voc, 2), fmt(x.P.imp, 2), fmt(x.pw, 0), '-', '-', `${I.vmin} - ${I.vmax}`, I.isc, x.st.mppt, fmt(x.pw, 0), 'EMT\nFlex. Met.', '32\n32', 'PV1-F', x.seccion, 48, fmt(x.largo, 0), fmt(x.dv, 2), fmt(x.dvp, 2)]);
   while (filasCC.length < 4) filasCC.push(['', `A.${filasCC.length + 1}.1`, 'Libre', ...Array(24).fill('-')]);
   filasCC.push(['TOTAL', SI.lista.filter(x => x.n).length, '-', '-', '-', '-', '-', '-', '-', D.nMod, '-', '-', fmt(SI.pw, 0), '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', fmt(Math.max(0, ...SI.lista.map(x => x.dv)), 2), fmt(Math.max(0, ...SI.lista.map(x => x.dvp)), 2)]);
   const cc = [['UG\nN°', 12], ['N°\nString', 14], ['Tipo\nmódulo', 36], ['Pot. máx.\n[W]', 15], ['I oper.\n[A]', 15], ['Voc\n[V]', 15], ['V oper.\n[V]', 15], ['Icc\n[A]', 15], ['I máx.\ninversa', 15], ['Cant.\nmódulos', 15], ['Voc string\n[V]', 17], ['I máx.\n[A]', 15], ['P máx.\n[W]', 16], ['Fusible\n[A]', 14], ['Diodo\nbloqueo', 14], ['Tensión\nMPPT [V]', 18], ['Icc entrada\n[A]', 17], ['N° Tracker\n(MPPT)', 17], ['P entrada\n[W]', 16], ['Ducto\ntipo', 17], ['Ducto\nØ [mm]', 14], ['Aislación', 15], ['Sección\n[mm²]', 14], ['I máx.\n[A]', 13], ['Largo\n[m]', 13], ['ΔV\n[V]', 13], ['ΔV\n[%]', 13]].map(([h, w]) => ({ h, w }));
   const t1 = tabla(0, 0, 'CUADRO DE UNIDAD DE GENERACIÓN FOTOVOLTAICA / STRING - CC', cc, filasCC, { cab: 9, fila: 9, fs: 1.75, tit: 4 });
-  let tb = t1.svg;
   const ca = D.ca, t0 = ca.tramos[0];
   const filasCA = SI.lista.map((x, i) => ['A', x.nombre, fmt(x.pw, 0), i ? '' : I.vac, i ? '' : 'Perfil de Red Chileno\nNo modificable por el usuario', i ? '' : `${I.marca}\n${I.modelo}`, i ? '' : (D.L.disyuntor || disyDef(D)), i ? '' : (D.L.diferencial || difDef(D)), i ? '' : 'EMT\nFlex. Met.', i ? '' : '32', i ? '' : 'RVK Reviflex', i ? '' : '3x8,37 (F)\n1x8,37 (N)', i ? '' : 59, i ? '' : fmt(t0.largo, 0), i ? '' : fmt(t0.dv, 2), i ? '' : fmt(t0.dvp, 2)]);
   filasCA.push(['TOTAL', SI.lista.filter(x => x.n).length, fmt(SI.pw, 0), I.vac, '-', '-', '-', '-', '-', '-', '-', '-', '-', fmt(t0.largo, 0), fmt(t0.dv, 2), fmt(t0.dvp, 2)]);
   const cca = [['UG\nN°', 14], ['N°\nString', 16], ['Potencia\nmáx. [W]', 20], ['Tensión\nalterna [V]', 20], ['Perfil de red', 60], ['Modelo y marca', 40], ['Disyuntor', 32], ['Diferencial', 36], ['Ducto tipo', 22], ['Ducto Ø\n[mm]', 16], ['Aislación', 26], ['Sección\n[mm²]', 26], ['I máx.\n[A]', 16], ['Largo\n[m]', 16], ['ΔV\n[V]', 16], ['ΔV\n[%]', 16]].map(([h, w]) => ({ h, w }));
-  const t2 = tabla((t1.w - 388) / 2, 12 + t1.h, 'CUADRO DE UNIDAD DE GENERACIÓN FOTOVOLTAICA / INVERSOR - CA', cca, filasCA, { cab: 9, fila: 9, fs: 1.8, tit: 4 });
-  tb += t2.svg;
+  const t2 = tabla(solo ? 0 : (t1.w - 388) / 2, solo ? 0 : 12 + t1.h, 'CUADRO DE UNIDAD DE GENERACIÓN FOTOVOLTAICA / INVERSOR - CA', cca, filasCA, { cab: 9, fila: 9, fs: 1.8, tit: 4 });
   const peor = SI.lista.reduce((m, x) => x.dv > (m ? m.dv : -1) ? x : m, null);
   const fCaida = [
     ['UG - Inversor A', '-', peor ? fmt(peor.vmp, 2) : '-', '-', 'PV1-F', peor ? `2x${peor.seccion} (P) 2x${peor.seccion} (N)` : '-', 48, peor ? fmt(peor.largo, 0) : '-', 'EMT / Flex. Met.', 32, peor ? fmt(peor.dv, 2) : '-', peor ? fmt(peor.dvp, 2) : '-'],
@@ -327,8 +339,12 @@ export async function lamina02(p, R, SI) {
     ['MÁXIMO POR NORMATIVA', '-', '-', '-', '-', '-', '-', '-', '-', '-', fmt(I.vac * CAIDA_MAX / 100, 1), CAIDA_MAX]
   ];
   const cc3 = [['Tramos del alimentador', 46], ['Capacidad de\nprotección [A]', 26], ['Tensión UG\nen CC [V]', 24], ['Tensión UG\nen CA [V]', 24], ['Tipo de aislación', 36], ['Sección [mm²]', 40], ['I máx. de\ntransporte [A]', 26], ['Largo\n[m]', 16], ['Canalización', 36], ['Ø [mm]', 14], ['ΔV [V]', 16], ['ΔV [%]', 16]].map(([h, w]) => ({ h, w }));
-  const t3 = tabla((t1.w - 336) / 2, 24 + t1.h + t2.h, 'CUADRO DE CAÍDA DE TENSIÓN DEL ALIMENTADOR UG EN CA', cc3, fCaida, { cab: 9, fila: 8, fs: 1.8, tit: 4 });
-  tb += t3.svg;
+  const t3 = tabla(solo ? 0 : (t1.w - 336) / 2, solo ? 0 : 24 + t1.h + t2.h, 'CUADRO DE CAÍDA DE TENSIÓN DEL ALIMENTADOR UG EN CA', cc3, fCaida, { cab: 9, fila: 8, fs: 1.8, tit: 4 });
+  return { t1, t2, t3 };
+}
+export async function lamina02(p, R, SI) {
+  const D = datos(p, R, SI); let s = marco();
+  const { t1, t2, t3 } = cuadros(D, SI), tb = t1.svg + t2.svg + t3.svg;
   const kt = Math.min((W - 2 * M - 30) / t1.w, (440 - 20) / (24 + t1.h + t2.h + t3.h));
   s += `<g transform="translate(${(W - t1.w * kt) / 2} ${M + 14}) scale(${kt})">${tb}</g>`;
   const yN = M + 14 + (24 + t1.h + t2.h + t3.h) * kt + 10;
@@ -338,6 +354,37 @@ export async function lamina02(p, R, SI) {
 }
 const marco = () => `<rect width="${W}" height="${H}" fill="#fff"/>` + Rc(M, M, W - 2 * M, H - 2 * M, { sw: .5 });
 const svgHoja = s => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}mm" height="${H}mm" class="hoja">${s}</svg>`;
+
+/* ---------- Piezas de lámina para los bloques del informe (unidades: mm de una hoja A1) ---------- */
+const svgPieza = (vb, s, ajuste = 'xMidYMid meet') => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="100%" height="100%" preserveAspectRatio="${ajuste}">${s}</svg>`;
+/* Marco, título y cajetín de una lámina. o = { titulo, n, total, lista: [[n°, descripción]], int, escala, formato } */
+export function cajetinSVG(p, R, SI, o) {
+  const D = datos(p, R, SI);
+  return svgPieza(`0 0 ${W} ${H}`, marco() + T(W / 2, M + 14, o.titulo, 8, { a: 'middle', attr: 'letter-spacing=".6"' }) + franja(p, D, o), 'none');
+}
+export const simbologiaSVG = (w, h) => svgPieza(`0 0 ${w} ${h}`, simbologia(.2, .2, w - .4, h - .4));
+export function notasSVG(p, R, SI, w, h) { const D = datos(p, R, SI); return svgPieza(`0 0 ${w} ${h}`, notas(p, D, 1, 4, w - 2), 'xMinYMin meet'); }
+export function cuadroSVG(p, R, SI, k = 'cc') {
+  const t = cuadros(datos(p, R, SI), SI, true)[{ cc: 't1', ca: 't2', caida: 't3' }[k] || 't1'];
+  return svgPieza(`-.5 -.5 ${t.w + 1} ${t.h + 1}`, t.svg, 'xMidYMin meet');
+}
+
+/* Croquis de ubicación desde las coordenadas (latitud ; longitud): mapa de OpenStreetMap con el punto
+   del proyecto, como imagen guardada en el proyecto (después no necesita internet). */
+export async function generarCroquis(latlon, z = 16) {
+  const t = String(latlon || '').trim(), partes = t.includes(';') ? t.split(';') : t.split(/,\s+|\s+/);
+  const [lat, lon] = partes.map(x => parseFloat(String(x).trim().replace(',', '.')));
+  if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) throw new Error('Las coordenadas no se entienden. Escríbelas como «-33,41 ; -70,57».');
+  const n = 2 ** z, px = (lon + 180) / 360 * n * 256, r = lat * Math.PI / 180, py = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n * 256;
+  const S = 600, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'); g.fillStyle = '#eee'; g.fillRect(0, 0, S, S);
+  const x0 = px - S / 2, y0 = py - S / 2, tiles = [];
+  for (let tx = Math.floor(x0 / 256); tx <= Math.floor((x0 + S) / 256); tx++) for (let ty = Math.floor(y0 / 256); ty <= Math.floor((y0 + S) / 256); ty++) tiles.push([tx, ty]);
+  const carga = ([tx, ty]) => new Promise((ok, mal) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => { g.drawImage(im, tx * 256 - x0, ty * 256 - y0); ok(); }; im.onerror = () => mal(new Error('No se pudo descargar el mapa (¿hay internet?)')); im.src = `https://tile.openstreetmap.org/${z}/${((tx % n) + n) % n}/${ty}.png`; });
+  await Promise.all(tiles.map(carga));
+  g.fillStyle = '#E5484D'; g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); g.arc(S / 2, S / 2, 11, 0, 7); g.fill(); g.stroke();
+  g.font = '15px Arial'; g.fillStyle = 'rgba(255,255,255,.8)'; g.fillRect(S - 150, S - 22, 150, 22); g.fillStyle = '#333'; g.fillText('© OpenStreetMap', S - 140, S - 6);
+  return c.toDataURL('image/jpeg', .85);
+}
 
 /* ---------- Vista y panel del paso Lámina ---------- */
 export async function vistaLamina(el, p, R, SI) {
@@ -366,6 +413,8 @@ export function panelLamina(p, R, SI, cb = {}) {
   <details class="pp" open><summary>Proyecto</summary><div class="pp-b">
     ${fp('codigo', 'Código', 'ON 921')}${fp('cliente', 'Cliente', 'Nombre del cliente')}${fp('direccion', 'Dirección')}${fp('comuna', 'Comuna')}${fp('region', 'Región')}${fp('distrib', 'Distribuidora', 'ENEL, CGE…')}
     ${f('propietario', 'Propietario')}${f('rutProp', 'RUT propietario')}${f('latlon', 'Latitud y longitud', '-35.82 ; -71.57')}
+    <div class="f"><span>Croquis de ubicación</span><div class="row wrap"><button class="btn sm" data-act="lam-croquis">${L.croquis ? 'Volver a generar' : 'Generar con las coordenadas'}</button><label class="btn sm">Subir imagen<input type="file" accept="image/*" data-lam-croquis hidden></label>${L.croquis ? '<button class="btn sm" data-act="lam-croquis-del">Quitar</button>' : ''}</div>
+      ${L.croquis ? `<img src="${L.croquis}" alt="" style="width:110px;height:110px;object-fit:cover;border-radius:50%;margin-top:6px">` : ''}<p class="mut">Se genera con el mapa de OpenStreetMap (necesita internet; al servicio de mapas solo se le piden las calles de esa zona). Queda guardado en el proyecto.</p></div>
   </div></details>
   <details class="pp"><summary>Cajetín y firmas</summary><div class="pp-b">
     ${f('jefe', 'Jefe de proyecto')}${f('ingeniero', 'Ingeniero en terreno')}${f('proyectista', 'Proyectista')}${f('instalador', 'Instalador')}${f('rutInst', 'RUT instalador')}
@@ -375,7 +424,7 @@ export function panelLamina(p, R, SI, cb = {}) {
     <button class="btn sm" data-act="lam-rev-add">${ic('plus', 14)} Nueva revisión</button>
   </div></details>
   <details class="pp"><summary>Protecciones y tierra</summary><div class="pp-b">
-    ${f('disyuntor', 'Disyuntor', disyDef(D))}${f('diferencial', 'Diferencial', difDef(D))}${f('tierraR', 'Resistencia de tierra (Ω)', '18,3')}
+    ${f('disyuntor', 'Disyuntor', disyDef(D))}${f('marcaDisy', 'Marca del disyuntor', 'Schneider')}${f('diferencial', 'Diferencial', difDef(D))}${f('marcaDif', 'Marca del diferencial', 'CHINT')}${f('tierraR', 'Resistencia de tierra (Ω)', '18,3')}
     ${f('largo_inv-tg', 'Largo Inversor – TGFV (m)', `${fmt(D.ca.tramos[0].auto, 0)} según el dibujo`)}${f('largo_tg-emp', 'Largo TG – Empalme (m)', `${fmt(D.ca.tramos[1].auto, 0)} según el dibujo`)}
   </div></details>
   <details class="pp"><summary>Notas</summary><div class="pp-b">
@@ -395,6 +444,15 @@ document.addEventListener('input', ev => {
   else return;
   cur.cambio && cur.cambio(); refrescarHoja();
 });
+/* Croquis subido como imagen (se achica a 600 px) */
+document.addEventListener('change', async ev => {
+  const t = ev.target; if (!t.matches?.('[data-lam-croquis]') || !t.files[0] || !cur.p) return;
+  const url = URL.createObjectURL(t.files[0]), im = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = url; });
+  URL.revokeObjectURL(url); if (!im) return toast('No se pudo leer la imagen');
+  const f = Math.min(1, 600 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * f); c.height = Math.round(im.naturalHeight * f);
+  c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); cur.p.lamina.croquis = c.toDataURL('image/jpeg', .85);
+  cur.cambio && cur.cambio(); cur.rerender && cur.rerender(); refrescarHoja();
+});
 export function accionLamina(a, b, p, cambio, rerender) {
   cur.cambio = cambio; cur.rerender = rerender;
   if (a === 'lam-hoja') { cur.hoja = +b.dataset.k; refrescarHoja(); clearTimeout(tVista); vistaLamina(document.getElementById('laminaWrap'), cur.p, cur.R, cur.SI); return true; }
@@ -402,6 +460,8 @@ export function accionLamina(a, b, p, cambio, rerender) {
   if (a === 'lam-rev-add') { const L = p.lamina, ult = L.revs[L.revs.length - 1]; const sig = ult ? (isNaN(ult.v) ? (ult.v === 'A' ? 'B' : String.fromCharCode(ult.v.charCodeAt(0) + 1)) : String(+ult.v + 1)) : 'A'; L.revs.push({ v: sig, fecha: hoy(), desc: 'EMITIDO PARA REVISIÓN' }); cambio(); rerender(); return true; }
   if (a === 'lam-rev-del') { p.lamina.revs.splice(+b.dataset.i, 1); cambio(); rerender(); return true; }
   if (a === 'lam-pdf') { imprimir(p); return true; }
+  if (a === 'lam-croquis') { toast('Generando el croquis…'); generarCroquis(p.lamina.latlon).then(u => { p.lamina.croquis = u; cambio(); rerender(); refrescarHoja(); toast('Croquis listo'); }).catch(e => toast(e.message)); return true; }
+  if (a === 'lam-croquis-del') { delete p.lamina.croquis; cambio(); rerender(); refrescarHoja(); return true; }
   if (a === 'lam-svg') { (cur.hoja === 1 ? lamina01 : lamina02)(p, cur.R, cur.SI).then(s => descargar(`${nombreArch(p)}_lamina_0${cur.hoja}.svg`, s.replace('href="assets/nikola-logo-oscuro.svg"', `href="${location.origin}${location.pathname.replace(/[^/]*$/, '')}assets/nikola-logo-oscuro.svg"`), 'image/svg+xml')); return true; }
   if (a === 'lam-dxf') { descargar(`${nombreArch(p)}.dxf`, dxf(p, cur.R, cur.SI), 'application/dxf'); toast('DXF descargado: unidades en milímetros'); return true; }
   return false;

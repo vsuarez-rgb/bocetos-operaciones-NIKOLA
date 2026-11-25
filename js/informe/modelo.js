@@ -10,6 +10,9 @@
      tabla     · filas y celdas, también con {Campo}
      unilineal · el diagrama unilineal del proyecto
      lamina    · una lámina A1 completa (el "modo plano" de siempre)
+     cajetin   · marco, título y cajetín de una lámina (n° de lámina y cuadro resumen salen solos)
+     simbologia, notas · las de las láminas
+     cuadro    · un cuadro de carga: 'cc', 'ca' o 'caida'
      recuadro  · un marco
    Las plantillas incluidas salen de los informes reales de Ops (Propuesta de
    Diseño y Planos Contratista). Las que arma cada persona se guardan en el
@@ -19,7 +22,7 @@ import { uid } from '../util.js';
 
 export const TAMANOS = { A4: [210, 297], A3: [297, 420], A2: [420, 594], A1: [594, 841], Carta: [216, 279], Oficio: [216, 330] };
 export const medida = pg => { const [a, b] = TAMANOS[pg.tamano] || TAMANOS.A4; return pg.orientacion === 'horizontal' ? [b, a] : [a, b]; };
-export const TIPOS_BLOQUE = { texto: 'Texto', imagen: 'Imagen', vista: 'Vista de hoja de diseño', tabla: 'Tabla', unilineal: 'Unilineal', lamina: 'Lámina A1 (modo plano)', recuadro: 'Recuadro' };
+export const TIPOS_BLOQUE = { texto: 'Texto', imagen: 'Imagen', vista: 'Vista de hoja de diseño', tabla: 'Tabla', unilineal: 'Unilineal', lamina: 'Lámina A1 (modo plano)', cajetin: 'Cajetín', simbologia: 'Simbología', notas: 'Notas', cuadro: 'Cuadro de carga', recuadro: 'Recuadro' };
 
 /* Copia una plantilla (o página) con ids nuevos */
 export function copiarPagina(pg, extra = {}) {
@@ -34,6 +37,10 @@ const DEF_BLOQUE = {
   tabla: () => ({ w: 120, h: 40, titulo: 'TÍTULO', filas: [['Campo', '{PROYECTO Nombre}']], tam: 8, anchos: '35' }),
   unilineal: () => ({ w: 160, h: 190, borde: true }),
   lamina: () => ({ w: 297, h: 210, lamina: '01' }),
+  cajetin: () => ({ w: 841, h: 594 }),
+  simbologia: () => ({ w: 160, h: 62 }),
+  notas: () => ({ w: 180, h: 90 }),
+  cuadro: () => ({ w: 400, h: 120, cuadro: 'cc' }),
   recuadro: () => ({ w: 80, h: 40, borde: true })
 };
 
@@ -133,6 +140,33 @@ export const PLANTILLAS_INCLUIDAS = [
       ['**Configuración Planta**', 'La planta debe quedar configurada para "LIMITACIÓN DE EXPORTACIÓN CERO":\n\n1. Desde el inicio de la APP de Fusion Solar (fuera del asistente de configuración) seleccionar la planta que se desea limitar.\n\n2. Abajo, presionar "dispositivos".\n\n3. Seleccionar el inversor (en caso de que exista dongle o SmartGuard, seleccionar estos últimos).\n\n4. Presionar los 4 puntos de la esquina superior derecha.\n\n5. Seleccionar ajustes de parámetros.\n\n6. En "Modo de control de potencia activa" elegir la opción "Limitación de exportación cero".\n\nEn plantas con SmartGuard, se debe grabar una prueba de conmutación y enviarla a la plataforma de registro fotográfico de Nikola.\n\nTodos los equipos deben quedar actualizados.']] }
   ]),
 
+  /* ---------------- Juego de láminas A1 con cajetín (como los planos de Ops, ON 901) ----------------
+     El cajetín llena la hoja (marco, título y franja de abajo); lo demás se mueve libre dentro del marco. */
+  pagina('lam-planta', 'Láminas A1', 'Planta general en terreno', 'A1', 'horizontal', [
+    { tipo: 'cajetin', x: 0, y: 0, w: 841, h: 594 },
+    { tipo: 'vista', x: 16, y: 32, w: 520, h: 330, hoja: 'principal', encuadre: 'dibujo', foto: 80, borde: true },
+    { tipo: 'vista', x: 546, y: 32, w: 285, h: 330, hoja: 'tipo:canalizacion#1', encuadre: 'foto', foto: 100, borde: true },
+    { tipo: 'notas', x: 16, y: 370, w: 300, h: 100 },
+    { tipo: 'simbologia', x: 660, y: 404, w: 160, h: 62 }
+  ]),
+  pagina('lam-unilineal', 'Láminas A1', 'Diagrama unilineal', 'A1', 'horizontal', [
+    { tipo: 'cajetin', x: 0, y: 0, w: 841, h: 594, int: true, escala: 'NO A ESCALA' },
+    { tipo: 'simbologia', x: 16, y: 32, w: 160, h: 62 },
+    { tipo: 'unilineal', x: 235, y: 32, w: 371, h: 440 },
+    { tipo: 'notas', x: 640, y: 300, w: 190, h: 170 }
+  ]),
+  pagina('lam-cc', 'Láminas A1', 'Cuadro de generación CC', 'A1', 'horizontal', [
+    { tipo: 'cajetin', x: 0, y: 0, w: 841, h: 594, escala: 'NO A ESCALA' },
+    { tipo: 'cuadro', x: 16, y: 40, w: 809, h: 260, cuadro: 'cc' },
+    { tipo: 'notas', x: 16, y: 330, w: 400, h: 140 }
+  ]),
+  pagina('lam-ca', 'Láminas A1', 'Cuadro de generación CA', 'A1', 'horizontal', [
+    { tipo: 'cajetin', x: 0, y: 0, w: 841, h: 594, escala: 'NO A ESCALA' },
+    { tipo: 'cuadro', x: 40, y: 40, w: 760, h: 130, cuadro: 'ca' },
+    { tipo: 'cuadro', x: 70, y: 190, w: 700, h: 120, cuadro: 'caida' },
+    { tipo: 'notas', x: 16, y: 330, w: 400, h: 140 }
+  ]),
+
   /* ---------------- Modo plano: láminas A1 de siempre ---------------- */
   pagina('a1-planta', 'Láminas A1 (modo plano)', 'Lámina 01 · Planta y unilineal', 'A1', 'horizontal', [{ tipo: 'lamina', x: 0, y: 0, w: 841, h: 594, lamina: '01' }]),
   pagina('a1-cuadros', 'Láminas A1 (modo plano)', 'Lámina 02 · Cuadros de carga', 'A1', 'horizontal', [{ tipo: 'lamina', x: 0, y: 0, w: 841, h: 594, lamina: '02' }])
@@ -142,10 +176,11 @@ export const PLANTILLAS_INCLUIDAS = [
 export const PAQUETES = [
   { id: 'propuesta', seccion: 'informe', nombre: 'Propuesta de diseño', detalle: 'A4 vertical · 3 páginas para el cliente', paginas: ['prop-general', 'prop-equipos', 'prop-montaje'] },
   { id: 'contratista', seccion: 'planos', nombre: 'Planos contratista', detalle: 'A4 horizontal · 5 páginas para la obra', paginas: ['con-resumen', 'con-planta', 'con-canalizacion', 'con-unilineal', 'con-comisionado'] },
-  { id: 'laminas', seccion: 'planos', nombre: 'Láminas A1 (modo plano)', detalle: 'Planta y unilineal + cuadros de carga', paginas: ['a1-planta', 'a1-cuadros'] }
+  { id: 'laminas4', seccion: 'planos', nombre: 'Juego de láminas A1', detalle: 'Con cajetín, como los planos de Ops · planta, unilineal, cuadro CC y CA', paginas: ['lam-planta', 'lam-unilineal', 'lam-cc', 'lam-ca'] },
+  { id: 'laminas', seccion: 'planos', nombre: 'Láminas A1 (modo plano antiguo)', detalle: 'Planta y unilineal + cuadros de carga', paginas: ['a1-planta', 'a1-cuadros'] }
 ];
 export const paginaEnBlanco = (tamano = 'A4', orientacion = 'vertical', seccion = 'informe') => ({ id: uid('pg'), nombre: 'Página en blanco', tamano, orientacion, seccion, bloques: [] });
 export const SECCIONES = { informe: 'Informe', planos: 'Láminas y planos' };
 export const seccionDe = pg => pg.seccion || ((pg.bloques || []).some(b => b.tipo === 'lamina') || ['A1', 'A2'].includes(pg.tamano) ? 'planos' : 'informe');
 /* Bloques fijos: no se mueven ni cambian de tamaño con el mouse (la lámina A1 que llena la página lo es por defecto) */
-export const esFijo = b => b.fijo ?? (b.tipo === 'lamina');
+export const esFijo = b => b.fijo ?? ['lamina', 'cajetin'].includes(b.tipo);

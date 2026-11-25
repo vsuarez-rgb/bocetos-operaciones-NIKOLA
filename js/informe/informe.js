@@ -73,7 +73,7 @@ async function pintar() {
   panel();
   if (!pg) return;
   S.ventanas = {};
-  const html = await htmlPagina(pg, { p: S.p, datos: S.datos, editor: true, sel: S.sel, ventanas: S.ventanas });
+  const html = await htmlPagina(pg, { p: S.p, datos: S.datos, editor: true, sel: S.sel, ventanas: S.ventanas, paginas: informe().paginas });
   if (gen !== S.gen) return;                                   // se pidió otro dibujo mientras tanto
   S.el.querySelector('.pg-esc').innerHTML = html;
   ajustarZoom(); marcarEncuadre();
@@ -146,7 +146,7 @@ export function panelInforme(p) {
     <div class="row wrap"><button class="btn sm" data-act="in-pg-mover" data-k="-1">↑ Subir</button><button class="btn sm" data-act="in-pg-mover" data-k="1">↓ Bajar</button><button class="btn sm del" data-act="in-pg-del">${ic('trash', 14)} Borrar página</button></div>
     <p class="mut">Clic en un bloque para editarlo; arrástralo para moverlo y usa la esquina para el tamaño (Mayús = de a 5 mm). Los bloques no se salen de la hoja; los fijos (como la lámina A1) no se mueven. Ctrl + rueda = zoom. Doble clic en una tabla para escribir en sus celdas y en una vista para encuadrarla. Supr borra.</p>`, !b);
   // Láminas A1: los datos del cajetín, revisiones, notas y protecciones (antes era el paso "Lámina")
-  const hayLamina = I.paginas.some(x => x.bloques.some(y => y.tipo === 'lamina'));
+  const hayLamina = I.paginas.some(x => x.bloques.some(y => ['lamina', 'cajetin'].includes(y.tipo)));
   if (pg && !S.plantilla && (seccionDe(pg) === 'planos' || hayLamina)) {
     const R = calcular(S.p), SI = calcStrings(S.p, R);
     h += `<div class="in-lam"><div class="in-lam-t">Datos de las láminas A1 (cajetín, firmas, notas)</div>${panelLamina(S.p, R, SI, { cambio, rerender: panel, repintar: repintarPagina }).replace(/<details class="pp" open>/g, '<details class="pp">')}</div>`;
@@ -186,6 +186,13 @@ function propsBloque(b) {
     <div class="row">${num('tam', 'Letra (pt)', .5)}<label class="f"><span>Ancho columnas (%)</span><input class="in" data-in="b.anchos" value="${esc(b.anchos || '')}" placeholder="35,30"></label></div>
     <div class="row wrap">${chk('cabecera', 'Primera fila es encabezado')}${chk('mayusculas', 'Datos en MAYÚSCULAS')}</div>${sel('cuerpo', 'Estilo', [['', 'Planos (cursiva, como AutoCAD)'], ['normal', 'Documento (texto normal)']])}`;
   if (b.tipo === 'lamina') h += sel('lamina', 'Lámina', [['01', 'Lámina 01 · Planta y unilineal'], ['02', 'Lámina 02 · Cuadros de carga']]) + '<p class="mut">El cajetín, las firmas y las notas se completan abajo, en «Datos de las láminas A1».</p>';
+  if (b.tipo === 'cajetin') h += `<label class="f"><span>Título (vacío = nombre de la página, código, cliente y comuna)</span><input class="in" data-in="b.titulo" value="${esc(b.titulo || '')}"></label>
+    <label class="f"><span>Escala (vacío = la de «Cajetín y firmas»)</span><input class="in" data-in="b.escala" value="${esc(b.escala || '')}" placeholder="1:100 · NO A ESCALA"></label>
+    ${chk('int', 'Con los parámetros de los interruptores (lámina del unilineal)')}
+    <p class="mut">El n° de lámina («01 DE 04») y el cuadro resumen salen solos de las páginas con cajetín, en su orden. Los datos del cajetín (firmas, versiones, croquis) están abajo, en «Datos de las láminas».</p>`;
+  if (b.tipo === 'cuadro') h += sel('cuadro', 'Cuadro', [['cc', 'Generación CC (strings)'], ['ca', 'Generación CA (inversor)'], ['caida', 'Caída de tensión del alimentador']]);
+  if (b.tipo === 'notas') h += '<p class="mut">Las notas se escriben abajo, en «Datos de las láminas › Notas». Las de cantidad de módulos y potencias se agregan solas.</p>';
+  if (b.tipo === 'simbologia') h += '<p class="mut">La simbología de las láminas. Agrándala o achícala desde la esquina.</p>';
   if (b.tipo === 'unilineal') h += '<p class="mut">Es el unilineal del proyecto, el mismo de la lámina A1. Se edita en la pestaña «Unilineal» (datos, partes y cualquier texto con un clic).</p>';
   h += `<div class="row">${num('x', 'X (mm)')}${num('y', 'Y (mm)')}</div><div class="row">${num('w', 'Ancho (mm)')}${num('h', 'Alto (mm)')}</div>
     ${b.tipo !== 'lamina' ? chk('borde', 'Con marco') : ''}
@@ -203,7 +210,7 @@ export function accionInforme(a, el) {
     case 'in-pag': if (S.arrastro) break; salirEncuadre(false); if (S.plantilla) { clearTimeout(tPlantilla); guardarPlantillaEditada(); S.plantilla = null; } S.pag = el.dataset.id; S.sel = null; S.zoom = null; pintar(); break;
     case 'in-nueva': dialogoNueva(el.dataset.k || (pg ? seccionDe(pg) : 'informe')); break;
     case 'in-paquete': agregarPaquete(el.dataset.k); break;
-    case 'in-add': { const [W, H] = medida(pg), nb = nuevoBloque(el.dataset.k, 20, 20); if (nb.tipo === 'lamina') { nb.w = W; nb.h = H; nb.x = 0; nb.y = 0; } nb.x = Math.max(0, Math.round((W - nb.w) / 2)); nb.y = Math.max(0, Math.round((H - nb.h) / 2)); pg.bloques.push(nb); S.sel = nb.id; repintar(); break; }
+    case 'in-add': { const [W, H] = medida(pg), nb = nuevoBloque(el.dataset.k, 20, 20); if (['lamina', 'cajetin'].includes(nb.tipo)) { nb.w = W; nb.h = H; nb.x = 0; nb.y = 0; } nb.x = Math.max(0, Math.round((W - nb.w) / 2)); nb.y = Math.max(0, Math.round((H - nb.h) / 2)); if (nb.tipo === 'cajetin') pg.bloques.unshift(nb); else pg.bloques.push(nb); S.sel = nb.id; repintar(); break; }
     case 'in-zoom': { const k = +el.dataset.k; if (k === 0) { S.zoom = null; ajustarZoom(); } else zoomPagina(Math.max(.1, Math.min(8, (S.zoom || S.z || 1) * (k > 0 ? 1.25 : .8)))); break; }
     case 'in-pl-editar': editarPlantilla(el.dataset.id, !!el.dataset.mia); break;
     case 'in-pl-salir': salirPlantilla(); break;
@@ -326,7 +333,7 @@ function aplicarSinPanel(t) {   // mientras se escribe: actualizar la página si
 }
 async function repintarPagina() {
   const pg = pagAct(), cont = S.el?.querySelector('.pg-esc'); if (!pg || !cont) return;
-  const gen = ++S.gen, ventanas = {}, html = await htmlPagina(pg, { p: S.p, datos: S.datos, editor: true, sel: S.sel, ventanas }); if (gen !== S.gen) return;
+  const gen = ++S.gen, ventanas = {}, html = await htmlPagina(pg, { p: S.p, datos: S.datos, editor: true, sel: S.sel, ventanas, paginas: informe().paginas }); if (gen !== S.gen) return;
   S.ventanas = ventanas; cont.innerHTML = html; ajustarZoom(); marcarEncuadre();
   const lista = S.el.querySelector(`.inf-pag[data-id="${pg.id}"] span`); if (lista) lista.textContent = pg.nombre || 'Página';
 }
@@ -544,7 +551,7 @@ async function imprimir(seccion) {
 /* Documento HTML con las páginas, cada una con su tamaño de papel (@page con nombre) */
 export async function htmlImpresion(seccion) {
   const ps = informe().paginas.filter(x => !seccion || seccionDe(x) === seccion);
-  const paginas = []; for (const pg of ps) paginas.push({ pg, html: await htmlPagina(pg, { p: S.p, datos: S.datos, editor: false }) });
+  const paginas = []; for (const pg of ps) paginas.push({ pg, html: await htmlPagina(pg, { p: S.p, datos: S.datos, editor: false, paginas: informe().paginas }) });
   const nombres = [...new Set(ps.map(pg => medida(pg).join('x')))];
   const css = nombres.map(n => { const [W, H] = n.split('x'); return `@page p${n.replace('.', '_')} { size: ${W}mm ${H}mm; margin: 0 }`; }).join('\n');
   const base = location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');

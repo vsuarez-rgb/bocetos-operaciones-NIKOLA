@@ -104,3 +104,16 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - **Vista en blanco y negro** (opción del bloque Vista del informe): todo el dibujo pasa a negro y lo blanco queda blanco. La foto no cambia. En las burbujas se ve solo el dibujo.
 - **Norte**: al imprimir, la rosa de los vientos queda roja y negra, como en los planos de referencia.
 - **Burbuja con aumento exacto** (25-11-2026): la burbuja guarda su propio radio `R` y el aumento `z`, que se escribe exacto (×2,5, ×5…). Cambiar uno no cambia el otro, y la zona ampliada mide R / z. Bajo la burbuja se escribe «DETALLE ×3». En informes y planos, si la hoja tiene escala, se escribe la escala real del detalle según la escala de cada vista («DETALLE ESC. 1:50»). Las burbujas antiguas (`r`) se leen igual y pasan a `R` al editarlas.
+
+## Planos profesionales · Fase C: láminas con cajetín (como el ON 901)
+
+- **Bloques nuevos en el informe**:
+  - `cajetin`: marco, título y franja inferior de la lámina. Llena la página, es fijo y va al fondo.
+  - `simbologia` y `notas`.
+  - `cuadro`: `cc` (generación CC), `ca` (generación CA) o `caida` (caída del alimentador).
+  - Todos se dibujan en mm de una hoja A1. En otra hoja (por ejemplo A3) el cajetín se ajusta al tamaño.
+- **Número de lámina, total y cuadro resumen** salen solos de las páginas que tienen cajetín, en su orden («LÁMINA 02 DE 04»). El título por defecto es: nombre de la página – código – cliente – comuna, y se puede cambiar.
+- **Lámina del unilineal**: la opción `int` agrega los parámetros del interruptor termomagnético y del diferencial. Las marcas se escriben en «Protecciones y tierra».
+- **Croquis de ubicación**: se genera con las coordenadas de la ficha (`lamina.latlon`) con un mapa de OpenStreetMap (zoom 16, punto rojo, atribución) y queda guardado en el proyecto como imagen (`lamina.croquis`). También se puede subir una imagen. Necesita internet solo al generarlo; al servicio de mapas se le piden las teselas de la zona, no se envía otro dato.
+- **Juego de láminas A1**: el paquete trae 01 Planta general en terreno, 02 Diagrama unilineal, 03 Cuadro de generación CC y 04 Cuadro de generación CA. Las láminas A1 de antes siguen funcionando como «modo plano antiguo».
+- **Corrección**: el contenedor interno de la vista (Fase A) se llamaba `bq-vista`, igual que el bloque, y corría hacia abajo la segunda vista de una página. Ahora se llama `bq-vis`.
