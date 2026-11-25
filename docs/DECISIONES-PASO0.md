@@ -140,3 +140,14 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - Usa los mismos campos que el panel derecho. Campos nuevos, todos opcionales: `cota.tam` (tamaño propio de la cota, sobre el general de la hoja), `equipo.medW` / `medH` / `tamMed`, `string.numTxt` / `tamNum` (el círculo crece con el número), `detalle.rot` / `tamRot`, y en la hoja `pisoTxt` / `pisoTam`.
 - Si no se cambia el texto, no se guarda nada: una cota sigue la medida real hasta que se escriba otra.
 - El render deja la caja de cada texto en `o.hits` (con `t: 'txt'`) solo en el editor; la búsqueda de etiquetas filtra `t: 'etq'`. El DXF usa el texto de la cota y del string tal como se ve.
+
+## Unilineal como los planos de Ops · E1: estilo base y composición (26-11-2026)
+
+- Referencias: los unilineales de Traspaso Contratista (Drive de Operaciones), en especial el ON 909 (con Smart Guard, batería y EV) y los nuevos «unilineal AC / DC» del ON 841. No se copia ningún dato de clientes.
+- **Flujo de arriba hacia abajo por un solo eje**: empalme arriba a la izquierda (la línea sale a la derecha y baja con codo redondeado), tablero general (o TG + TFV), inversor y strings al fondo. Los huecos entre bloques se reparten para que el dibujo llene la hoja.
+- **Sin rellenos, todo fino (0,13) y color por tipo**: rojo conductores, azul barras, verde protecciones y módulos, magenta equipos, cian medidor, amarillo trazo-punto tableros, gris guías y límites, naranja enlace inversor–batería.
+- Hoja del unilineal: **336 × 240** (antes 420 × 300, misma proporción): todo se ve un 25 % más grande; en la lámina A1 los textos quedan de unos 3 mm. Los dibujos a mano guardan su propia hoja (`vb`) y no cambian.
+- Títulos de tablero en serif negrita cursiva; nota del tablero con círculo y guía (la del tablero general a la izquierda); etiquetas de conductor con círculo sobre el cable y guía gris que subraya la primera línea; «LÍMITES DEL PROYECTO» como polilínea continua con escalón que deja fuera el empalme.
+- Símbolos nuevos: interruptor con un círculo en cada borne, arco a la derecha y «=»; diferencial con «P / D»; módulo vertical con «V»; inversor en marco magenta con MPPT y DC SWITCH; strings en rojo continuo con canalización común.
+- El tipo de empalme no está en la ficha: sale «TIPO (pendiente)» y se cambia con un clic.
+- Siguen: E2 (tableros completos y rótulos de 4 líneas), E3 (lado DC, Smart Guard, batería y EV como en el ON 909), E4 (láminas AC + DC separadas, solo para proyectos grandes).

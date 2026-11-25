@@ -17,7 +17,7 @@ const FONT = "'Archivo Narrow','Arial Narrow',Arial,sans-serif";
 let cur = { p: null, R: null, SI: null, cambio: null, rerender: null, hoja: 1, zoom: 1 };
 
 /* ---------- Helpers SVG ---------- */
-const T = (x, y, s, size = 2.2, o = {}) => `<text x="${x}" y="${y}" font-size="${size}" font-family="${FONT}" ${o.it !== false ? 'font-style="italic"' : ''} ${o.b ? 'font-weight="700"' : ''} text-anchor="${o.a || 'start'}" ${o.fill ? `fill="${o.fill}"` : ''} ${o.base ? `dominant-baseline="${o.base}"` : ''} ${o.attr || ''}>${esc(s)}</text>`;
+const T = (x, y, s, size = 2.2, o = {}) => `<text x="${x}" y="${y}" font-size="${size}" font-family="${o.ff || FONT}" ${o.it !== false ? 'font-style="italic"' : ''} ${o.b ? 'font-weight="700"' : ''} text-anchor="${o.a || 'start'}" ${o.fill ? `fill="${o.fill}"` : ''} ${o.base ? `dominant-baseline="${o.base}"` : ''} ${o.attr || ''}>${esc(s)}</text>`;
 const Rc = (x, y, w, h, o = {}) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${o.fill || 'none'}" stroke="${o.st || '#111'}" stroke-width="${o.sw || .25}" ${o.dash ? `stroke-dasharray="${o.dash}"` : ''}/>`;
 const Ln = (x1, y1, x2, y2, o = {}) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${o.st || '#111'}" stroke-width="${o.sw || .25}" ${o.dash ? `stroke-dasharray="${o.dash}"` : ''}/>`;
 /* Tabla: cols = [{h:'Título', w}], filas = [[...]]; cab = alto cabecera */
@@ -136,133 +136,171 @@ export function baseSugerida(p) {
 }
 export const baseUni = p => BASES_UNI.find(b => b.id === p.uni?.base) || baseSugerida(p);
 
+/* Estilo de los unilineales de Ops (ON 909 y «unilineal AC/DC nuevo»): flujo de arriba hacia abajo por un solo eje,
+   sin rellenos, líneas finas y color por tipo (rojo conductores, azul barras, verde protecciones y módulos,
+   magenta equipos, cian medidor, amarillo trazo-punto tableros, gris guías). Unidades: mm de la hoja del unilineal. */
+const UC = { cond: '#E00000', barra: '#0000D0', prot: '#00A000', equipo: '#C800C8', med: '#009CA8', tab: '#D4B000', guia: '#808080', bat: '#FF7F00' };
+const LW = .13, FU = 1.7, FT = 2.8, FSERIF = "'Times New Roman',Times,serif";
+const anchoT = (s, f) => String(s).length * f * .47;     // ancho aproximado de un texto (para las guías)
+const codo = (x1, y1, x2, y2, c = UC.cond) => { const r = 2, sx = Math.sign(x2 - x1) || 1; return `<path d="M${x1} ${y1}H${x2 - sx * r}Q${x2} ${y1} ${x2} ${y1 + r}V${y2}" fill="none" stroke="${c}" stroke-width="${LW}"/>`; };
+
 function unilineal(p, D, SI, x0, y0, w, h) {
   if (p.uni?.libre) { const vb = vbLibre(p.uni.libre); return `<svg x="${x0}" y="${y0}" width="${w}" height="${h}" viewBox="0 0 ${vb[0]} ${vb[1]}" preserveAspectRatio="xMidYMid meet">${dibujoLibre(p.uni.libre)}</svg>`; }   // editado a mano: tal cual quedó
-  const I = D.inv, ca = D.ca, L = D.L, R = '#D11', A = '#22B', V = '#1A8F3C', MG = '#C0C', Y = '#E6C200', U = opcUni(p), B = baseUni(p);
+  const I = D.inv, ca = D.ca, L = D.L, C = UC, U = opcUni(p), B = baseUni(p);
   const X = { bat: B.bat || U.extras.bat, sg: B.sg || U.extras.sg, ev: !B.soloEV && !B.evTablero && U.extras.ev };
   const TU = (k, x, y, def, size, o = {}) => { const v = U.textos[k] != null ? U.textos[k] : def; return T(x, y, v, size, { ...o, attr: `data-u="${esc(k)}"${U.textos[k] != null ? ' data-mod="1"' : ''}` }); };
   const fase = B.fase || I.fase, polos = fase === 'Trifásico' ? '4' : '2';
+  const ln = (x1, y1, x2, y2, c = C.cond, o = {}) => Ln(x1, y1, x2, y2, { st: c, sw: LW, ...o });
+  const cx = x0 + w * .46;
   let s = '';
-  const cx = x0 + w * .52;
-  // Empalme (no hay en un sistema aislado)
-  const ex = x0 + w * .2, ey = y0 + 14;
+
+  /* Tablero: contorno amarillo trazo-punto, título serif negrita cursiva y nota con guía */
+  const tablero = (x, y, tw, th, k, titulo, nota = true) => {
+    let t = Rc(x, y, tw, th, { st: C.tab, sw: LW, dash: '3 .8 .4 .8' }) + TU(k + '.titulo', x + tw / 2, y - 2, titulo, FT, { a: 'middle', b: true, ff: FSERIF });
+    if (nota) { const sg = nota === 'izq' ? -1 : 1, nx = sg < 0 ? x : x + tw, ny = y + th * .4, l1 = U.textos[k + '.nota1'] ?? 'Tablero metálico', o = sg < 0 ? { it: false, a: 'end' } : { it: false };   // la del tablero general va a la izquierda, como en los planos
+      t += `<circle cx="${nx}" cy="${ny}" r=".6" fill="#fff" stroke="${C.guia}" stroke-width="${LW}"/>` + `<path d="M${nx + sg * .4} ${ny - .4}l${sg * 5} -5h${sg * (anchoT(l1, 1.9) + 1)}" fill="none" stroke="${C.guia}" stroke-width="${LW}"/>`;
+      t += TU(k + '.nota1', nx + sg * 6, ny - 6, 'Tablero metálico', 1.9, o) + TU(k + '.nota2', nx + sg * 6, ny - 3.4, 'Grado protección IP65', 1.9, o); }
+    return t;
+  };
+  const prot = (x, y, k, def) => breaker(x, y) + TU(k, x + 3, y - .4, def, FU);                       // interruptor + rótulo
+  const difer = (x, y, k, def) => dif(x, y) + TU(k, x + 3, y + 2.2, def, FU);                          // diferencial (y = borde superior)
+  const circuito = (Xc, yb, yfin, k, def, izq) => ln(Xc, yb, Xc, yb + 2) + breaker(Xc, yb + 6) + ln(Xc, yb + 10, Xc, yfin) +
+    `<circle cx="${Xc}" cy="${yfin + 1.6}" r="1.6" fill="none" stroke="#111" stroke-width="${LW}"/>` + TU(k, Xc + (izq ? -2.6 : 2.6), yfin + 2.2, def, FU, izq ? { a: 'end' } : {});
+  const cargador = (Xc, yc, k, marca, kw) => `<g fill="none" stroke="#111" stroke-width="${LW}"><rect x="${Xc - 4}" y="${yc + 2}" width="8" height="10" rx="2"/><rect x="${Xc - 4}" y="${yc}" width="8" height="10" rx="2" fill="#fff"/><circle cx="${Xc}" cy="${yc + 3}" r="1.3"/></g>` +
+    TU(k + '.1', Xc + 6, yc + 2.5, `Cargador Eléctrico ${fase === 'Trifásico' ? '3ø' : '1ø'}`, FU) + TU(k + '.2', Xc + 6, yc + 4.6, `${marca}`, FU) + TU(k + '.3', Xc + 6, yc + 6.7, `Potencia de Carga ${kw} kW`, FU) + TU(k + '.4', Xc, yc + 15, fase, 1.4, { a: 'middle' });
+
+  /* ---- Empalme (arriba a la izquierda) y límites del proyecto ---- */
+  const ew = 32, eh = 34, ex = x0 + 14, ey = y0 + 3, yE = ey + 16;
   if (!B.offgrid) {
-    s += Rc(ex, ey, 52, 34, { st: MG, sw: .35 }) + TU('emp.titulo', ex + 26, ey + 4, `EMPALME ${fase.toUpperCase()}`, 2, { a: 'middle', b: true });
-    s += Rc(ex + 9, ey + 11, 10, 10, { st: '#0AA', fill: '#C8F3F7' }) + T(ex + 14, ey + 17.6, 'M', 4, { a: 'middle', it: false, fill: '#0AA' }) + TU('emp.med1', ex + 14, ey + 25, 'MEDIDOR', 1.5, { a: 'middle' }) + TU('emp.med2', ex + 14, ey + 27, B.soloEV ? '' : 'BIDIRECCIONAL', 1.5, { a: 'middle' }) + TU('emp.dist', ex + 14, ey + 29, (p.distrib || '').toUpperCase(), 1.5, { a: 'middle' });
-    s += breaker(ex + 34, ey + 16, V) + TU('emp.int1', ex + 38, ey + 13, 'Interruptor', 1.4) + TU('emp.int2', ex + 38, ey + 26, `${polos}x${D.ca.prot} A`, 1.4) + TU('emp.int3', ex + 38, ey + 28, 'Curva C', 1.4);
-    s += Ln(ex + 19, ey + 16, ex + 32, ey + 16, { st: R, sw: .35 }) + Ln(ex + 40, ey + 16, cx, ey + 16, { st: R, sw: .35 });
-    if (!B.soloEV) s += TU('emp.pot', ex + 56, ey + 14, `${fmt(D.kwn, 0)} kW / ${I.vac} V`, 1.7);
-  } else s += TU('og.titulo', cx, ey + 4, 'SISTEMA AISLADO (OFF GRID) · SIN CONEXIÓN A LA RED', 2.2, { a: 'middle', b: true });
-  if (w > h && !B.offgrid) s += Rc(x0 + 3, y0 + 54, w - 6, h - 56, { st: '#666', sw: .25, dash: '3 1.5' }) + TU('limites', x0 + 6, y0 + 58.5, 'LÍMITES DEL PROYECTO', 1.7);
-  // Tierra de servicio
-  if (U.tierra !== false) s += Ln(cx, y0 + 66, cx - 30, y0 + 66, { dash: '2 1' }) + tierra(cx - 30, y0 + 66) + TU('tierra.1', cx - 70, y0 + 62, 'Tierra de servicio y protección', 1.5) + TU('tierra.2', cx - 70, y0 + 64, `Barra Copper · R = ${L.tierraR || '—'} Ω`, 1.5);
-  const circuito = (Xc, yb, yfin, k, def, izq) => breaker(Xc, yb + 6, V) + Ln(Xc, yb + 10, Xc, yfin, { st: R, sw: .3 }) + `<circle cx="${Xc}" cy="${yfin + 1.5}" r="1.5" fill="none" stroke="#111" stroke-width=".2"/>` + TU(k, Xc + (izq ? -3 : 3), yfin + 2, def, 1.6, izq ? { a: 'end' } : {}) + Ln(Xc, yb, Xc, yb + 2, { st: R, sw: .3 });
-  const cargador = (Xc, yc, k, marca, kw) => `<rect x="${Xc - 6}" y="${yc}" width="12" height="15" rx="3" fill="#F2F2F2" stroke="#111" stroke-width=".3"/><circle cx="${Xc}" cy="${yc + 6}" r="3" fill="none" stroke="#111" stroke-width=".3"/>` + T(Xc, yc + 6.9, 'EV', 2, { a: 'middle', it: false, b: true }) + TU(k + '.1', Xc + 8, yc + 5, `CARGADOR ${marca}`, 1.5, { b: true }) + TU(k + '.2', Xc + 8, yc + 7.3, `Potencia ${kw} kW`, 1.4) + TU(k + '.3', Xc + 8, yc + 9.6, 'Sin tarjeta / sin TS', 1.4);
+    s += Rc(ex, ey, ew, eh, { st: C.equipo, sw: LW }) + Ln(ex, ey + 8, ex + ew, ey + 8, { st: C.equipo, sw: LW });
+    s += TU('emp.titulo', ex + ew / 2, ey + 3.4, `EMPALME ${fase.toUpperCase()}`, 1.5, { a: 'middle', b: true, it: false, ff: FSERIF }) + TU('emp.tipo', ex + ew / 2, ey + 6.4, L.empalme || 'TIPO (pendiente)', 1.4, { a: 'middle', b: true, it: false, ff: FSERIF });
+    s += Rc(ex + 4, yE - 4, 7, 8, { st: C.med, sw: LW }) + T(ex + 7.5, yE + 1.5, 'M', 4.2, { a: 'middle', it: false, b: true, fill: C.med, ff: FSERIF });
+    s += TU('emp.med1', ex + 7.5, yE + 7, 'MEDIDOR', 1.15, { a: 'middle', it: false }) + TU('emp.med2', ex + 7.5, yE + 8.6, B.soloEV ? '' : 'BIDIRECCIONAL', 1.15, { a: 'middle', it: false }) + TU('emp.dist', ex + 7.5, yE + 10.2, (p.distrib || '').toUpperCase(), 1.15, { a: 'middle', it: false });
+    s += ln(ex - 10, yE, ex + 4, yE) + ln(ex + 11, yE, ex + 17, yE) + `<g transform="rotate(-90 ${ex + 21} ${yE})">${breaker(ex + 21, yE)}</g>` + ln(ex + 25, yE, ex + ew, yE);
+    s += TU('emp.int2', ex + 21, yE + 4.6, `${polos === '4' ? '3' : '1'}x${D.ca.prot} A`, 1.3, { a: 'middle' }) + TU('emp.int3', ex + 21, yE + 6.3, 'Curva C', 1.3, { a: 'middle' });
+    if (!B.soloEV) s += TU('emp.pot', ex + ew + 3, yE - 1.2, `${fmt(D.kwn, 0)} kW / ${I.vac} V`, FU);
+    // límites: todo menos el empalme (con un escalón), rótulo arriba a la derecha
+    const xa = ex + ew + 6, xb = x0 + w - 2, ya = y0 + 1, yb = y0 + h - 1, yc = ey + eh + 4, xl = x0 + 2;
+    s += `<path d="M${xa} ${ya}H${xb}V${yb}H${xl}V${yc}H${xa}Z" fill="none" stroke="${C.guia}" stroke-width="${LW}"/>` + TU('limites', xb - 3, ya + 5, 'LÍMITES DEL PROYECTO', 2.4, { a: 'end' });
+  } else s += TU('og.titulo', cx, ey + 4, 'SISTEMA AISLADO (OFF GRID) · SIN CONEXIÓN A LA RED', 2.4, { a: 'middle', b: true, ff: FSERIF });
+  // tierra de servicio y protección: punto en el conductor, guía segmentada hasta los símbolos
+  if (U.tierra !== false && !B.offgrid) { const tx0 = cx, ty0 = yE + 7, gx = cx + 26;
+    s += `<circle cx="${tx0}" cy="${ty0}" r=".55" fill="#111"/>` + Ln(tx0, ty0, gx, ty0, { st: '#111', sw: LW, dash: '3 1.2' }) + tierraP(gx, ty0) + tierra(gx + 7, ty0 - 2);
+    s += TU('tierra.1', gx + 13, ty0 - 1, 'Tierra de servicio y protección', FU) + TU('tierra.2', gx + 13, ty0 + 1.1, `Barra Copper · R = ${L.tierraR || '—'} Ω`, FU); }
+
+  /* ---- Alturas: bloques fijos y huecos repartidos (el dibujo llena la hoja) ---- */
+  const conTFV = !!B.tfv;
+  const hTG = B.soloEV ? 40 : conTFV ? 30 : 44, hTFV = 28, hInv = conTFV ? 40 : 44, hStr = conTFV ? 46 : 50, hArr = B.offgrid ? 12 : ey + eh - y0 + 2;
+  const nGap = B.soloEV ? 2 : conTFV ? 3 : 2;
+  const gap = Math.max(18, Math.min(40, (h - hArr - hTG - (conTFV ? hTFV : 0) - (B.soloEV ? 30 : hInv + hStr)) / nGap));
+  const tw = Math.min(w * .42, 120), tx = cx - tw / 2;
+  const ty = y0 + hArr + gap;
+  if (!B.offgrid) s += codo(ex + ew, yE, cx, ty) + cond(cx, ty - Math.max(14.5, gap * .62), ca.tramos[1], I, 'c2', TU, -1);
 
   /* ---- Solo cargador (electromovilidad, sin fotovoltaico) ---- */
   if (B.soloEV) {
-    const E = B.soloEV, tx = x0 + w * .3, ty = y0 + 84, tw = w * .44, th = 46;
-    s += Ln(cx, ey + 16, cx, ty, { st: R, sw: .35 }) + cond(cx + 3, ey + 24, ca.tramos[1], { fase }, 'c2', TU);
-    s += Rc(tx, ty, tw, th, { st: Y, sw: .4 }) + TU('tg.titulo', tx + tw / 2, ty - 3, B.enFV ? 'TABLERO GENERAL y FOTOVOLTAICO (TGyFV)' : 'TABLERO GENERAL (TG)', 2.4, { a: 'middle', b: true });
-    s += TU('tg.nota1', tx + tw + 4, ty + 6, 'Tablero metálico', 1.8) + TU('tg.nota2', tx + tw + 4, ty + 8.5, 'Grado protección IP65', 1.6);
-    s += breaker(cx, ty + 8, V) + TU('tg.disy', cx + 4, ty + 7, `Disyuntor ${L.disyuntor || `${polos}x${D.ca.prot} A Curva C`}`, 1.4) + Ln(cx, ty, cx, ty + 4, { st: R, sw: .35 }) + Ln(cx, ty + 12, cx, ty + 16, { st: R, sw: .35 });
-    s += Ln(tx + 8, ty + 16, tx + tw - 8, ty + 16, { st: A, sw: .4 }) + TU('tg.barra', tx + tw * .55, ty + 15, 'Barra repartidora de cobre', 1.3);
-    s += breaker(cx, ty + 22, V) + Ln(cx, ty + 16, cx, ty + 18, { st: R, sw: .35 }) + Ln(cx, ty + 26, cx, ty + 30, { st: R, sw: .35 }) + Rc(cx - 2.5, ty + 30, 5, 5, { st: '#111' }) + TU('ev.prot', cx + 4, ty + 23, `Protección cargador ${U.extras.evProt || E.prot}`, 1.4) + TU('tg.dif', cx + 4, ty + 33, `Diferencial ${L.diferencial || '2x40 A 30 mA Tipo A'}`, 1.4);
-    if (U.consumo !== false) s += circuito(cx + 45, ty + 16, ty + th + 8, 'tg.consumo', 'Consumo');
-    if (B.enFV) s += circuito(cx - 45, ty + 16, ty + th + 8, 'tg.fv', 'Circuito FV existente', true);
-    const cy = ty + th + 34; s += Ln(cx, ty + 35, cx, cy, { st: R, sw: .35 }) + TU('evc.0', cx + 3, ty + th + 8, `Conductor ${fase === 'Trifásico' ? '4' : '2'}x6 mm² + T`, 1.45) + TU('evc.1', cx + 3, ty + th + 10.2, 'Tub. EMT Ø25 mm', 1.45);
-    s += cargador(cx, cy, 'ev.cg', E.marca, E.kw);
-    return s;
+    const E = B.soloEV;
+    s += tablero(tx, ty, tw, hTG, 'tg', B.enFV ? 'TABLERO GENERAL y FOTOVOLTAICO (TGyFV)' : 'TABLERO GENERAL (TG)', 'izq');
+    s += ln(cx, ty, cx, ty + 4) + prot(cx, ty + 8, 'tg.disy', `${L.disyuntor || `${polos}x${D.ca.prot} A Curva C`}`) + ln(cx, ty + 12, cx, ty + 16);
+    s += ln(tx + 8, ty + 16, tx + tw - 8, ty + 16, C.barra) + TU('tg.barra', tx + tw - 9, ty + 15.2, 'Barra repartidora de cobre', 1.3, { a: 'end' });
+    s += ln(cx, ty + 16, cx, ty + 18) + prot(cx, ty + 22, 'ev.prot', `${U.extras.evProt || E.prot}`) + ln(cx, ty + 26, cx, ty + 29) + difer(cx, ty + 29, 'tg.dif', `${L.diferencial || '2x40 A 30 mA Tipo A'}`);
+    if (U.consumo !== false) s += circuito(cx + tw * .3, ty + 16, ty + hTG + 6, 'tg.consumo', 'Consumo');
+    if (B.enFV) s += circuito(cx - tw * .3, ty + 16, ty + hTG + 6, 'tg.fv', 'Circuito FV existente', true);
+    const cy = ty + hTG + gap; s += ln(cx, ty + 32, cx, cy) + TU('evc.0', cx - 2.6, ty + hTG + 8, `Conductor ${polos}x6 mm² + T`, FU, { a: 'end' }) + TU('evc.1', cx - 2.6, ty + hTG + 10.2, 'Tub. EMT Ø25 mm', FU, { a: 'end' });
+    return s + cargador(cx, cy, 'ev.cg', E.marca, E.kw);
   }
 
-  /* ---- Tablero(s): TGyFV (sin TFV) o TG + TFV separados (con TFV) ---- */
-  const tx = x0 + w * .3, tw = w * .44;
-  let tyFin;                                                // donde baja la línea al inversor
-  if (!B.tfv) {
-    const ty = y0 + 88, th = 42;
-    if (!B.offgrid) s += Ln(cx, ey + 16, cx, ty, { st: R, sw: .35 }) + cond(cx + 3, ey + 24, ca.tramos[1], I, 'c2', TU);
-    s += Rc(tx, ty, tw, th, { st: Y, sw: .4 }) + TU('tg.titulo', tx + tw / 2, ty - 3, B.offgrid ? 'TABLERO GENERAL (TG)' : 'TABLERO GENERAL y FOTOVOLTAICO (TGyFV)', 2.4, { a: 'middle', b: true });
-    s += TU('tg.nota1', tx + tw + 4, ty + 6, 'Tablero metálico', 1.8) + TU('tg.nota2', tx + tw + 4, ty + 8.5, 'Grado protección IP65', 1.6) + Ln(tx + tw, ty + 8, tx + tw + 4, ty + 6, { st: '#888', sw: .15 });
-    s += breaker(cx, ty + 8, V) + TU('tg.disy', cx + 4, ty + 7, `Disyuntor ${L.disyuntor || disyDef(D)}`, 1.4);
-    s += Ln(tx + 8, ty + 16, tx + tw - 8, ty + 16, { st: A, sw: .4 }) + TU('tg.barra', tx + tw * .55, ty + 15, 'Barra repartidora de cobre', 1.3);
-    s += breaker(cx, ty + 22, V) + Rc(cx - 2.5, ty + 30, 5, 5, { st: '#111' }) + TU('tg.dif', cx + 4, ty + 33, `Diferencial ${L.diferencial || difDef(D)}`, 1.4);
-    if (U.consumo !== false) s += circuito(cx + 45, ty + 16, ty + th + 8, 'tg.consumo', 'Consumo');
-    if (X.ev) s += circuito(cx - 48, ty + 16, ty + th + 8, 'ev.titulo', 'Cargador EV', true) + TU('ev.prot', cx - 51, ty + th + 12.4, U.extras.evProt || '2x32 A Curva C', 1.4, { a: 'end' });
+  /* ---- Tablero(s): TGyFV (sin TFV) o TG + TFV separados ---- */
+  let yFin;                                                   // donde baja la línea al inversor
+  if (!conTFV) {
+    s += tablero(tx, ty, tw, hTG, 'tg', B.offgrid ? 'TABLERO GENERAL (TG)' : 'TABLERO GENERAL y FOTOVOLTAICO (TGyFV)', 'izq');
+    s += ln(cx, ty, cx, ty + 4) + prot(cx, ty + 8, 'tg.disy', `${L.disyuntor || disyDef(D)}`) + ln(cx, ty + 12, cx, ty + 16);
+    s += ln(tx + 8, ty + 16, tx + tw - 8, ty + 16, C.barra) + TU('tg.barra', tx + tw - 9, ty + 15.2, 'Barra repartidora de cobre', 1.3, { a: 'end' });
+    s += ln(cx, ty + 16, cx, ty + 18) + prot(cx, ty + 22, 'tg.fvp', `${L.disyuntor || disyDef(D)}`) + ln(cx, ty + 26, cx, ty + 29) + difer(cx, ty + 29, 'tg.dif', `${L.diferencial || difDef(D)}`);
+    if (U.consumo !== false) s += circuito(cx + tw * .32, ty + 16, ty + hTG + 6, 'tg.consumo', 'Consumo');
+    if (X.ev) s += circuito(cx - tw * .32, ty + 16, ty + hTG + 6, 'ev.titulo', 'Cargador EV', true) + TU('ev.prot', cx - tw * .32 - 2.6, ty + hTG + 10.4, U.extras.evProt || '2x32 A Curva C', FU, { a: 'end' });
     if (B.evTablero) s += tableroEV(ty + 16, ty);
-    s += Ln(cx, ty, cx, ty + 4, { st: R, sw: .35 }) + Ln(cx, ty + 12, cx, ty + 18, { st: R, sw: .35 }) + Ln(cx, ty + 26, cx, ty + 30, { st: R, sw: .35 }) + Ln(cx, ty + 35, cx, ty + th + 22, { st: R, sw: .35 });
-    s += cond(cx + 3, ty + th + 2, ca.tramos[0], I, 'c1', TU);
-    tyFin = ty + th;
+    yFin = ty + 32;
   } else {
-    // TG: interruptor general + consumo; TFV: disyuntor + diferencial del inversor
-    const ty = y0 + 80, th = 26;
-    s += Ln(cx, ey + 16, cx, ty, { st: R, sw: .35 }) + cond(cx + 3, ey + 24, ca.tramos[1], I, 'c2', TU);
-    s += Rc(tx, ty, tw, th, { st: Y, sw: .4 }) + TU('tg.titulo', tx + tw / 2, ty - 3, 'TABLERO GENERAL (TG)', 2.4, { a: 'middle', b: true });
-    s += TU('tg.nota1', tx + tw + 4, ty + 6, 'Tablero metálico', 1.8) + TU('tg.nota2', tx + tw + 4, ty + 8.5, 'Grado protección IP65', 1.6);
-    s += breaker(cx, ty + 7, V) + TU('tg.gral', cx + 4, ty + 6, `Interruptor general ${polos}x${D.ca.prot} A Curva C`, 1.4) + Ln(cx, ty, cx, ty + 3, { st: R, sw: .35 }) + Ln(cx, ty + 11, cx, ty + 14, { st: R, sw: .35 });
-    s += Ln(tx + 8, ty + 14, tx + tw - 8, ty + 14, { st: A, sw: .4 }) + TU('tg.barra', tx + tw * .55, ty + 13, 'Barra repartidora de cobre', 1.3);
-    s += breaker(cx, ty + 20, V) + TU('tg.alim', cx + 4, ty + 19.5, `Alimentador TFV ${polos}x${D.ca.prot} A`, 1.4) + Ln(cx, ty + 14, cx, ty + 16, { st: R, sw: .35 });
-    if (U.consumo !== false) s += circuito(cx + 45, ty + 14, ty + th + 6, 'tg.consumo', 'Consumo');
-    if (X.ev) s += circuito(cx - 48, ty + 14, ty + th + 6, 'ev.titulo', 'Cargador EV', true) + TU('ev.prot', cx - 51, ty + th + 10.4, U.extras.evProt || '2x32 A Curva C', 1.4, { a: 'end' });
-    const t2 = ty + th + 20, th2 = 30;
-    s += Ln(cx, ty + 24, cx, t2, { st: R, sw: .35 }) + TU('ctg.0', cx + 3, ty + th + 5, `RVK ${polos === '4' ? '4' : '2'}x8,37 mm² · Tub. EMT Ø32 mm`, 1.45);
-    s += Rc(tx + tw * .12, t2, tw * .76, th2, { st: Y, sw: .4 }) + TU('tfv.titulo', tx + tw / 2, t2 - 3, 'TABLERO FOTOVOLTAICO (TFV)', 2.2, { a: 'middle', b: true });
-    s += breaker(cx, t2 + 8, V) + TU('tg.disy', cx + 4, t2 + 7, `Disyuntor ${L.disyuntor || disyDef(D)}`, 1.4) + Ln(cx, t2, cx, t2 + 4, { st: R, sw: .35 }) + Ln(cx, t2 + 12, cx, t2 + 18, { st: R, sw: .35 });
-    s += Rc(cx - 2.5, t2 + 18, 5, 5, { st: '#111' }) + TU('tg.dif', cx + 4, t2 + 21, `Diferencial ${L.diferencial || difDef(D)}`, 1.4) + Ln(cx, t2 + 23, cx, t2 + th2 + 20, { st: R, sw: .35 });
-    s += cond(cx + 3, t2 + th2 + 2, ca.tramos[0], I, 'c1', TU);
-    tyFin = t2 + th2 - 2;
+    s += tablero(tx, ty, tw, hTG, 'tg', 'TABLERO GENERAL (TG)', 'izq');
+    s += ln(cx, ty, cx, ty + 3) + prot(cx, ty + 7, 'tg.gral', `Interruptor general ${polos}x${D.ca.prot} A Curva C`) + ln(cx, ty + 11, cx, ty + 14);
+    s += ln(tx + 8, ty + 14, tx + tw - 8, ty + 14, C.barra) + TU('tg.barra', tx + tw - 9, ty + 13.2, 'Barra repartidora de cobre', 1.3, { a: 'end' });
+    s += ln(cx, ty + 14, cx, ty + 16) + prot(cx, ty + 20, 'tg.alim', `Alimentador TFV ${polos}x${D.ca.prot} A`);
+    if (U.consumo !== false) s += circuito(cx + tw * .32, ty + 14, ty + hTG + 4, 'tg.consumo', 'Consumo');
+    if (X.ev) s += circuito(cx - tw * .32, ty + 14, ty + hTG + 4, 'ev.titulo', 'Cargador EV', true) + TU('ev.prot', cx - tw * .32 - 2.6, ty + hTG + 8.4, U.extras.evProt || '2x32 A Curva C', FU, { a: 'end' });
+    const t2 = ty + hTG + gap, tw2 = Math.min(tw * .6, 70);
+    s += ln(cx, ty + 24, cx, t2) + `<circle cx="${cx}" cy="${ty + hTG + gap * .5}" r=".6" fill="#fff" stroke="${C.guia}" stroke-width="${LW}"/>` + TU('ctg.0', cx - 2.6, ty + hTG + gap * .5 - .5, `RVK ${polos}x8,37 mm² · Tub. EMT Ø32 mm`, FU, { a: 'end' });
+    s += tablero(cx - tw2 / 2, t2, tw2, hTFV, 'tfv', 'TABLERO FOTOVOLTAICO (TFV)');
+    s += ln(cx, t2, cx, t2 + 4) + prot(cx, t2 + 8, 'tg.disy', `${L.disyuntor || disyDef(D)}`) + ln(cx, t2 + 12, cx, t2 + 16) + difer(cx, t2 + 16, 'tg.dif', `${L.diferencial || difDef(D)}`);
+    yFin = t2 + 19;
   }
-  // Tablero de electromovilidad (al costado, alimentado desde la barra del tablero general)
-  function tableroEV(yBarra, ty) {
-    const bx = x0 + w * .8, bw = 40, by = ty + 4, bh = 30;
-    let t = Ln(tx + tw - 8, yBarra, bx + bw / 2, yBarra, { st: R, sw: .3 }) + Ln(bx + bw / 2, yBarra, bx + bw / 2, by, { st: R, sw: .3 });
-    t += Rc(bx, by, bw, bh, { st: Y, sw: .4 }) + TU('tev.titulo', bx + bw / 2, by - 2, 'TABLERO ELECTROMOVILIDAD', 1.8, { a: 'middle', b: true });
-    t += breaker(bx + bw / 2, by + 8, V) + TU('ev.prot', bx + bw / 2 + 3, by + 7, U.extras.evProt || '2x32 A Curva C', 1.3) + Ln(bx + bw / 2, by, bx + bw / 2, by + 4, { st: R, sw: .3 }) + Ln(bx + bw / 2, by + 12, bx + bw / 2, by + 18, { st: R, sw: .3 });
-    t += Rc(bx + bw / 2 - 2.5, by + 18, 5, 5, { st: '#111' }) + TU('tev.dif', bx + bw / 2 + 3, by + 21, 'Diferencial 2x40 A 30 mA', 1.3) + Ln(bx + bw / 2, by + 23, bx + bw / 2, by + bh + 12, { st: R, sw: .3 });
-    return t + cargador(bx + bw / 2, by + bh + 12, 'ev.cg', 'EV', '7,4');
+  // Tablero de electromovilidad (a la derecha, alimentado desde la barra del tablero general)
+  function tableroEV(yBarra, tyy) {
+    const bw = 44, bx = Math.min(x0 + w - bw - 30, tx + tw + 40), by = tyy, bh = 30;
+    let t = codo(tx + tw - 8, yBarra, bx + bw / 2, by);
+    t += tablero(bx, by, bw, bh, 'tev', 'TABLERO ELECTROMOVILIDAD', false);
+    t += ln(bx + bw / 2, by, bx + bw / 2, by + 4) + prot(bx + bw / 2, by + 8, 'ev.prot', U.extras.evProt || '2x32 A Curva C') + ln(bx + bw / 2, by + 12, bx + bw / 2, by + 16) + difer(bx + bw / 2, by + 16, 'tev.dif', '2x40 A 30 mA Tipo A-SI') + ln(bx + bw / 2, by + 19, bx + bw / 2, by + bh + 14);
+    return t + cargador(bx + bw / 2, by + bh + 14, 'ev.cg', 'EV', '7,4');
   }
-  // SmartGuard: entre el tablero y el inversor (respaldo)
-  if (X.sg) { const gx = cx - 34, gy = tyFin + 4; s += Rc(gx, gy, 22, 11, { st: '#5A6FD8', fill: '#EEF1FF', sw: .35 }) + TU('sg.titulo', gx + 11, gy + 4.5, 'SMARTGUARD', 1.6, { a: 'middle', b: true }) + TU('sg.modelo', gx + 11, gy + 7.6, 'Respaldo', 1.3, { a: 'middle' }) + Ln(gx + 22, gy + 5.5, cx, gy + 5.5, { st: R, sw: .3 }); }
-  // Inversor
-  const ix = x0 + w * .12, iy = tyFin + 22, iw = w * .76, ih = 50; s += Rc(ix, iy, iw, ih, { st: MG, sw: .4 });
-  s += TU('inv.1', ix + 2, iy + 4, B.offgrid ? 'INVERSOR HÍBRIDO (OFF GRID)' : 'INVERSOR', 1.8, { b: true }) + TU('inv.2', ix + 2, iy + 6.3, `${I.marca} ${I.modelo}${(p.cantInv || 1) > 1 ? ` (x${p.cantInv})` : ''}`, 1.6) + TU('inv.3', ix + 2, iy + 8.6, `POT. NOMINAL ${I.kw} kW`, 1.6) + TU('inv.4', ix + 2, iy + 10.9, 'Perfil de red: Chile (CL)', 1.6);
-  s += Rc(cx - 5, iy + 6, 10, 10, { st: MG, fill: '#FCE5FC' }) + Ln(cx - 5, iy + 16, cx + 5, iy + 6, { st: MG }) + T(cx - 3, iy + 10, '~', 3, { it: false, fill: MG }) + T(cx + 1, iy + 15, '=', 2.6, { it: false, fill: MG });
-  const nM = I.mppt, paso = iw / nM, sx = i => ix + paso * (i + .5);
-  s += Ln(ix + 6, iy + 22, ix + iw - 6, iy + 22, { st: A, sw: .4 }) + Ln(cx, iy + 16, cx, iy + 22, { st: R, sw: .3 });
-  const mw = Math.min(8, paso * .7);
-  for (let i = 0; i < nM; i++) { s += Ln(sx(i), iy + 22, sx(i), iy + 26) + Rc(sx(i) - mw / 2, iy + 26, mw, 6, { st: MG }) + T(sx(i), iy + 29, 'MPPT', Math.min(1.4, mw / 4), { a: 'middle', it: false }) + T(sx(i), iy + 31.2, String(i + 1), 1.4, { a: 'middle', it: false }); }
-  if (U.dcSwitch !== false) s += Rc(ix + 6, iy + 38, iw - 12, 7, { st: MG }) + TU('inv.dcsw', ix + 8, iy + 41, 'DC SWITCH', 1.5) + T(ix + 8, iy + 43.2, '1', 1.5);
-  for (let i = 0; i < nM; i++) { s += Ln(sx(i), iy + 32, sx(i), iy + 38) + (U.dcSwitch !== false ? `<path d="M${sx(i) - 1.2} ${iy + 43.5}l2.4 -4" stroke="${V}" stroke-width=".35"/>` : Ln(sx(i), iy + 38, sx(i), iy + 45)); }
-  // Batería: al costado del inversor, en CC
-  if (X.bat) { const bx = Math.min(ix + iw + 4, x0 + w - 22), by = iy + 14; s += Rc(bx, by, 20, 16, { st: '#52A06F', fill: '#EAF6EE', sw: .35 }) + TU('bat.titulo', bx + 10, by + 6, 'BATERÍA', 1.7, { a: 'middle', b: true }) + TU('bat.modelo', bx + 10, by + 9.5, U.extras.batModelo || 'LUNA2000', 1.3, { a: 'middle' }) + TU('bat.cap', bx + 10, by + 12.4, U.extras.batCap || '', 1.3, { a: 'middle' }) + Ln(ix + iw, by + 8, bx, by + 8, { st: '#3D6BFF', sw: .3, dash: '1.5 1' }); }
-  // Strings (varios por MPPT: corridos a la derecha)
-  const sy = iy + ih + 6, fs = nM > 4 ? 1.1 : 1.5; s += TU('str.ducto1', ix - 2, sy + 2, 'Tub. EMT Ø32 mm', 1.4, { a: 'end' }) + TU('str.ducto2', ix - 2, sy + 4.2, 'Tub. Metálica Flex. Heavy Duty Ø32 mm', 1.4, { a: 'end' });
-  const off = Math.min(8, paso / ((I.strPorMppt || 1) + .5));
-  SI.lista.forEach(x => {
-    const i = Math.min(nM - 1, (x.st.mppt || 1) - 1), Xs = sx(i) + ((x.st.num || 1) - 1) * off, k = `s.${x.st.id}.`, lado = nM > 4 ? 0 : 1;
-    s += Ln(Xs, iy + 45, Xs, sy + 22, { st: R, sw: .3, dash: '1.5 1' });
-    s += TU(k + 'largo', Xs + 2, sy + 12, `L=${fmt(x.largo, 0)} m`, fs) + TU(k + 'cond', Xs + 2, sy + 14.2, `PV1-F 2x${x.seccion} mm²`, fs);
-    s += Rc(Xs - 3.5, sy + 22, 7, 7, { st: V, fill: '#E6F6EA' }) + `<path d="M${Xs - 3.5} ${sy + 22}l3.5 4 3.5-4" fill="none" stroke="${V}" stroke-width=".3"/>`;
-    if (lado) s += TU(k + 'pmax', Xs + 5, sy + 25, `Pmáx=${fmt(x.pw, 0)} Wp`, fs) + TU(k + 'pmod', Xs + 5, sy + 27.2, `Pmód=${x.P.wp} Wp`, fs);
-    s += TU(k + 'nombre', lado ? Xs - 5 : Xs, sy + 33 + (lado ? 0 : 1), `Str.${x.nombre}`, fs, { a: lado ? 'end' : 'middle' }) + TU(k + 'mods', lado ? Xs - 5 : Xs, sy + 35.2 + (lado ? 0 : 1), `${x.n} módulos`, fs, { a: lado ? 'end' : 'middle' });
-    s += Ln(Xs, sy + 29, Xs, sy + 36, { dash: '1 .7' }) + tierraP(Xs, sy + 37) + TU(k + 'tp', Xs, sy + 43, 'T.P.', 1.4, { a: 'middle' });
+
+  /* ---- Inversor: marco magenta, símbolo en el eje, MPPT y DC SWITCH ---- */
+  const iy = yFin + gap + (conTFV ? hTFV - 19 : hTG - 32), nM = I.mppt, iw = Math.min(w * .62, Math.max(96, nM * 32)), ix = cx - iw / 2, ih = hInv;
+  s += ln(cx, yFin, cx, iy + 4) + cond(cx, yFin + (iy - yFin) * .5, ca.tramos[0], I, 'c1', TU, 1);
+  if (X.sg) { const gx = tx + tw + 10, gy = yFin + 4; s += Rc(gx, gy, 30, 14, { st: C.equipo, sw: LW }) + TU('sg.titulo', gx + 15, gy - 1.6, 'Smart Guard', 2.2, { a: 'middle', b: true, ff: FSERIF }) + TU('sg.modelo', gx + 15, gy + 8, 'Respaldo', FU, { a: 'middle' }) + ln(gx, gy + 7, cx, gy + 7); }
+  s += Rc(ix, iy, iw, ih, { st: C.equipo, sw: LW });
+  s += TU('inv.1', ix + 2.5, iy + 3.6, B.offgrid ? 'INVERSOR HÍBRIDO (OFF GRID)' : 'INVERSOR', FU) + TU('inv.2', ix + 2.5, iy + 5.8, `${I.marca} ${I.modelo}${(p.cantInv || 1) > 1 ? ` (x${p.cantInv})` : ''}`, FU) + TU('inv.3', ix + 2.5, iy + 8, `POT. NOMINAL ${I.kw} kW`, FU) + TU('inv.4', ix + 2.5, iy + 10.2, 'Perfil de red: Chile (CL)', FU);
+  s += Rc(cx - 3.5, iy + 4, 7, 7, { st: C.equipo, sw: LW }) + Ln(cx - 3.5, iy + 11, cx + 3.5, iy + 4, { st: C.equipo, sw: LW }) + T(cx - 2.7, iy + 6.6, '~', 2.2, { it: false, fill: C.equipo }) + T(cx + .6, iy + 10.4, '=', 2, { it: false, fill: C.equipo });
+  const paso = (iw - 14) / nM, sx = i => ix + 10 + paso * (i + .5), yBus = iy + 16;
+  s += ln(cx, iy + 11, cx, yBus) + ln(sx(0) - 4, yBus, sx(nM - 1) + 4, yBus, C.barra);
+  for (let i = 0; i < nM; i++) s += ln(sx(i), yBus, sx(i), iy + 19, C.equipo) + Rc(sx(i) - 3, iy + 19, 6, 5.4, { st: C.equipo, sw: LW }) + T(sx(i), iy + 21.3, 'MPPT', 1.3, { a: 'middle' }) + T(sx(i), iy + 23.4, String(i + 1), 1.3, { a: 'middle' });
+  const yDC = iy + 31;
+  if (U.dcSwitch !== false) s += Rc(sx(0) - 6, yDC, sx(nM - 1) - sx(0) + 12, 5.6, { st: C.equipo, sw: LW }) + TU('inv.dcsw', sx(0) - 7.5, yDC + 2.3, 'DC SWITCH', FU, { a: 'end' }) + T(sx(0) - 7.5, yDC + 4.5, '1', FU, { a: 'end' });
+  for (let i = 0; i < nM; i++) s += ln(sx(i), iy + 24.4, sx(i), yDC, C.equipo) + (U.dcSwitch !== false ? `<path d="M${sx(i) - .9} ${yDC + 4.4}l1.8 -3.2" stroke="${C.prot}" stroke-width="${LW}"/>` : '');
+  // Batería: a la derecha del inversor, desde el bus de CC
+  if (X.bat) { const bx = Math.min(ix + iw + 12, x0 + w - 40), by = iy + 14;
+    s += codo(sx(nM - 1) + 4, yBus, bx + 4.5, by) + Ln(cx + 3.5, iy + 7.5, bx + 7, iy + 7.5, { st: C.bat, sw: LW }) + Ln(bx + 7, iy + 7.5, bx + 7, by, { st: C.bat, sw: LW });
+    s += Rc(bx, by, 9, 18, { st: C.equipo, sw: LW }) + T(bx + 2.2, by + 15, '+', 2, { it: false }) + T(bx + 5.2, by + 15, '–', 2, { it: false });
+    s += TU('bat.titulo', bx + 11, by + 2, 'Batería', FU) + TU('bat.modelo', bx + 11, by + 4.2, U.extras.batModelo || 'LUNA2000', FU) + TU('bat.cap', bx + 11, by + 6.4, U.extras.batCap || '', FU); }
+
+  /* ---- Strings: rojo continuo, canalización común con un círculo en cada cruce, módulo vertical ---- */
+  const sy = iy + ih + 4, off = Math.min(14, paso / ((I.strPorMppt || 1) + .5)), fs = nM > 5 ? 1.35 : FU;
+  const lista = SI.lista.length ? SI.lista : Array.from({ length: nM }, (_, i) => ({ st: { id: 'v' + i, mppt: i + 1, num: 1 }, vacio: true, nombre: `A.${i + 1}.1` }));
+  const xsDe = x => sx(Math.min(nM - 1, (x.st.mppt || 1) - 1)) + ((x.st.num || 1) - 1) * off;
+  const xs = lista.map(xsDe), xMin = Math.min(...xs), xMax = Math.max(...xs);
+  s += Ln(xMin - 8, sy + 3, xMax + 8, sy + 3, { st: '#111', sw: LW }) + TU('str.ducto1', xMin - 10, sy + 2.2, 'Tub. EMT Ø32 mm', fs, { a: 'end' }) + TU('str.ducto2', xMin - 10, sy + 4.4, 'Tub. Metálica Flex. Heavy Duty Ø32 mm', fs, { a: 'end' });
+  lista.forEach(x => {
+    const Xs = xsDe(x), k = `s.${x.st.id}.`, ym = sy + 15;
+    s += ln(Xs, U.dcSwitch !== false ? yDC + 5.6 : iy + 24.4, Xs, ym) + `<circle cx="${Xs}" cy="${sy + 3}" r=".6" fill="#fff" stroke="#111" stroke-width="${LW}"/>`;
+    s += Rc(Xs - 1.9, ym, 3.8, 5.4, { st: C.prot, sw: LW }) + `<path d="M${Xs - 1.9} ${ym}L${Xs} ${ym + 2.7}L${Xs + 1.9} ${ym}" fill="none" stroke="${C.prot}" stroke-width="${LW}"/>`;
+    if (x.vacio) { s += T(Xs - 3, ym + 8, `Str.${x.nombre}`, fs, { a: 'end' }); return; }
+    s += TU(k + 'largo', Xs + 1.2, sy + 9.6, `L=${fmt(x.largo, 0)} m`, fs) + TU(k + 'cond', Xs + 1.2, sy + 11.8, `PV1-F 2x${x.seccion} mm²`, fs);
+    s += TU(k + 'pmax', Xs + 3, ym + 2.2, `Ptotal=${fmt(x.pw / 1000, 2)} kWp`, fs) + TU(k + 'pmod', Xs + 3, ym + 4.4, `Pmód=${x.P.wp} Wp`, fs);
+    s += TU(k + 'nombre', Xs - 3, ym + 8, `Str.${x.nombre}`, fs, { a: 'end' }) + TU(k + 'mods', Xs - 3, ym + 10.2, `${x.n} módulos`, fs, { a: 'end' });
+    s += `<circle cx="${Xs + 1.9}" cy="${ym + 5.4}" r=".45" fill="#111"/>` + Ln(Xs + 1.9, ym + 5.4, Xs + 3.2, ym + 5.4, { st: '#111', sw: LW }) + Ln(Xs + 3.2, ym + 5.4, Xs + 3.2, ym + 10, { st: '#111', sw: LW }) + tierraP(Xs + 3.2, ym + 10) + TU(k + 'tp', Xs + 3.2, ym + 16, 'T.P.', 1.4, { a: 'middle' });
   });
-  if (!SI.lista.length) for (let i = 0; i < nM; i++) s += Ln(sx(i), iy + 45, sx(i), sy + 22, { st: R, sw: .3, dash: '1.5 1' }) + Rc(sx(i) - 3.5, sy + 22, 7, 7, { st: V, fill: '#E6F6EA' }) + T(sx(i), sy + 33, `Str.A.${i + 1}.1`, fs, { a: 'middle' });
   return s;
 }
-const breaker = (x, y, c) => `<g><path d="M${x} ${y - 4}v1.5M${x} ${y + 4}v-1.5" stroke="#111" stroke-width=".3"/><path d="M${x} ${y + 2.5}c-2 -1.5 -2 -3.5 0 -5" fill="none" stroke="${c}" stroke-width=".4"/><circle cx="${x}" cy="${y + 2.6}" r=".6" fill="none" stroke="${c}" stroke-width=".25"/></g>`;
-const tierra = (x, y) => `<path d="M${x} ${y}v3M${x - 3} ${y + 3}h6M${x - 2} ${y + 4.2}h4M${x - 1} ${y + 5.4}h2" stroke="#111" stroke-width=".3"/>`;
-const tierraP = (x, y) => '<g>' + `<path d="M${x} ${y}v2M${x - 3} ${y + 2}h6" stroke="#111" stroke-width=".3"/>` + Array.from({ length: 5 }, (_, i) => `<path d="M${x - 3 + i * 1.5} ${y + 2}l-1 1.5" stroke="#111" stroke-width=".2"/>`).join('') + '</g>';
-function cond(x, y, t, I, k = 'c', TU = (kk, ...a) => T(...a)) {
-  const guia = `<circle cx="${x - 3}" cy="${y + 3.8}" r=".7" fill="#fff" stroke="#111" stroke-width=".2"/>` + Ln(x - 2.3, y + 3.8, x - .9, y + 3.8, { sw: .2 }) + Ln(x - .9, y - 1.4, x - .9, y + 9.6, { sw: .2 });
-  return guia + [`RVK Reviflex Monopolar ${I.fase === 'Trifásico' ? '4' : '1'}x8,37 mm² (F)`, 'RVK Reviflex Monopolar 1x8,37 mm² (N)', `Tub. ${t.ducto}`, `DISTANCIA = ${fmt(t.largo, 0)} m`, `Vp = ${fmt(t.dv, 2)} V / ${fmt(t.dvp, 2)} %`].map((l, i) => TU(`${k}.${i}`, x, y + i * 2.2, l, 1.45)).join('');
+/* Interruptor termomagnético (vertical, centrado en x,y; el conductor llega a y−4 e y+4): un círculo en cada borne,
+   arco hacia la derecha y la marca «=» como en los planos de Ops */
+const breaker = (x, y, c = UC.prot) => { const a = 1.85; return `<g fill="none" stroke-width="${LW}"><path d="M${x} ${y - 4}V${y - a - .35}M${x} ${y + a + .35}V${y + 4}" stroke="${UC.cond}"/><circle cx="${x}" cy="${y - a}" r=".35" stroke="${c}"/><circle cx="${x}" cy="${y + a}" r=".35" stroke="${c}"/><path d="M${x + .3} ${y - a + .2}Q${x + 2.5} ${y} ${x + .3} ${y + a - .2}" stroke="${c}"/><path d="M${x + 1.25} ${y - .38}h.9M${x + 1.25} ${y + .38}h.9" stroke="${c}"/></g>`; };
+/* Diferencial: cuadrado de 3 × 3 con diagonal y «P» / «D» (y = borde superior) */
+const dif = (x, y) => `<g fill="none" stroke="#111" stroke-width="${LW}"><rect x="${x - 1.5}" y="${y}" width="3" height="3"/><path d="M${x - 1.5} ${y + 3}l3 -3"/></g>` + T(x - 1.25, y + 1.15, 'P', .95, { it: false, b: true, ff: FSERIF }) + T(x + .45, y + 2.85, 'D', .95, { it: false, b: true, ff: FSERIF });
+const tierra = (x, y) => `<path d="M${x} ${y}v2.4M${x - 2.4} ${y + 2.4}h4.8M${x - 1.6} ${y + 3.4}h3.2M${x - .8} ${y + 4.4}h1.6" stroke="#111" stroke-width="${LW}" stroke-dasharray=".6 .3"/>`;
+const tierraP = (x, y) => '<g>' + `<path d="M${x} ${y}v1.4M${x - 2.6} ${y + 1.4}h5.2" stroke="#111" stroke-width="${LW}"/>` + Array.from({ length: 6 }, (_, i) => `<path d="M${x - 2.4 + i * 1} ${y + 1.4}l-.8 1.1" stroke="#111" stroke-width="${LW}"/>`).join('') + '</g>';
+/* Etiqueta de un conductor: círculo sobre el cable y guía gris que subraya la primera línea; lado −1 = a la izquierda */
+function cond(x, y, t, I, k = 'c', TU = (kk, ...a) => T(...a), lado = 1) {
+  const L = [`RVK Reviflex Monopolar ${I.fase === 'Trifásico' ? '3' : '1'}x8,37 mm² (F)`, 'RVK Reviflex Monopolar 1x8,37 mm² (N)', `Tub. ${t.ducto}`, `DISTANCIA = ${fmt(t.largo, 0)} m`, `Vp = ${fmt(t.dv, 2)} V / ${fmt(t.dvp, 2)} %`];
+  const x1 = x + lado * 2.6, largo = anchoT(L[0], FU) + 1;
+  const s = `<circle cx="${x}" cy="${y}" r=".6" fill="#fff" stroke="${UC.guia}" stroke-width="${LW}"/>` + Ln(x + lado * .6, y, x1 + lado * largo, y, { st: UC.guia, sw: LW });
+  return s + L.map((l, i) => TU(`${k}.${i}`, x1, i ? y + .4 + i * 2.2 : y - .5, l, FU, lado < 0 ? { a: 'end' } : {})).join('');
 }
 
 /* ---------- Simbología y notas ---------- */
 function simbologia(x, y, w, h) {
   let s = Rc(x, y, w, h) + T(x + w / 2, y + 4, 'SIMBOLOGÍA', 2.2, { a: 'middle', b: true }) + Ln(x + w / 2 - 10, y + 5, x + w / 2 + 10, y + 5);
   const it = [
-    [`<rect x="-3" y="-3" width="6" height="6" fill="#E6F6EA" stroke="#1A8F3C" stroke-width=".3"/><path d="M-3 -3l3 3.5 3-3.5" fill="none" stroke="#1A8F3C" stroke-width=".3"/>`, 'MÓDULO FOTOVOLTAICO'],
-    [`<rect x="-3" y="-3" width="6" height="6" fill="#FCE5FC" stroke="#C0C" stroke-width=".3"/><path d="M-3 3l6-6" stroke="#C0C" stroke-width=".3"/>`, 'INVERSOR'],
+    [`<rect x="-3" y="-3" width="6" height="6" fill="none" stroke="#00A000" stroke-width=".3"/><path d="M-3 -3l3 3.5 3-3.5" fill="none" stroke="#1A8F3C" stroke-width=".3"/>`, 'MÓDULO FOTOVOLTAICO'],
+    [`<rect x="-3" y="-3" width="6" height="6" fill="none" stroke="#C800C8" stroke-width=".3"/><path d="M-3 3l6-6" stroke="#C0C" stroke-width=".3"/>`, 'INVERSOR'],
     [`<path d="M-4 0h8" stroke="#22B" stroke-width=".5"/>`, 'BARRA'],
     [tierraP(0, -2), 'TIERRA DE PROTECCIÓN'],
     [tierra(0, -3), 'TIERRA DE SERVICIO'],
@@ -270,8 +308,8 @@ function simbologia(x, y, w, h) {
     [`<path d="M-4 0h8" stroke="#D9A800" stroke-width=".5"/>`, 'LÍNEA CORRIENTE ALTERNA'],
     [`<path d="M-4 0h8" stroke="#E02020" stroke-width=".5" stroke-dasharray="1.6 1"/>`, 'SUBTERRÁNEA EN CC'],
     [`<path d="M-4 0h8" stroke="#E02020" stroke-width=".5"/>`, 'SUBTERRÁNEA EN CA'],
-    [`<rect x="-3" y="-3" width="6" height="6" fill="#C8F3F7" stroke="#0AA" stroke-width=".3"/>`, 'MEDIDOR'],
-    [breaker(0, 0, '#1A8F3C'), 'INTERRUPTOR AUTOMÁTICO']
+    [`<rect x="-3" y="-3" width="6" height="6" fill="none" stroke="#009CA8" stroke-width=".3"/>`, 'MEDIDOR'],
+    [breaker(0, 0), 'INTERRUPTOR AUTOMÁTICO'], [dif(0, -1.5), 'DIFERENCIAL']
   ];
   it.forEach(([g, n], i) => { const col = i % 2, fila = Math.floor(i / 2), X = x + 8 + col * w / 2, Y = y + 12 + fila * ((h - 14) / Math.ceil(it.length / 2)); s += `<g transform="translate(${X} ${Y})">${g}</g>` + T(X + 7, Y + .8, n, 1.7); });
   return s;
