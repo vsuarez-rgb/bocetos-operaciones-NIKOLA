@@ -154,39 +154,56 @@ function unilineal(p, D, SI, x0, y0, w, h) {
   const cx = x0 + w * .46;
   let s = '';
 
-  /* Tablero: contorno amarillo trazo-punto, título serif negrita cursiva y nota con guía */
+  /* Barra de tierra de protección (azul, dos puntos) y lazo de tierra/neutro punteado por arriba y por abajo del tablero */
+  const barraT = (x, y, tw, th, k) => { const bx = x + 4, by = y + th * .32, d = `fill="none" stroke="#111" stroke-width="${LW}" stroke-dasharray="2.4 1.2"`;
+    return TU(k + '.bt1', bx - 1, by - 2.4, 'Barra tierra de', .95) + TU(k + '.bt2', bx - 1, by - 1.2, 'protección', .95) + Ln(bx - 1, by, bx + 7, by, { st: C.barra, sw: LW }) +
+      `<circle cx="${bx + 1}" cy="${by}" r=".35" fill="${C.barra}"/><circle cx="${bx + 5}" cy="${by}" r=".35" fill="${C.barra}"/>` +
+      `<path d="M${bx + 5} ${by}V${y + 3.5}Q${bx + 5} ${y + 2} ${bx + 6.5} ${y + 2}H${x + tw - 3}" ${d}/><path d="M${bx + 1} ${by}V${y + th - 3.5}Q${bx + 1} ${y + th - 2} ${bx + 2.5} ${y + th - 2}H${x + tw - 3}" ${d}/>`; };
+  /* Tablero: contorno amarillo trazo-punto, título serif negrita cursiva, barra de tierra y nota de 3 líneas con guía */
   const tablero = (x, y, tw, th, k, titulo, nota = true) => {
-    let t = Rc(x, y, tw, th, { st: C.tab, sw: LW, dash: '3 .8 .4 .8' }) + TU(k + '.titulo', x + tw / 2, y - 2, titulo, FT, { a: 'middle', b: true, ff: FSERIF });
-    if (nota) { const sg = nota === 'izq' ? -1 : 1, nx = sg < 0 ? x : x + tw, ny = y + th * .4, l1 = U.textos[k + '.nota1'] ?? 'Tablero metálico', o = sg < 0 ? { it: false, a: 'end' } : { it: false };   // la del tablero general va a la izquierda, como en los planos
-      t += `<circle cx="${nx}" cy="${ny}" r=".6" fill="#fff" stroke="${C.guia}" stroke-width="${LW}"/>` + `<path d="M${nx + sg * .4} ${ny - .4}l${sg * 5} -5h${sg * (anchoT(l1, 1.9) + 1)}" fill="none" stroke="${C.guia}" stroke-width="${LW}"/>`;
-      t += TU(k + '.nota1', nx + sg * 6, ny - 6, 'Tablero metálico', 1.9, o) + TU(k + '.nota2', nx + sg * 6, ny - 3.4, 'Grado protección IP65', 1.9, o); }
+    let t = Rc(x, y, tw, th, { st: C.tab, sw: LW, dash: '3 .8 .4 .8' }) + TU(k + '.titulo', x + tw / 2, y - 2, titulo, FT, { a: 'middle', b: true, ff: FSERIF }) + barraT(x, y, tw, th, k);
+    if (nota) { const sg = nota === 'izq' ? -1 : 1, nx = sg < 0 ? x : x + tw, ny = y + th * .4, o = sg < 0 ? { it: false, a: 'end' } : { it: false };   // la del tablero general va a la izquierda, como en los planos
+      const ls = [['nota1', 'Tablero metálico'], ['nota2', 'Grado protección IP65'], ['nota3', (k === 'tg' && L.dimTablero) || 'Medidas (pendiente)']], largo = Math.max(...ls.map(([kk, d]) => anchoT(U.textos[k + '.' + kk] ?? d, 1.9)));
+      t += `<circle cx="${nx}" cy="${ny}" r=".6" fill="#fff" stroke="${C.guia}" stroke-width="${LW}"/>` + `<path d="M${nx + sg * .4} ${ny - .4}l${sg * 5} -5h${sg * (largo + 1)}" fill="none" stroke="${C.guia}" stroke-width="${LW}"/>`;
+      t += ls.map(([kk, d], i) => TU(`${k}.${kk}`, nx + sg * 6, ny - 6 + i * 2.6, d, 1.9, o)).join(''); }
     return t;
   };
-  const prot = (x, y, k, def) => breaker(x, y) + TU(k, x + 3, y - .4, def, FU);                       // interruptor + rótulo
-  const difer = (x, y, k, def) => dif(x, y) + TU(k, x + 3, y + 2.2, def, FU);                          // diferencial (y = borde superior)
-  const circuito = (Xc, yb, yfin, k, def, izq) => ln(Xc, yb, Xc, yb + 2) + breaker(Xc, yb + 6) + ln(Xc, yb + 10, Xc, yfin) +
-    `<circle cx="${Xc}" cy="${yfin + 1.6}" r="1.6" fill="none" stroke="#111" stroke-width="${LW}"/>` + TU(k, Xc + (izq ? -2.6 : 2.6), yfin + 2.2, def, FU, izq ? { a: 'end' } : {});
+  /* Rótulo de varias líneas como en los planos (marca / polos×In / kA / curva). Si el texto ya se cambió a mano
+     con la clave antigua (una sola línea), se respeta. */
+  const rotulo = (x, y, k, lineas, o = {}, claves = lineas.map((_, i) => `${k}.${i + 1}`)) => U.textos[k] != null ? TU(k, x, y + 2, lineas.join(' '), FU, o) : lineas.map((l, i) => TU(claves[i], x, y + i * 2.1, l, FU, o)).join('');
+  const prot = (x, y, k, def) => breaker(x, y) + rotulo(x + 3, y - 2.6, k, lineasProt(def, L.marcaDisy, L.kA));   // interruptor + rótulo
+  const difer = (x, y, k, def) => dif(x, y) + rotulo(x + 3, y + .9, k, lineasDif(def, L.marcaDif));          // diferencial (y = borde superior)
+  const circuito = (Xc, yb, yfin, k, def, izq, num) => ln(Xc, yb, Xc, yb + 2) + breaker(Xc, yb + 6) + ln(Xc, yb + 10, Xc, yfin) +
+    `<circle cx="${Xc}" cy="${yfin + 1.6}" r="1.6" fill="none" stroke="#111" stroke-width="${LW}"/>` + (num ? T(Xc, yfin + 2.25, num, 1.8, { a: 'middle', it: false, ff: FSERIF }) : TU(k, Xc + (izq ? -2.6 : 2.6), yfin + 2.2, def, FU, izq ? { a: 'end' } : {}));
+  /* Leyenda «① Consumo» a la izquierda del tablero general */
+  const leyenda = (x, y, k, n, def) => Rc(x, y, 26, 7, { st: '#111', sw: LW }) + `<circle cx="${x + 3.4}" cy="${y + 3.5}" r="1.5" fill="none" stroke="#111" stroke-width="${LW}"/>` +
+    T(x + 3.4, y + 4.15, n, 1.7, { a: 'middle', it: false, ff: FSERIF }) + TU(k, x + 6.2, y + 4.4, def, 2.4, { it: false, ff: FSERIF });
   const cargador = (Xc, yc, k, marca, kw) => `<g fill="none" stroke="#111" stroke-width="${LW}"><rect x="${Xc - 4}" y="${yc + 2}" width="8" height="10" rx="2"/><rect x="${Xc - 4}" y="${yc}" width="8" height="10" rx="2" fill="#fff"/><circle cx="${Xc}" cy="${yc + 3}" r="1.3"/></g>` +
     TU(k + '.1', Xc + 6, yc + 2.5, `Cargador Eléctrico ${fase === 'Trifásico' ? '3ø' : '1ø'}`, FU) + TU(k + '.2', Xc + 6, yc + 4.6, `${marca}`, FU) + TU(k + '.3', Xc + 6, yc + 6.7, `Potencia de Carga ${kw} kW`, FU) + TU(k + '.4', Xc, yc + 15, fase, 1.4, { a: 'middle' });
 
   /* ---- Empalme (arriba a la izquierda) y límites del proyecto ---- */
-  const ew = 32, eh = 34, ex = x0 + 14, ey = y0 + 3, yE = ey + 16;
+  const ew = 32, eh = 34, ex = x0 + 30, ey = y0 + 3, yE = ey + 16;
   if (!B.offgrid) {
     s += Rc(ex, ey, ew, eh, { st: C.equipo, sw: LW }) + Ln(ex, ey + 8, ex + ew, ey + 8, { st: C.equipo, sw: LW });
     s += TU('emp.titulo', ex + ew / 2, ey + 3.4, `EMPALME ${fase.toUpperCase()}`, 1.5, { a: 'middle', b: true, it: false, ff: FSERIF }) + TU('emp.tipo', ex + ew / 2, ey + 6.4, L.empalme || 'TIPO (pendiente)', 1.4, { a: 'middle', b: true, it: false, ff: FSERIF });
     s += Rc(ex + 4, yE - 4, 7, 8, { st: C.med, sw: LW }) + T(ex + 7.5, yE + 1.5, 'M', 4.2, { a: 'middle', it: false, b: true, fill: C.med, ff: FSERIF });
     s += TU('emp.med1', ex + 7.5, yE + 7, 'MEDIDOR', 1.15, { a: 'middle', it: false }) + TU('emp.med2', ex + 7.5, yE + 8.6, B.soloEV ? '' : 'BIDIRECCIONAL', 1.15, { a: 'middle', it: false }) + TU('emp.dist', ex + 7.5, yE + 10.2, (p.distrib || '').toUpperCase(), 1.15, { a: 'middle', it: false });
     s += ln(ex - 10, yE, ex + 4, yE) + ln(ex + 11, yE, ex + 17, yE) + `<g transform="rotate(-90 ${ex + 21} ${yE})">${breaker(ex + 21, yE)}</g>` + ln(ex + 25, yE, ex + ew, yE);
-    s += TU('emp.int2', ex + 21, yE + 4.6, `${polos === '4' ? '3' : '1'}x${D.ca.prot} A`, 1.3, { a: 'middle' }) + TU('emp.int3', ex + 21, yE + 6.3, 'Curva C', 1.3, { a: 'middle' });
+    s += [['emp.int1', L.marcaEmp || 'Marca (pendiente)'], ['emp.int2', `${polos === '4' ? '3' : '1'}x${D.ca.prot}A`], ['emp.int4', L.kAEmp ? `${String(L.kAEmp).replace(/\s*kA$/i, '')}kA` : 'kA (pendiente)'], ['emp.int3', 'Curva C']]
+      .map(([k, d], i) => TU(k, ex + 21, yE + 4.6 + i * 1.75, d, 1.3, { a: 'middle' })).join('');
+    // tarifa y N° de cliente, a la izquierda de la acometida (como en los planos)
+    s += [['emp.tarifa', `TARIFA ${L.tarifa || '(pendiente)'}`], ['emp.exist', 'EXISTENTE'], ['emp.cli1', 'N° CLIENTE'], ['emp.cli2', L.nCliente || '(pendiente)']]
+      .map(([k, d], i) => TU(k, ex - 11, yE - 2.9 + i * 1.9, d, 1.4, { a: 'end' })).join('');
     if (!B.soloEV) s += TU('emp.pot', ex + ew + 3, yE - 1.2, `${fmt(D.kwn, 0)} kW / ${I.vac} V`, FU);
     // límites: todo menos el empalme (con un escalón), rótulo arriba a la derecha
     const xa = ex + ew + 6, xb = x0 + w - 2, ya = y0 + 1, yb = y0 + h - 1, yc = ey + eh + 4, xl = x0 + 2;
     s += `<path d="M${xa} ${ya}H${xb}V${yb}H${xl}V${yc}H${xa}Z" fill="none" stroke="${C.guia}" stroke-width="${LW}"/>` + TU('limites', xb - 3, ya + 5, 'LÍMITES DEL PROYECTO', 2.4, { a: 'end' });
   } else s += TU('og.titulo', cx, ey + 4, 'SISTEMA AISLADO (OFF GRID) · SIN CONEXIÓN A LA RED', 2.4, { a: 'middle', b: true, ff: FSERIF });
   // tierra de servicio y protección: punto en el conductor, guía segmentada hasta los símbolos
-  if (U.tierra !== false && !B.offgrid) { const tx0 = cx, ty0 = yE + 7, gx = cx + 26;
-    s += `<circle cx="${tx0}" cy="${ty0}" r=".55" fill="#111"/>` + Ln(tx0, ty0, gx, ty0, { st: '#111', sw: LW, dash: '3 1.2' }) + tierraP(gx, ty0) + tierra(gx + 7, ty0 - 2);
-    s += TU('tierra.1', gx + 13, ty0 - 1, 'Tierra de servicio y protección', FU) + TU('tierra.2', gx + 13, ty0 + 1.1, `Barra Copper · R = ${L.tierraR || '—'} Ω`, FU); }
+  if (U.tierra !== false && !B.offgrid) { const tx0 = cx, ty0 = yE + 7, gx = cx + 28;
+    s += `<circle cx="${tx0}" cy="${ty0}" r=".55" fill="#111"/>` + Ln(tx0, ty0, gx + 7, ty0, { st: '#111', sw: LW, dash: '3 1.2' }) + tierraP(gx, ty0) + tierra(gx + 7, ty0);
+    const lt = [['tierra.1', 'Tierra de servicio y protección'], ['tierra.2', 'existente'], ['tierra.3', L.tierraCond || 'Evaflex 2x6 mm² (N+T)'], ['tierra.4', `L = ${L.tierraL || '—'} m`], ['tierra.5', `R = ${L.tierraR || '—'} Ω`], ['tierra.6', L.tierraMet || 'Método de pinza']];
+    s += lt.map(([k, d], i) => TU(k, gx + 9, ty0 + 9 + i * 2.1, d, FU, { a: 'end' })).join(''); }
 
   /* ---- Alturas: bloques fijos y huecos repartidos (el dibujo llena la hoja) ---- */
   const conTFV = !!B.tfv;
@@ -204,7 +221,7 @@ function unilineal(p, D, SI, x0, y0, w, h) {
     s += ln(cx, ty, cx, ty + 4) + prot(cx, ty + 8, 'tg.disy', `${L.disyuntor || `${polos}x${D.ca.prot} A Curva C`}`) + ln(cx, ty + 12, cx, ty + 16);
     s += ln(tx + 8, ty + 16, tx + tw - 8, ty + 16, C.barra) + TU('tg.barra', tx + tw - 9, ty + 15.2, 'Barra repartidora de cobre', 1.3, { a: 'end' });
     s += ln(cx, ty + 16, cx, ty + 18) + prot(cx, ty + 22, 'ev.prot', `${U.extras.evProt || E.prot}`) + ln(cx, ty + 26, cx, ty + 29) + difer(cx, ty + 29, 'tg.dif', `${L.diferencial || '2x40 A 30 mA Tipo A'}`);
-    if (U.consumo !== false) s += circuito(cx + tw * .3, ty + 16, ty + hTG + 6, 'tg.consumo', 'Consumo');
+    if (U.consumo !== false) s += circuito(cx + tw * .3, ty + 16, ty + hTG + 6, 'tg.consumo', 'Consumo', false, '1') + leyenda(tx - 36, ty + hTG - 10, 'tg.consumo', '1', 'Consumo');
     if (B.enFV) s += circuito(cx - tw * .3, ty + 16, ty + hTG + 6, 'tg.fv', 'Circuito FV existente', true);
     const cy = ty + hTG + gap; s += ln(cx, ty + 32, cx, cy) + TU('evc.0', cx - 2.6, ty + hTG + 8, `Conductor ${polos}x6 mm² + T`, FU, { a: 'end' }) + TU('evc.1', cx - 2.6, ty + hTG + 10.2, 'Tub. EMT Ø25 mm', FU, { a: 'end' });
     return s + cargador(cx, cy, 'ev.cg', E.marca, E.kw);
@@ -217,16 +234,16 @@ function unilineal(p, D, SI, x0, y0, w, h) {
     s += ln(cx, ty, cx, ty + 4) + prot(cx, ty + 8, 'tg.disy', `${L.disyuntor || disyDef(D)}`) + ln(cx, ty + 12, cx, ty + 16);
     s += ln(tx + 8, ty + 16, tx + tw - 8, ty + 16, C.barra) + TU('tg.barra', tx + tw - 9, ty + 15.2, 'Barra repartidora de cobre', 1.3, { a: 'end' });
     s += ln(cx, ty + 16, cx, ty + 18) + prot(cx, ty + 22, 'tg.fvp', `${L.disyuntor || disyDef(D)}`) + ln(cx, ty + 26, cx, ty + 29) + difer(cx, ty + 29, 'tg.dif', `${L.diferencial || difDef(D)}`);
-    if (U.consumo !== false) s += circuito(cx + tw * .32, ty + 16, ty + hTG + 6, 'tg.consumo', 'Consumo');
+    if (U.consumo !== false) s += circuito(cx + tw * .32, ty + 16, ty + hTG + 6, 'tg.consumo', 'Consumo', false, '1') + leyenda(tx - 36, ty + hTG - 10, 'tg.consumo', '1', 'Consumo');
     if (X.ev) s += circuito(cx - tw * .32, ty + 16, ty + hTG + 6, 'ev.titulo', 'Cargador EV', true) + TU('ev.prot', cx - tw * .32 - 2.6, ty + hTG + 10.4, U.extras.evProt || '2x32 A Curva C', FU, { a: 'end' });
     if (B.evTablero) s += tableroEV(ty + 16, ty);
     yFin = ty + 32;
   } else {
     s += tablero(tx, ty, tw, hTG, 'tg', 'TABLERO GENERAL (TG)', 'izq');
-    s += ln(cx, ty, cx, ty + 3) + prot(cx, ty + 7, 'tg.gral', `Interruptor general ${polos}x${D.ca.prot} A Curva C`) + ln(cx, ty + 11, cx, ty + 14);
+    s += ln(cx, ty, cx, ty + 3) + prot(cx, ty + 7, 'tg.gral', disyDef(D)) + ln(cx, ty + 11, cx, ty + 14);
     s += ln(tx + 8, ty + 14, tx + tw - 8, ty + 14, C.barra) + TU('tg.barra', tx + tw - 9, ty + 13.2, 'Barra repartidora de cobre', 1.3, { a: 'end' });
-    s += ln(cx, ty + 14, cx, ty + 16) + prot(cx, ty + 20, 'tg.alim', `Alimentador TFV ${polos}x${D.ca.prot} A`);
-    if (U.consumo !== false) s += circuito(cx + tw * .32, ty + 14, ty + hTG + 4, 'tg.consumo', 'Consumo');
+    s += ln(cx, ty + 14, cx, ty + 16) + prot(cx, ty + 20, 'tg.alim', disyDef(D));
+    if (U.consumo !== false) s += circuito(cx + tw * .32, ty + 14, ty + hTG + 4, 'tg.consumo', 'Consumo', false, '1') + leyenda(tx - 36, ty + hTG - 10, 'tg.consumo', '1', 'Consumo');
     if (X.ev) s += circuito(cx - tw * .32, ty + 14, ty + hTG + 4, 'ev.titulo', 'Cargador EV', true) + TU('ev.prot', cx - tw * .32 - 2.6, ty + hTG + 8.4, U.extras.evProt || '2x32 A Curva C', FU, { a: 'end' });
     const t2 = ty + hTG + gap, tw2 = Math.min(tw * .6, 70);
     s += ln(cx, ty + 24, cx, t2) + `<circle cx="${cx}" cy="${ty + hTG + gap * .5}" r=".6" fill="#fff" stroke="${C.guia}" stroke-width="${LW}"/>` + TU('ctg.0', cx - 2.6, ty + hTG + gap * .5 - .5, `RVK ${polos}x8,37 mm² · Tub. EMT Ø32 mm`, FU, { a: 'end' });
@@ -279,6 +296,21 @@ function unilineal(p, D, SI, x0, y0, w, h) {
     s += `<circle cx="${Xs + 1.9}" cy="${ym + 5.4}" r=".45" fill="#111"/>` + Ln(Xs + 1.9, ym + 5.4, Xs + 3.2, ym + 5.4, { st: '#111', sw: LW }) + Ln(Xs + 3.2, ym + 5.4, Xs + 3.2, ym + 10, { st: '#111', sw: LW }) + tierraP(Xs + 3.2, ym + 10) + TU(k + 'tp', Xs + 3.2, ym + 16, 'T.P.', 1.4, { a: 'middle' });
   });
   return s;
+}
+/* Líneas del rótulo de una protección a partir del texto «2x40 A Curva C» / «2x63 A 300 mA Tipo A».
+   Marca y kA vienen de la ficha; si faltan se marcan «pendiente» (no se inventan datos de fabricante). */
+const IN_RE = /(\d+)\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*A(?![a-z])/i;
+const MARCA = m => m || 'Marca (pendiente)';
+export function lineasProt(def, marca, kA) {
+  const m = IN_RE.exec(def), ka = kA ? `${String(kA).replace(/\s*kA$/i, '')}kA` : 'kA (pendiente)';
+  if (!m) return [MARCA(marca), def, ka];
+  const curva = /curva\s*([A-DK])(?![a-z])/i.exec(def), resto = (def.slice(0, m.index) + ' ' + def.slice(m.index + m[0].length)).replace(/\s+/g, ' ').trim();
+  return [MARCA(marca), `${m[1]}x${m[2]}A`, ka, ...(curva ? ['Curva ' + curva[1].toUpperCase()] : resto ? [resto] : [])];
+}
+export function lineasDif(def, marca) {
+  const m = IN_RE.exec(def); if (!m) return [MARCA(marca), def];
+  const ma = /(\d+)\s*mA/i.exec(def), tipo = /(tipo|clase)\s+[\w-]+/i.exec(def);
+  return [MARCA(marca), `${m[1]}x${m[2]}A`, ...(ma ? [`${ma[1]}mA`] : []), ...(tipo ? [tipo[0]] : [])];
 }
 /* Interruptor termomagnético (vertical, centrado en x,y; el conductor llega a y−4 e y+4): un círculo en cada borne,
    arco hacia la derecha y la marca «=» como en los planos de Ops */

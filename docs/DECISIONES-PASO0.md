@@ -151,3 +151,13 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - Símbolos nuevos: interruptor con un círculo en cada borne, arco a la derecha y «=»; diferencial con «P / D»; módulo vertical con «V»; inversor en marco magenta con MPPT y DC SWITCH; strings en rojo continuo con canalización común.
 - El tipo de empalme no está en la ficha: sale «TIPO (pendiente)» y se cambia con un clic.
 - Siguen: E2 (tableros completos y rótulos de 4 líneas), E3 (lado DC, Smart Guard, batería y EV como en el ON 909), E4 (láminas AC + DC separadas, solo para proyectos grandes).
+
+## Unilineal como los planos de Ops · E2: tableros, protecciones, empalme y tierra (26-11-2026)
+
+- **Rótulo de 4 líneas en cada protección**, como en los planos: marca / polos×In / kA / curva (diferencial: marca / polos×In / mA / tipo). Se arma desde el texto del disyuntor y del diferencial (`lineasProt`, `lineasDif` en `js/lamina.js`). Si un rótulo ya se había cambiado a mano con la clave antigua (una línea), se respeta.
+- **Campos nuevos en `p.lamina`, todos opcionales**: `kA` (poder de corte de los interruptores), `dimTablero` (medidas del tablero general), `tarifa`, `nCliente`, `marcaEmp`, `kAEmp` (empalme), `tierraCond`, `tierraL`, `tierraMet` (tierra). Se reutilizan `marcaDisy`, `marcaDif`, `empalme` y `tierraR`. Se cambian en el paso Unilineal (secciones «Protecciones y tablero», «Empalme» y «Tierra de servicio y protección»).
+- Lo que falta sale como «(pendiente)»: no se inventan marcas, kA ni medidas.
+- **Tableros**: barra de tierra de protección (azul, con dos puntos) y lazo punteado por arriba y por abajo; nota de 3 líneas (tablero metálico, IP65, medidas).
+- **Empalme**: tarifa, «EXISTENTE» y N° de cliente a la izquierda de la acometida; la protección del empalme también con rótulo de 4 líneas. El N° de cliente vive solo en el proyecto del usuario, nunca en el repo.
+- **Tierra de servicio y protección**: 6 líneas alineadas a la derecha bajo los símbolos (existente, conductor, L, R, método).
+- **Consumo**: la carga lleva «1» dentro del círculo y una leyenda «① Consumo» a la izquierda del tablero general.

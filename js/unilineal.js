@@ -273,8 +273,13 @@ export function panelUnilineal(p) {
     <div class="kpis"><div><b>${SI.lista.length}</b><span>strings</span></div><div><b>${inv.mppt}</b><span>MPPT</span></div><div><b>${fmt(inv.kw * (p.cantInv || 1), 1)}</b><span>kW nom.</span></div></div>`);
   h += sec('Inversor', `<label class="f"><span>Modelo</span><select class="in" data-uni="p.inversor">${['Monofásico', 'Trifásico'].map(fa => `<optgroup label="${fa}s">${INVERSORES.filter(x => x.fase === fa).map(x => `<option value="${x.id}" ${inv.id === x.id ? 'selected' : ''}>${esc(x.modelo)} · ${x.kw} kW</option>`).join('')}</optgroup>`).join('')}</select></label>
     ${inp('p.cantInv', 'Cantidad de inversores', p.cantInv || 1)}`);
-  h += sec('Protecciones y tierra', `${inp('L.disyuntor', 'Disyuntor del tablero', L.disyuntor, disyDef)}${inp('L.diferencial', 'Diferencial', L.diferencial, difDef)}
-    ${inp('L.tierraR', 'Resistencia de tierra', L.tierraR, '18,3', 'Ω')}${inp('p.distrib', 'Distribuidora (bajo el medidor)', p.distrib, 'ENEL, CGE…')}`);
+  h += sec('Protecciones y tablero', `${inp('L.disyuntor', 'Disyuntor del tablero', L.disyuntor, disyDef)}<div class="row">${inp('L.marcaDisy', 'Marca de los interruptores', L.marcaDisy, 'Schneider…')}${inp('L.kA', 'Poder de corte', L.kA, '6', 'kA')}</div>
+    ${inp('L.diferencial', 'Diferencial', L.diferencial, difDef)}${inp('L.marcaDif', 'Marca del diferencial', L.marcaDif, 'CHINT…')}${inp('L.dimTablero', 'Medidas del tablero general', L.dimTablero, '400 x 300 x 200 mm')}
+    <p class="mut">Lo que quede vacío sale como «pendiente» en el unilineal.</p>`);
+  h += sec('Empalme', `${inp('L.empalme', 'Tipo de empalme', L.empalme, 'S-9-40')}<div class="row">${inp('L.tarifa', 'Tarifa', L.tarifa, 'BT1')}${inp('L.nCliente', 'N° de cliente', L.nCliente, '')}</div>
+    <div class="row">${inp('L.marcaEmp', 'Marca protección', L.marcaEmp, '')}${inp('L.kAEmp', 'Poder de corte', L.kAEmp, '10', 'kA')}</div>${inp('p.distrib', 'Distribuidora (bajo el medidor)', p.distrib, 'ENEL, CGE…')}`, false);
+  h += sec('Tierra de servicio y protección', `${inp('L.tierraCond', 'Conductor', L.tierraCond, 'Evaflex 2x6 mm² (N+T)')}<div class="row">${inp('L.tierraL', 'Largo', L.tierraL, '', 'm')}${inp('L.tierraR', 'Resistencia', L.tierraR, '18,3', 'Ω')}</div>
+    ${inp('L.tierraMet', 'Método de medición', L.tierraMet, 'Método de pinza')}`, false);
   h += sec('Conductores en CA', `${inp('L.largo_inv-tg', 'Largo Inversor – TGFV', L['largo_inv-tg'], `${fmt(ca.tramos[0].auto, 0)} según el dibujo`, 'm')}${inp('L.largo_tg-emp', 'Largo TG – Empalme', L['largo_tg-emp'], `${fmt(ca.tramos[1].auto, 0)} según el dibujo`, 'm')}
     <dl class="dl"><dt>Caída total</dt><dd>${fmt(ca.totalP, 2)} %</dd></dl>`, false);
   h += sec('Strings', SI.lista.length ? `<div class="uni-str">${SI.lista.map(x => `<div class="uni-str-f"><b>${esc(x.nombre)}</b><span>${x.n} mód.</span>
