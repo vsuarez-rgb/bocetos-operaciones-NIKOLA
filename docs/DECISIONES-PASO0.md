@@ -117,3 +117,11 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - **Croquis de ubicación**: se genera con las coordenadas de la ficha (`lamina.latlon`) con un mapa de OpenStreetMap (zoom 16, punto rojo, atribución) y queda guardado en el proyecto como imagen (`lamina.croquis`). También se puede subir una imagen. Necesita internet solo al generarlo; al servicio de mapas se le piden las teselas de la zona, no se envía otro dato.
 - **Juego de láminas A1**: el paquete trae 01 Planta general en terreno, 02 Diagrama unilineal, 03 Cuadro de generación CC y 04 Cuadro de generación CA. Las láminas A1 de antes siguen funcionando como «modo plano antiguo».
 - **Corrección**: el contenedor interno de la vista (Fase A) se llamaba `bq-vista`, igual que el bloque, y corría hacia abajo la segunda vista de una página. Ahora se llama `bq-vis`.
+
+## Planos profesionales · Fase D: unilineal horizontal (estilo ON 901)
+
+- El unilineal se dibuja en una hoja horizontal de 420 × 300 (antes 262 × 314 vertical). Es la misma lógica y los mismos textos editables (`p.uni.textos`); solo se reparte a lo ancho, como en los planos de Ops: tablero e inversor anchos y MPPT separados.
+- Se agregó el rectángulo segmentado «LÍMITES DEL PROYECTO» (deja fuera el empalme) y los textos de cada conductor llevan una línea guía con un círculo sobre el cable.
+- Los dibujos a mano (`p.uni.libre`) guardan su hoja en `vb`. Los anteriores siguen en 262 × 314 y se ven igual, dentro de cualquier recuadro. La lámina A1 antigua sigue con el unilineal vertical.
+- En la lámina 02 del juego A1, el unilineal ocupa casi toda la hoja (640 × 446 mm), con la simbología y las notas a la izquierda.
+- Los números de los strings dentro de los paneles miden 0,22 del lado del panel, así que salen igual en el dibujo, el informe y la lámina. Antes en la lámina tenían un tope fijo en mm y no se leían.

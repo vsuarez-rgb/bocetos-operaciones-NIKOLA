@@ -2,7 +2,8 @@
    Unilineal como dibujo editable (p.uni.libre = { elems: [...] }).
    Cuando se edita a mano, el unilineal base se "descompone" en elementos que
    se pueden seleccionar, mover, copiar, pegar y borrar, como en AutoCAD.
-   Unidades: mm del unilineal (viewBox 262 × 314).
+   Unidades: mm del unilineal (viewBox 420 × 300, horizontal como los planos de Ops;
+   los dibujos a mano anteriores guardan su hoja en L.vb o usan la antigua 262 × 314).
      linea  { t:'l', pts:[[x,y]…], c, w, dash }
      rect   { t:'r', x, y, w, h, c, fill, sw, dash }
      texto  { t:'x', x, y, s, size, a, b, it, c }
@@ -12,7 +13,8 @@
 import { esc } from './util.js';
 
 const FONT = "'Archivo Narrow','Arial Narrow',Arial,sans-serif";
-export const VB_UNI = [262, 314];
+export const VB_UNI = [420, 300];
+export const vbLibre = L => (L && L.vb) || [262, 314];
 
 /* Colores de línea (los de los planos) */
 export const COLORES_LINEA = [

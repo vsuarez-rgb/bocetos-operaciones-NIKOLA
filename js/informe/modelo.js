@@ -152,8 +152,8 @@ export const PLANTILLAS_INCLUIDAS = [
   pagina('lam-unilineal', 'Láminas A1', 'Diagrama unilineal', 'A1', 'horizontal', [
     { tipo: 'cajetin', x: 0, y: 0, w: 841, h: 594, int: true, escala: 'NO A ESCALA' },
     { tipo: 'simbologia', x: 16, y: 32, w: 160, h: 62 },
-    { tipo: 'unilineal', x: 235, y: 32, w: 371, h: 440 },
-    { tipo: 'notas', x: 640, y: 300, w: 190, h: 170 }
+    { tipo: 'unilineal', x: 190, y: 28, w: 640, h: 446 },
+    { tipo: 'notas', x: 16, y: 300, w: 168, h: 170 }
   ]),
   pagina('lam-cc', 'Láminas A1', 'Cuadro de generación CC', 'A1', 'horizontal', [
     { tipo: 'cajetin', x: 0, y: 0, w: 841, h: 594, escala: 'NO A ESCALA' },

@@ -14,9 +14,9 @@ import { INVERSORES } from './catalogo.js';
 import { calcular, calcStrings, calcCA, inversorDe } from './geom.js';
 import { unilinealSVG, opcUni, BASES_UNI, baseUni, baseSugerida } from './lamina.js';
 import { leerAjuste, guardarAjuste } from './ajustes.js';
-import { COLORES_LINEA, SIMBOLOS, BLOQUES_INCLUIDOS, dibujoLibreEditor, descomponer, mover, clonar, normalizar, elemsSimbolo, svgElem } from './uni-dibujo.js';
+import { COLORES_LINEA, SIMBOLOS, BLOQUES_INCLUIDOS, dibujoLibreEditor, descomponer, mover, clonar, normalizar, elemsSimbolo, svgElem, VB_UNI, vbLibre } from './uni-dibujo.js';
 
-const VB = [262, 314];                 // viewBox del unilineal (mm)
+const vbAct = () => libre() ? vbLibre(libre()) : VB_UNI;   // hoja del unilineal (mm)
 /* Editor: tool = sel | linea | texto | sim | bloque; sel = índices elegidos; temp = línea en curso */
 const S = { p: null, el: null, cb: {}, zoom: null, z: 1, tool: 'sel', color: 'ca', sim: 'interruptor', bloque: null, sel: new Set(), temp: null, hist: [], fut: [], orto: true, menu: null, bloques: [], ocultos: [], mouse: null, D: null };
 const uni = () => (S.p.uni ||= {});
@@ -38,6 +38,7 @@ export function vistaUnilineal(el, p, cb = {}) {
 function dibujarSVG() {
   const pap = S.el?.querySelector('.uni-papel'); if (!pap) return;
   const L = libre();
+  const VB = vbAct();
   if (L) pap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB[0]} ${VB[1]}" width="100%" height="100%" class="uni-ed"><rect width="${VB[0]}" height="${VB[1]}" fill="#fff"/>${dibujoLibreEditor(L, S.sel)}<g id="uniTemp"></g></svg>`;
   else { const R = calcular(S.p), SI = calcStrings(S.p, R); pap.innerHTML = unilinealSVG(S.p, R, SI).replace('</svg>', '<g id="uniTemp"></g></svg>'); }
   const nb = S.el.querySelector('#uniBase'); if (nb) nb.textContent = baseUni(S.p).n + (L ? ' (editado a mano)' : '');
@@ -78,7 +79,7 @@ function asegurarLibre() {
   if (libre()) return libre();
   const q = { ...S.p, uni: { ...(S.p.uni || {}) } }; delete q.uni.libre;
   const R = calcular(S.p), SI = calcStrings(S.p, R);
-  antes(); uni().libre = { elems: descomponer(unilinealSVG(q, R, SI)), desde: baseUni(S.p).id };
+  antes(); uni().libre = { elems: descomponer(unilinealSVG(q, R, SI)), desde: baseUni(S.p).id, vb: [...VB_UNI] };
   toast('El unilineal pasó a dibujo editable. «Volver a la base» lo arma de nuevo con los datos.');
   S.cb.panel && S.cb.panel();
   return libre();
@@ -247,7 +248,7 @@ document.addEventListener('keydown', ev => {
 });
 function ajustar() {
   const sc = S.el?.querySelector('.uni-scroll'), pap = S.el?.querySelector('.uni-papel'); if (!sc || !pap) return;
-  const fit = Math.max(.5, Math.min((sc.clientWidth - 48) / VB[0], (sc.clientHeight - 48) / VB[1]));
+  const VB = vbAct(), fit = Math.max(.5, Math.min((sc.clientWidth - 48) / VB[0], (sc.clientHeight - 48) / VB[1]));
   S.z = S.zoom || fit;
   pap.style.width = `${VB[0] * S.z}px`; pap.style.height = `${VB[1] * S.z}px`;
   const b = S.el.querySelector('#uniZ'); if (b) b.textContent = S.zoom ? `${Math.round(S.zoom / fit * 100)} %` : 'Ajustar';

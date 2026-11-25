@@ -140,7 +140,7 @@ export function dibujar(g, p, V, o) {
       // etiqueta del string dentro del panel ("1.1")
       const si = stringDe.get(pn.key), lado = Math.min(dist(pts[0], pts[1]), dist(pts[0], pts[3]));
       if (si && vis('strings') && lado > 14 * UD) {
-        const r = Math.min(lado * .28, 9 * u); g.beginPath(); g.arc(c[0], c[1], r, 0, 7); g.fillStyle = plot ? '#fff' : 'rgba(10,20,28,.85)'; g.fill(); g.lineWidth = .9 * u; g.strokeStyle = plot ? '#222' : colorString(p, si.st); g.stroke();
+        const r = lado * .22; g.beginPath();   /* r proporcional al panel: mismo tamaño en el dibujo, el informe y la lámina */ g.arc(c[0], c[1], r, 0, 7); g.fillStyle = plot ? '#fff' : 'rgba(10,20,28,.85)'; g.fill(); g.lineWidth = .9 * u; g.strokeStyle = plot ? '#222' : colorString(p, si.st); g.stroke();
         texto(g, si.etq, c[0], c[1] + .5, { size: r * 1.05, color: plot ? '#111' : '#fff', align: 'center', base: 'middle' });
       }
     });

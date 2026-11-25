@@ -10,7 +10,7 @@ import { CANAL, EQUIPOS, PANELES } from './catalogo.js';
 import { escala, panelDe, inversorDe, calcCA, zonaPoly, CAIDA_MAX, medidaEquipo } from './geom.js';
 import { dibujar, cargarImg, colorString, vistaNitida } from './render.js';
 import { hoy } from './store.js';
-import { dibujoLibre } from './uni-dibujo.js';
+import { dibujoLibre, VB_UNI, vbLibre } from './uni-dibujo.js';
 
 const W = 841, H = 594, M = 10;                // hoja y margen
 const FONT = "'Archivo Narrow','Arial Narrow',Arial,sans-serif";
@@ -137,7 +137,7 @@ export function baseSugerida(p) {
 export const baseUni = p => BASES_UNI.find(b => b.id === p.uni?.base) || baseSugerida(p);
 
 function unilineal(p, D, SI, x0, y0, w, h) {
-  if (p.uni?.libre) return dibujoLibre(p.uni.libre);          // editado a mano: el dibujo tal cual quedó
+  if (p.uni?.libre) { const vb = vbLibre(p.uni.libre); return `<svg x="${x0}" y="${y0}" width="${w}" height="${h}" viewBox="0 0 ${vb[0]} ${vb[1]}" preserveAspectRatio="xMidYMid meet">${dibujoLibre(p.uni.libre)}</svg>`; }   // editado a mano: tal cual quedó
   const I = D.inv, ca = D.ca, L = D.L, R = '#D11', A = '#22B', V = '#1A8F3C', MG = '#C0C', Y = '#E6C200', U = opcUni(p), B = baseUni(p);
   const X = { bat: B.bat || U.extras.bat, sg: B.sg || U.extras.sg, ev: !B.soloEV && !B.evTablero && U.extras.ev };
   const TU = (k, x, y, def, size, o = {}) => { const v = U.textos[k] != null ? U.textos[k] : def; return T(x, y, v, size, { ...o, attr: `data-u="${esc(k)}"${U.textos[k] != null ? ' data-mod="1"' : ''}` }); };
@@ -153,6 +153,7 @@ function unilineal(p, D, SI, x0, y0, w, h) {
     s += Ln(ex + 19, ey + 16, ex + 32, ey + 16, { st: R, sw: .35 }) + Ln(ex + 40, ey + 16, cx, ey + 16, { st: R, sw: .35 });
     if (!B.soloEV) s += TU('emp.pot', ex + 56, ey + 14, `${fmt(D.kwn, 0)} kW / ${I.vac} V`, 1.7);
   } else s += TU('og.titulo', cx, ey + 4, 'SISTEMA AISLADO (OFF GRID) · SIN CONEXIÓN A LA RED', 2.2, { a: 'middle', b: true });
+  if (w > h && !B.offgrid) s += Rc(x0 + 3, y0 + 54, w - 6, h - 56, { st: '#666', sw: .25, dash: '3 1.5' }) + TU('limites', x0 + 6, y0 + 58.5, 'LÍMITES DEL PROYECTO', 1.7);
   // Tierra de servicio
   if (U.tierra !== false) s += Ln(cx, y0 + 66, cx - 30, y0 + 66, { dash: '2 1' }) + tierra(cx - 30, y0 + 66) + TU('tierra.1', cx - 70, y0 + 62, 'Tierra de servicio y protección', 1.5) + TU('tierra.2', cx - 70, y0 + 64, `Barra Copper · R = ${L.tierraR || '—'} Ω`, 1.5);
   const circuito = (Xc, yb, yfin, k, def, izq) => breaker(Xc, yb + 6, V) + Ln(Xc, yb + 10, Xc, yfin, { st: R, sw: .3 }) + `<circle cx="${Xc}" cy="${yfin + 1.5}" r="1.5" fill="none" stroke="#111" stroke-width=".2"/>` + TU(k, Xc + (izq ? -3 : 3), yfin + 2, def, 1.6, izq ? { a: 'end' } : {}) + Ln(Xc, yb, Xc, yb + 2, { st: R, sw: .3 });
@@ -252,7 +253,8 @@ const breaker = (x, y, c) => `<g><path d="M${x} ${y - 4}v1.5M${x} ${y + 4}v-1.5"
 const tierra = (x, y) => `<path d="M${x} ${y}v3M${x - 3} ${y + 3}h6M${x - 2} ${y + 4.2}h4M${x - 1} ${y + 5.4}h2" stroke="#111" stroke-width=".3"/>`;
 const tierraP = (x, y) => '<g>' + `<path d="M${x} ${y}v2M${x - 3} ${y + 2}h6" stroke="#111" stroke-width=".3"/>` + Array.from({ length: 5 }, (_, i) => `<path d="M${x - 3 + i * 1.5} ${y + 2}l-1 1.5" stroke="#111" stroke-width=".2"/>`).join('') + '</g>';
 function cond(x, y, t, I, k = 'c', TU = (kk, ...a) => T(...a)) {
-  return [`RVK Reviflex Monopolar ${I.fase === 'Trifásico' ? '4' : '1'}x8,37 mm² (F)`, 'RVK Reviflex Monopolar 1x8,37 mm² (N)', `Tub. ${t.ducto}`, `DISTANCIA = ${fmt(t.largo, 0)} m`, `Vp = ${fmt(t.dv, 2)} V / ${fmt(t.dvp, 2)} %`].map((l, i) => TU(`${k}.${i}`, x, y + i * 2.2, l, 1.45)).join('');
+  const guia = `<circle cx="${x - 3}" cy="${y + 3.8}" r=".7" fill="#fff" stroke="#111" stroke-width=".2"/>` + Ln(x - 2.3, y + 3.8, x - .9, y + 3.8, { sw: .2 }) + Ln(x - .9, y - 1.4, x - .9, y + 9.6, { sw: .2 });
+  return guia + [`RVK Reviflex Monopolar ${I.fase === 'Trifásico' ? '4' : '1'}x8,37 mm² (F)`, 'RVK Reviflex Monopolar 1x8,37 mm² (N)', `Tub. ${t.ducto}`, `DISTANCIA = ${fmt(t.largo, 0)} m`, `Vp = ${fmt(t.dv, 2)} V / ${fmt(t.dvp, 2)} %`].map((l, i) => TU(`${k}.${i}`, x, y + i * 2.2, l, 1.45)).join('');
 }
 
 /* ---------- Simbología y notas ---------- */
@@ -300,8 +302,8 @@ async function imagenPlanta(p, R, SI, vw, vh) {
 /* ---------- Lámina 01 y 02 ---------- */
 /* Solo el diagrama unilineal, como SVG independiente (bloque "Unilineal" del informe) */
 export function unilinealSVG(p, R, SI) {
-  const D = datos(p, R, SI), w = 262, h = 314;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%"><rect width="${w}" height="${h}" fill="#fff"/>${unilineal(p, D, SI, 0, 4, w, h - 4)}</svg>`;
+  const D = datos(p, R, SI), [w, h] = p.uni?.libre ? vbLibre(p.uni.libre) : VB_UNI;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%"><rect width="${w}" height="${h}" fill="#fff"/>${p.uni?.libre ? unilineal(p, D, SI, 0, 0, w, h) : unilineal(p, D, SI, 0, 4, w, h - 4)}</svg>`;
 }
 export async function lamina01(p, R, SI) {
   const D = datos(p, R, SI), vx = 400, vy = M + 2, vw = W - M - 2 - vx, vh = 340;
