@@ -109,6 +109,7 @@ export const CAPAS = [
   { id: 'strings', n: 'STRINGS', c: '#00E5FF' },
   { id: 'canal', n: 'CANALIZACION', c: '#3D6BFF' },
   { id: 'equipos', n: 'EQUIPOS', c: '#FF3DFF' },
+  { id: 'figuras', n: 'FIGURAS', c: '#FFD21F' },
   { id: 'cotas', n: 'COTAS', c: '#FFFFFF' },
   { id: 'textos', n: 'TEXTOS', c: '#FFFFFF' }
 ];

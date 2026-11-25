@@ -76,7 +76,7 @@ export function ventanaAuto(v, wmm, hmm, encuadre) {
   if (encuadre === 'dibujo') {
     const pts = [];
     (v.roofs || []).forEach(r => pts.push(...r.poly)); (v.equipos || []).forEach(e => pts.push([e.x, e.y])); (v.rutas || []).forEach(r => pts.push(...r.pts));
-    (v.cotas || []).forEach(c => pts.push(c.a, c.b)); (v.textos || []).forEach(t => pts.push(t.p)); (v.detalles || []).forEach(d => pts.push(d.c, d.p)); (v.figPaneles || []).forEach(f => pts.push(...f.pts)); if (v.norte) pts.push([v.norte.x, v.norte.y]);
+    (v.cotas || []).forEach(c => pts.push(c.a, c.b)); (v.textos || []).forEach(t => pts.push(t.p)); (v.detalles || []).forEach(d => pts.push(d.c, d.p)); (v.figuras || []).forEach(f => pts.push(...f.pts)); (v.figPaneles || []).forEach(f => pts.push(...f.pts)); if (v.norte) pts.push([v.norte.x, v.norte.y]);
     if (pts.length > 1) { x0 = Math.min(...pts.map(q => q[0])); x1 = Math.max(...pts.map(q => q[0])); y0 = Math.min(...pts.map(q => q[1])); y1 = Math.max(...pts.map(q => q[1])); const m = Math.max(x1 - x0, y1 - y0) * .1; x0 -= m; x1 += m; y0 -= m; y1 += m; }
   }
   const asp = wmm / hmm; let bw = x1 - x0, bh = y1 - y0;

@@ -6,7 +6,7 @@
 import { $, $$, esc, fmt, parseNum, uid, clone, dist, lerp, rotP, centroid, pointInPoly, distSeg, edgeAngle, anguloBordeCercano, ic, toast, descargar } from './util.js';
 import { PANELES, INVERSORES, ZONAS, EQUIPOS, CANAL, CAPAS, ESTADOS, COLORES_STRING, GAP_FILA, MODELOS_EQUIPO, idModelo, modeloPorId, cargarEquiposUsuario } from './catalogo.js';
 import { esReal, simboloCuadrado, nPanelesFig, inclPanelesDe, vistaEq, escala, droneGSD, calcular, calcStrings, calcCA, panelDe, inversorDe, zonaPoly, geomTecho, geomBloque, girarV, largoM, nombreString, medidaEquipo, tamEquipoPx, altoTextoPx, perfilesDe, rielesDe } from './geom.js';
-import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota, lineaDoble, mediaPerfil, radioBurbuja } from './render.js';
+import { dibujar, cargarImg, imgDe, colorString, dibujarNorte, textoCota, lineaDoble, mediaPerfil, radioBurbuja, NOMBRE_FORMA, esCerrada, rectDe } from './render.js';
 import { vistaUnilineal, panelUnilineal, accionUnilineal } from './unilineal.js';
 import { CONJUNTOS_INCLUIDOS, insertarConjunto, conjuntoDeHoja } from './conjuntos.js';
 import { leerAjuste, guardarAjuste } from './ajustes.js';
@@ -43,7 +43,7 @@ export function abrirEditor(p, volver) {
   const hojaId = p._hoja && (p.hojas || []).some(h => h.id === p._hoja) ? p._hoja : null;
   E = { proyecto: p, hojaId, p: vistaHoja(p, hojaId), step: (p._paso === 'lamina' ? 'informe' : p._paso) || (p.ref ? (p.roofs.some(r => r.closed) ? 'paneles' : 'techos') : 'escala'), tool: null, sel: null, V: null, temp: null, D: null,
     orto: false, refent: true, rejilla: false, capas: new Set(CAPAS.map(c => c.id)), bloqueadas: new Set(), hist: [], fut: [], cmdLog: [],
-    zonaK: 'obs', zonaForma: 'rect', lineaColor: '#FFFFFF', lineaDash: false, figForma: 'grid', figFC: { f: 2, c: 5 }, eqK: 'inv', rutaK: 'cc', blk: { f: 2, c: 4 }, strAct: p.strings[0]?.id || null, selPanels: new Set(), mouse: null, snap: null,
+    zonaK: 'obs', zonaForma: 'rect', lineaColor: '#FFFFFF', lineaDash: false, figK: 'linea', figCol: '#FFFFFF', figDash: false, figGr: 1, figRel: '', figForma: 'grid', figFC: { f: 2, c: 5 }, eqK: 'inv', rutaK: 'cc', blk: { f: 2, c: 4 }, strAct: p.strings[0]?.id || null, selPanels: new Set(), mouse: null, snap: null,
     fotoAlpha: .85, guardado: true, R: null, SI: null, abiertas: new Map() };
   E.tool = HERR_DEF[E.step];
   cargarNormas().then(n => { if (E) { E.normas = n; if (E.step === 'equipos') { panel(); dibujarTodo(); } } });
@@ -161,6 +161,7 @@ const COLORES_LINEA = ['#FFFFFF', '#FFD21F', '#3D6BFF', '#FF3B3B', '#2FD06B', '#
 const sbTool = (k, txt, tit) => `<button class="sb-b" data-act="tool" data-k="${k}" aria-pressed="${E.tool === k}" title="${tit}">${txt}</button>`;
 const sbT = t => `<span class="subbar-t">${t}</span>`, sbSep = '<span class="sb-sep"></span>';
 function barraPaso() {
+  if (E.tool === 'figura') return `<div class="subbar" id="subbar">${barraFigura()}</div>`;
   const b = { escala: barraEscala, techos: barraTechos, elementos: barraElementos, paneles: barraPaneles, strings: barraStrings, equipos: barraLineas, etiquetas: barraEtiquetas }[E.step];
   return b ? `<div class="subbar" id="subbar">${b()}</div>` : '<div id="subbar" hidden></div>';
 }
@@ -224,6 +225,23 @@ function barraLineas() {
     ${sbSep}${sbT('Rellenar')}
     ${[['solido', 'Pintar el área con su color (tarro de pintura)', '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 11l7-7 8 8-7 7z" fill="currentColor" fill-opacity=".35"/><path d="M11 4L8.5 1.5"/><path d="M20 15c0 1.5 1 2.5 1 3.5a1.5 1.5 0 0 1-3 0c0-1 1-2 2-3.5z" fill="currentColor"/></svg>'], ['diag', 'Achurado diagonal (sombreado, como el Hatch de AutoCAD)', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 9.5l8-8M1.5 14.5l13-13M6.5 14.5l8-8"/></svg>'], ['cruz', 'Achurado cruzado', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 9.5l8-8M1.5 14.5l13-13M6.5 14.5l8-8M1.5 6.5l8 8M1.5 1.5l13 13M6.5 1.5l8 8"/></svg>'], ['horiz', 'Achurado horizontal', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M1.5 5h13M1.5 8h13M1.5 11h13"/></svg>'], ['quitar', 'Quitar el relleno o el achurado', '✕']].map(([k, t, i]) => `<button class="sb-b sb-ico" data-act="relleno" data-k="${k}" aria-pressed="${E.tool === 'relleno' && E.rellenoK === k}" title="${t}">${i}</button>`).join('')}`;
 }
+/* Figura (barra izquierda): forma, color, trazo, grosor y relleno */
+const COLORES_FIG = [...COLORES_LINEA, '#111111'];
+const ICONO_FORMA = {
+  linea: '<path d="M3 13L15 3"/>', flecha: '<path d="M3 13L14 4M9 4h5v5"/>', rect: '<rect x="2.5" y="3.5" width="13" height="9"/>',
+  circ: '<circle cx="9" cy="8" r="5.5"/>', poly: '<path d="M3 12L5 3l7 1.5 3.5 6-6 3.5z"/>'
+};
+const icForma = k => `<svg width="18" height="16" viewBox="0 0 18 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">${ICONO_FORMA[k]}</svg>`;
+function barraFigura() {
+  const { seg } = formu();
+  return `${sbT('Figura')}${Object.keys(NOMBRE_FORMA).map(k => `<button class="sb-b" data-act="set" data-campo="_figK" data-v="${k}" aria-pressed="${E.figK === k}">${icForma(k)}${NOMBRE_FORMA[k]}</button>`).join('')}
+    ${sbSep}<details class="sb-dd"><summary class="sb-b" title="Color de la figura"><i class="sb-color" style="background:${E.figCol}"></i>Color ▾</summary><div class="sb-dd-p sb-dd-chico">
+      <span class="colores sb-cols">${COLORES_FIG.map(c => `<button data-act="set" data-campo="_figCol" data-v="${c}" aria-pressed="${E.figCol === c}" style="--c:${c}" title="${c === '#FFFFFF' ? 'Blanco (negro al imprimir)' : c}"></button>`).join('')}</span></div></details>
+    <button class="sb-b" data-act="set" data-campo="_figDash" data-v="${E.figDash ? '' : '1'}" aria-pressed="${E.figDash}">- - - Segmentada</button>
+    <span class="sb-seg">${seg('_figGr', E.figGr, [[1, 'Fino'], [2, 'Medio'], [3, 'Grueso']])}</span>
+    ${['rect', 'circ', 'poly'].includes(E.figK) ? `${sbSep}${sbT('Relleno')}<span class="sb-seg">${seg('_figRel', E.figRel, [['', 'Sin'], ['solido', 'Pintado'], ['diag', '/ / /'], ['cruz', 'x x x'], ['horiz', '≡']])}</span>` : ''}
+    ${sbSep}<button class="sb-b" data-act="tool" data-k="sel" title="Dejar de dibujar figuras (Esc)">Terminar</button>`;
+}
 /* Cotas, etiquetas y textos */
 function barraEtiquetas() {
   return `${sbT('Agregar')}
@@ -242,7 +260,7 @@ function herramientas() {
   const t = (k, icono, n, tit) => `<button class="tool" data-act="tool" data-k="${k}" aria-pressed="${E.tool === k}" title="${tit || n}">${ic(icono, 20)}<span>${n}</span></button>`;
   const a = (act, icono, n, tit) => `<button class="tool" data-act="${act}" title="${tit}">${ic(icono, 20)}<span>${n}</span></button>`;
   return t('sel', 'cursor', 'Seleccionar') + t('pan', 'hand', 'Encuadre', 'Encuadre (también la rueda del mouse o la barra espaciadora)') + a('zext', 'ext', 'Ajustar', 'Ver todo el dibujo (Z)') + `<hr>`
-    + t('medir', 'ruler', 'Medir', 'Medir distancia (DIST): clic en dos puntos') + a('borrar', 'trash', 'Borrar', 'Borrar lo elegido (Supr)');
+    + t('medir', 'ruler', 'Medir', 'Medir distancia (DIST): clic en dos puntos') + t('figura', 'shape', 'Figura', 'Línea, flecha, rectángulo, círculo o figura libre, en cualquier paso') + a('borrar', 'trash', 'Borrar', 'Borrar lo elegido (Supr)');
 }
 function pasoOk(k) {
   const p = E.p, R = E.R || calcular(p);
@@ -354,6 +372,7 @@ function temporal(g, T) {
   const etiqueta = (a, b) => { const s = escala(E.p); if (!s) return; const q = T(lerp(a, b, .5)), txt = `${fmt(dist(a, b) * s / 1000, 2)} m`; g.font = "12px 'Archivo Narrow', Arial"; g.fillStyle = 'rgba(0,0,0,.75)'; const w = g.measureText(txt).width; g.fillRect(q[0] + 6, q[1] - 16, w + 8, 16); g.fillStyle = '#FAB704'; g.fillText(txt, q[0] + 10, q[1] - 4); };
   if (t && t.tipo === 'poly' && m && E.tool === 'ruta' && E.rutaK === 'perfil') { lineaDoble(g, [T(t.pts[0]), T(m)], CANAL.perfil.c, 1, mediaPerfil(E.p, E.V.k)); etiqueta(t.pts[0], m); }   // el perfil se ve como rectángulo mientras se dibuja
   else if (t && t.tipo === 'poly' && m) { const pts = [...t.pts, m]; linea(pts, t.col || '#FAB704', t.dash || [6, 4]); if (t.pts.length) etiqueta(t.pts[t.pts.length - 1], m); }
+  if (t && t.tipo === 'linea' && m && E.tool === 'figura') { g.beginPath(); if (E.figK === 'circ') { const a = T(t.a); g.arc(a[0], a[1], dist(a, T(m)), 0, Math.PI * 2); } else rectDe(T(t.a), T(m)).forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); g.setLineDash([6, 4]); g.strokeStyle = E.figCol; g.lineWidth = 1.5; g.stroke(); g.setLineDash([]); }
   if (t && t.tipo === 'linea' && m) { linea([t.a, m], '#FAB704', [6, 4]); etiqueta(t.a, m); }
   if (E.D && (E.D.kind === 'ventana' || E.D.kind === 'ventanaSel')) { const a = T(E.D.a), b = T(E.D.b), izq = E.D.b[0] >= E.D.a[0]; g.fillStyle = izq ? 'rgba(61,123,255,.15)' : 'rgba(47,208,107,.15)'; g.fillRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.setLineDash(izq ? [] : [6, 4]); g.strokeStyle = izq ? '#3D7BFF' : '#2FD06B'; g.strokeRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); g.setLineDash([]); }
   if (E.D && E.D.kind === 'nuevaZona') { const z = zonaDeArrastre(E.D.a, E.D.b), pts = zonaPoly(z).map(T); g.beginPath(); pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); g.strokeStyle = ZONAS[E.zonaK].c; g.setLineDash([5, 4]); g.lineWidth = 1.5; g.stroke(); g.setLineDash([]); }
@@ -369,6 +388,7 @@ function puntosRef() {
   p.equipos.forEach(e => pts.push([e.x, e.y]));
   p.cotas.forEach(c => { pts.push(c.a); pts.push(c.b); });
   (p.figPaneles || []).forEach(f => f.pts.forEach(q => pts.push(q)));
+  (p.figuras || []).forEach(f => f.pts.forEach(q => pts.push(q)));
   if (E.step === 'equipos' && E.R) E.R.validos.forEach(pn => pn.q.forEach(q => pts.push(q)));
   if (E.temp && E.temp.pts) E.temp.pts.forEach(q => pts.push(q));
   return pts;
@@ -376,7 +396,7 @@ function puntosRef() {
 function cursorFoto() {
   if (!E.mouse) return null;
   let q = aFoto(...E.mouse); E.snap = null;
-  if (E.refent && ['ref', 'roof', 'ruta', 'cota', 'equipo', 'figpan'].includes(E.tool)) {
+  if (E.refent && ['ref', 'roof', 'ruta', 'cota', 'equipo', 'figpan', 'figura'].includes(E.tool)) {
     let best = 10 / E.V.k, bq = null; puntosRef().forEach(v => { const d = dist(v, q); if (d < best) { best = d; bq = v; } });
     if (bq) { E.snap = bq; return [...bq]; }
   }
@@ -400,6 +420,13 @@ function textoEn(q) { return E.p.textos.find(t => { const h = Math.max(altoTexto
 const detEn = q => [...(E.p.detalles || [])].reverse().find(d => dist(q, d.p) < radioBurbuja(d));
 const rectLibreE = e => !esReal(E.p, e) || ['bpc', 'tg', 'tfv', 'cp', 'cdj'].includes(e.k);   // de referencia, bandeja, tableros y cajas: se estiran desde sus esquinas
 const figEn = q => [...(E.p.figPaneles || [])].reverse().find(f => f.pts.length >= 3 && pointInPoly(q, f.pts));
+function formaEn(q) {
+  const t = tol();
+  return [...(E.p.figuras || [])].reverse().find(f => { const P = f.pts; if (P.length < 2) return false;
+    if (f.f === 'circ') { const r = dist(P[0], P[1]), d = dist(q, P[0]); return Math.abs(d - r) < t || (!!f.rel && d < r); }
+    const L = f.f === 'rect' ? rectDe(P[0], P[1]) : P, seg = esCerrada(f) ? [...L, L[0]] : L;
+    return seg.some((v, i) => i && distSeg(q, seg[i - 1], v) < t) || (esCerrada(f) && !!f.rel && pointInPoly(q, L)); });
+}
 const norteEn = q => E.p.norte && dist(q, [E.p.norte.x, E.p.norte.y]) < Math.max(36 / E.V.k, (E.p.w || 1000) / 1210 * 38 * (E.p.norte.tam || 1));   // su tamaño es parte del dibujo
 function bloqueEn(q) { const B = E.R.bloques.find(b => pointInPoly(q, b.q)); return B ? { ...B, rid: E.p.roofs[B.ri].id } : null; }
 function gripEn(q) {
@@ -407,6 +434,7 @@ function gripEn(q) {
   if (s.t === 'roof') { const r = E.p.roofs.find(x => x.id === s.id); const i = r ? r.poly.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: r.poly, i }; }
   if (s.t === 'ruta') { const r = E.p.rutas.find(x => x.id === s.id); const i = r ? r.pts.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: r.pts, i }; }
   if (s.t === 'fig') { const f = (E.p.figPaneles || []).find(x => x.id === s.id); const i = f ? f.pts.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: f.pts, i }; }
+  if (s.t === 'forma') { const f = (E.p.figuras || []).find(x => x.id === s.id); const i = f ? f.pts.findIndex(v => dist(v, q) < d) : -1; if (i >= 0) return { arr: f.pts, i }; }
   if (s.t === 'texto') { const t = E.p.textos.find(x => x.id === s.id); if (t && t.guia && dist(t.guia, q) < d) return { obj: t, k: 'guia' }; }
   if (s.t === 'det') { const b = (E.p.detalles || []).find(x => x.id === s.id); if (b && dist(b.c, q) < Math.max(d, radioBurbuja(b) / (b.z || 3))) return { obj: b, k: 'c' }; }
   if (s.t === 'cota') { const c = E.p.cotas.find(x => x.id === s.id); if (c) { if (dist(c.a, q) < d) return { obj: c, k: 'a' }; if (dist(c.b, q) < d) return { obj: c, k: 'b' }; } }
@@ -426,12 +454,13 @@ const duenoEtq = s => s && s.t === 'etq' ? listaEtq(s.of).find(x => x.id === s.i
 function etqEn(q) { const sq = aPant(q); return [...(E.hits || [])].reverse().find(h => sq[0] >= h.caja[0] && sq[0] <= h.caja[2] && sq[1] >= h.caja[1] && sq[1] <= h.caja[3]); }
 function objetoEn(q) {
   if (E.step === 'etiquetas') { const et = etqEn(q); if (et) return { t: 'etq', of: et.of, id: et.id };
-    if (norteEn(q)) return { t: 'norte' }; const dt = detEn(q); if (dt) return { t: 'det', id: dt.id }; const tx = textoEn(q); if (tx) return { t: 'texto', id: tx.id }; const ct = cotaEn(q); if (ct) return { t: 'cota', id: ct.id }; return null; }
+    if (norteEn(q)) return { t: 'norte' }; const dt = detEn(q); if (dt) return { t: 'det', id: dt.id }; const tx = textoEn(q); if (tx) return { t: 'texto', id: tx.id }; const ct = cotaEn(q); if (ct) return { t: 'cota', id: ct.id }; const fm = E.capas.has('figuras') && formaEn(q); if (fm) return { t: 'forma', id: fm.id }; return null; }
   const et = etqEn(q); if (et && ((et.of === 'equipo' && E.capas.has('equipos')) || (et.of === 'ruta'))) return { t: 'etq', of: et.of, id: et.id };
   if (E.capas.has('textos') && norteEn(q)) return { t: 'norte' };
   const dt = E.capas.has('textos') && detEn(q); if (dt) return { t: 'det', id: dt.id };
   const tx = E.capas.has('textos') && textoEn(q); if (tx) return { t: 'texto', id: tx.id };
   const ct = E.capas.has('cotas') && cotaEn(q); if (ct) return { t: 'cota', id: ct.id };
+  const fm = E.capas.has('figuras') && formaEn(q); if (fm) return { t: 'forma', id: fm.id };
   const eq = E.capas.has('equipos') && equipoEn(q); if (eq) return { t: 'equipo', id: eq.id };
   const rt = E.capas.has('canal') && rutaEn(q); if (rt) return { t: 'ruta', id: rt.id };
   if (E.step === 'elementos' || E.step === 'techos') { const z = E.capas.has('zonas') && zonaEn(q); if (z) return { t: 'zona', id: z.id }; }
@@ -472,6 +501,14 @@ function down(ev) {
     antes(); const d = { id: uid('d'), c: E.temp.a, p: q, R: Math.round((p.w || 1000) * .1), z: 3 }; (p.detalles ||= []).push(d); p.detalles = p.detalles;
     E.temp = null; E.sel = { t: 'det', id: d.id }; E.tool = 'sel'; prompt('Comando:'); despues(); render(); return; }
   if (E.tool === 'norte') { antes(); p.norte = { x: q[0], y: q[1], ang: p.norte ? p.norte.ang : 0 }; E.sel = { t: 'norte' }; E.tool = 'sel'; despues(); render(); return; }
+  if (E.tool === 'figura') {
+    const N = NOMBRE_FORMA[E.figK].toUpperCase();
+    if (['rect', 'circ'].includes(E.figK)) { if (!E.temp) { E.temp = { tipo: 'linea', a: q }; prompt(E.figK === 'circ' ? `${N}  Clic en el borde (o escribe el radio en metros):` : `${N}  Precise la esquina opuesta:`); } else nuevaForma([E.temp.a, q]); dibujarTodo(); return; }
+    if (!E.temp) { E.temp = { tipo: 'poly', pts: [q], col: E.figCol, dash: E.figDash ? [10, 6] : [] }; prompt(`${N}  Precise el siguiente punto (Enter o doble clic termina):`); }
+    else if (E.figK === 'poly' && E.temp.pts.length >= 3 && dist(aPant(E.temp.pts[0]), sp) < 10) terminar();
+    else E.temp.pts.push(q);
+    dibujarTodo(); return;
+  }
   if (E.tool === 'roof') {
     if (!E.temp) { if (!q) return; E.temp = { tipo: 'poly', pts: [q], col: '#FFFFFF' }; prompt('TECHO  Precise el siguiente punto o [Cerrar] (Enter cierra):'); }
     else if (E.temp.pts.length >= 3 && dist(aPant(E.temp.pts[0]), sp) < 10) cerrarTecho();
@@ -510,7 +547,7 @@ function down(ev) {
   const gr = gripEn(raw); if (gr) { antes(); E.D = { kind: 'grip', gr, first: false }; return; }
   if (E.step === 'paneles') return downPaneles(raw, ev);
   let o = objetoEn(raw); if (o && o.t === 'roof' && E.step === 'equipos') o = null;
-  const MOVIBLES = ['equipo', 'zona', 'texto', 'norte', 'ruta', 'cota', 'fig', 'etq'];
+  const MOVIBLES = ['equipo', 'zona', 'texto', 'norte', 'ruta', 'cota', 'fig', 'etq', 'forma'];
   if (o && E.sel && E.sel.t === 'multi' && enMulti(o) && !ev.shiftKey) { E.D = { kind: 'mover', a: raw, last: raw, first: true }; return; }   // mover el grupo
   if (o && ev.shiftKey && E.sel && MOVIBLES.includes(o.t)) { E.sel = alternarSel(E.sel, o); panel(); dibujarTodo(); return; }
   E.sel = o;
@@ -527,7 +564,7 @@ function downPaneles(raw, ev) {
   }
   if (act && act.modo !== 'manual' && pointInPoly(raw, act.poly)) { const pn = panelEn(raw); if (pn && pn.rid === act.id) { antes(); act.off = act.off || []; const i = act.off.indexOf(pn.key); i >= 0 ? act.off.splice(i, 1) : act.off.push(pn.key); despues(); return; } }
   const et0 = etqEn(raw), r = techoEn(raw); E.sel = et0 ? { t: 'etq', of: et0.of, id: et0.id } : r ? { t: 'roof', id: r.id } : objetoEn(raw);
-  if (E.sel && ['equipo', 'texto', 'norte', 'cota', 'ruta', 'etq', 'fig'].includes(E.sel.t)) E.D = { kind: 'mover', a: raw, last: raw, first: true };
+  if (E.sel && ['equipo', 'texto', 'norte', 'cota', 'ruta', 'etq', 'fig', 'forma'].includes(E.sel.t)) E.D = { kind: 'mover', a: raw, last: raw, first: true };
   if (!E.sel && E.tool === 'sel') E.D = { kind: 'ventanaSel', a: raw, b: raw, sumar: ev && ev.shiftKey };
   panel(); dibujarTodo();
 }
@@ -578,7 +615,7 @@ function up(ev) {
   dibujarTodo();
 }
 function wheel(ev) { ev.preventDefault(); const sp = ptEv(ev); zoom(ev.deltaY < 0 ? 1.15 : 1 / 1.15, sp[0], sp[1]); }
-function dbl() { if (E.tool === 'ruta' && E.temp) { E.temp.pts.pop(); terminar(); } }
+function dbl() { if (['ruta', 'figura'].includes(E.tool) && E.temp && E.temp.pts) { E.temp.pts.pop(); terminar(); } }
 function zonaDeArrastre(a, b) {
   const z = { k: E.zonaK, forma: E.zonaForma, ang: 0 };
   if (E.zonaForma === 'circ') { const r = dist(a, b); return { ...z, x: a[0] - r, y: a[1] - r, w: 2 * r, h: 2 * r }; }
@@ -592,16 +629,17 @@ function moverSel(dx, dy, D) {
    De izquierda a derecha: lo que queda completo adentro. De derecha a izquierda: lo que toca. */
 function puntosObj(t, x) {
   if (t === 'equipo') { const Q = tamEquipoPx(E.p, x); return [[x.x - Q.w / 2, x.y - Q.h / 2], [x.x + Q.w / 2, x.y + Q.h / 2]]; }
-  if (t === 'ruta') return x.pts; if (t === 'cota') return [x.a, x.b]; if (t === 'texto') return [x.p]; if (t === 'fig') return x.pts; if (t === 'zona') return zonaPoly(x);
+  if (t === 'ruta') return x.pts; if (t === 'cota') return [x.a, x.b]; if (t === 'texto') return [x.p]; if (t === 'fig' || t === 'forma') return x.pts; if (t === 'zona') return zonaPoly(x);
   return [];
 }
 function seleccionarVentana(D) {
   const x0 = Math.min(D.a[0], D.b[0]), x1 = Math.max(D.a[0], D.b[0]), y0 = Math.min(D.a[1], D.b[1]), y1 = Math.max(D.a[1], D.b[1]), cruce = D.b[0] < D.a[0];
   if ((x1 - x0) * E.V.k < 4 && (y1 - y0) * E.V.k < 4) { if (!D.sumar) E.sel = null; panel(); dibujarTodo(); return; }   // fue un clic, no una ventana
   const p = E.p, dentro = q => q[0] >= x0 && q[0] <= x1 && q[1] >= y0 && q[1] <= y1, items = [];
-  const tipos = E.step === 'etiquetas' ? [['cota', p.cotas], ['texto', p.textos]]
+  const formas = ['forma', E.capas.has('figuras') ? (p.figuras || []) : []];
+  const tipos = E.step === 'etiquetas' ? [['cota', p.cotas], ['texto', p.textos], formas]
     : [['equipo', E.capas.has('equipos') ? p.equipos : []], ['ruta', p.rutas.filter(r => E.capas.has(CANAL[r.k]?.riel ? 'rieles' : 'canal'))], ['cota', E.capas.has('cotas') ? p.cotas : []], ['texto', E.capas.has('textos') ? p.textos : []],
-       ['fig', E.capas.has('paneles') ? (p.figPaneles || []) : []], ['zona', ['elementos', 'techos'].includes(E.step) && E.capas.has('zonas') ? p.zonas : []]];
+       ['fig', E.capas.has('paneles') ? (p.figPaneles || []) : []], ['zona', ['elementos', 'techos'].includes(E.step) && E.capas.has('zonas') ? p.zonas : []], formas];
   tipos.forEach(([t, lista]) => lista.forEach(x => { const pts = puntosObj(t, x); if (pts.length && (cruce ? pts.some(dentro) : pts.every(dentro))) items.push({ t, id: x.id }); }));
   let sel = D.sumar && E.sel ? E.sel : null;
   items.forEach(it => { sel = sel ? (enMultiDe(sel, it) ? sel : alternarSel(sel, it)) : it; });
@@ -629,6 +667,7 @@ function moverObj(s, dx, dy, D) {
     if (et.dx == null) { const h = (E.hits || []).find(x => x.of === s.of && x.id === s.id); if (!h) return; et.dx = h.pos[0] - h.anchor[0]; et.dy = h.pos[1] - h.anchor[1]; }
     et.dx += dx; et.dy += dy; }
   if (s.t === 'fig') { const f = (p.figPaneles || []).find(x => x.id === s.id); if (f) f.pts = f.pts.map(v => [v[0] + dx, v[1] + dy]); }
+  if (s.t === 'forma') { const f = (p.figuras || []).find(x => x.id === s.id); if (f) f.pts = f.pts.map(v => [v[0] + dx, v[1] + dy]); }
   if (s.t === 'bloque') { const b = p.roofs[s.ri].bloques[s.bi]; b.x += dx; b.y += dy; }
 }
 
@@ -647,8 +686,15 @@ function cerrarFigura() {
   (E.p.figPaneles ||= []).push(f); E.p.figPaneles = E.p.figPaneles; E.temp = null; E.sel = { t: 'fig', id: f.id };
   log(`PANELES dibujados ${f.tipo === 'grid' ? `${f.f} × ${f.c}` : '(figura)'}`); prompt('Comando:'); despues();
 }
+/* Figura nueva con las opciones de la barra; la herramienta sigue activa para dibujar otra */
+function nuevaForma(pts) {
+  antes(); const k = E.figK, f = { id: uid('g'), f: k, pts, col: E.figCol, ...(E.figDash ? { dash: true } : {}), ...(E.figGr > 1 ? { gr: E.figGr } : {}), ...(E.figRel && ['rect', 'circ', 'poly'].includes(k) ? { rel: E.figRel } : {}) };
+  (E.p.figuras ||= []).push(f); E.temp = null; E.sel = { t: 'forma', id: f.id };
+  log(`FIGURA  ${NOMBRE_FORMA[k]}`); prompt(`${NOMBRE_FORMA[k].toUpperCase()}  Precise el primer punto (Esc para terminar):`); despues();
+}
 function terminar() {
   const t = E.temp;
+  if (E.tool === 'figura' && t) { if (t.pts && t.pts.length >= (E.figK === 'poly' ? 3 : 2)) nuevaForma(t.pts); else { E.temp = null; dibujarTodo(); } return; }
   if (E.tool === 'figpan' && t) { if (t.pts.length >= 3) cerrarFigura(); else { E.temp = null; dibujarTodo(); } return; }
   if (E.tool === 'roof' && t) { if (t.pts.length >= 3) cerrarTecho(); else { E.temp = null; dibujarTodo(); } return; }
   if (E.tool === 'ruta' && t) {
@@ -775,7 +821,7 @@ function ejecutar(v) {
 function borrarSel() {
   if (E.sel && E.sel.t === 'multi') { const its = E.sel.items, p = E.p; antes();
     const quita = (arr, id) => { const i = arr.findIndex(x => x.id === id); if (i >= 0) arr.splice(i, 1); };
-    its.forEach(it => quita({ equipo: p.equipos, ruta: p.rutas, cota: p.cotas, texto: p.textos, fig: p.figPaneles || [], zona: p.zonas, det: p.detalles || [] }[it.t] || [], it.id));
+    its.forEach(it => quita({ equipo: p.equipos, ruta: p.rutas, cota: p.cotas, texto: p.textos, fig: p.figPaneles || [], zona: p.zonas, det: p.detalles || [], forma: p.figuras || [] }[it.t] || [], it.id));
     log(`BORRAR  ${its.length} objetos`); E.sel = null; despues(); return; }
   const s = E.sel, p = E.p; if (!s) return toast('No hay nada seleccionado');
   if (s.t === 'etq') { const ow = duenoEtq(s); if (ow) { antes(); if (s.of === 'zona') delete (ow.etq ||= {}).ver; else (ow.etq ||= {}).oculta = true; E.sel = null; log('ETIQUETA quitada'); despues(); } return; }
@@ -787,6 +833,7 @@ function borrarSel() {
   else if (s.t === 'ruta') quitar(p.rutas, s.id);
   else if (s.t === 'cota') quitar(p.cotas, s.id);
   else if (s.t === 'fig') quitar(p.figPaneles || [], s.id);
+  else if (s.t === 'forma') quitar(p.figuras || [], s.id);
   else if (s.t === 'texto') quitar(p.textos, s.id);
   else if (s.t === 'norte') p.norte = null;
   else if (s.t === 'det') quitar(p.detalles || [], s.id);
@@ -806,7 +853,7 @@ function pista() {
     zona: E.zonaForma === 'circ' ? 'Arrastra desde el centro para un círculo · clic en una zona para editarla' : 'Arrastra para marcar la zona · clic en una zona para editarla',
     str: 'Clic en un panel lo agrega o quita del string activo · arrastra una ventana para varios (Shift quita)',
     equipo: `Clic donde va ${EQUIPOS[E.eqK].n.toLowerCase()}`, ruta: 'Clic en cada punto del recorrido · Enter o doble clic termina',
-    cota: 'Clic en dos puntos para acotar', detalle: 'Clic en el centro de lo que quieres ampliar y después donde va la burbuja', medir: 'Clic en dos puntos para medir la distancia (no deja nada dibujado) · Esc termina', guia: 'Clic sobre el elemento al que se refiere (se engancha a la línea más cercana) y después donde va el texto', relleno: 'Clic en un equipo para rellenarlo (si tienes varios elegidos con la ventana, se aplica a todos) · Esc termina', piso: 'Clic a la altura del piso terminado (nivel ±0,00): desde ahí se miden las alturas de las normas', conjunto: 'Clic donde va la esquina superior izquierda del conjunto', figpan: E.figForma === 'poly' ? 'Clic en cada esquina de la figura · Enter o clic en la primera cierra' : 'Clic en las 4 esquinas (arriba-izq, arriba-der, abajo-der, abajo-izq): sirve en perspectiva', texto: 'Clic donde va el texto', norte: 'Clic donde va el norte', pan: 'Arrastra para mover la vista',
+    cota: 'Clic en dos puntos para acotar', detalle: 'Clic en el centro de lo que quieres ampliar y después donde va la burbuja', medir: 'Clic en dos puntos para medir la distancia (no deja nada dibujado) · Esc termina', guia: 'Clic sobre el elemento al que se refiere (se engancha a la línea más cercana) y después donde va el texto', relleno: 'Clic en un equipo para rellenarlo (si tienes varios elegidos con la ventana, se aplica a todos) · Esc termina', piso: 'Clic a la altura del piso terminado (nivel ±0,00): desde ahí se miden las alturas de las normas', conjunto: 'Clic donde va la esquina superior izquierda del conjunto', figpan: E.figForma === 'poly' ? 'Clic en cada esquina de la figura · Enter o clic en la primera cierra' : 'Clic en las 4 esquinas (arriba-izq, arriba-der, abajo-der, abajo-izq): sirve en perspectiva', figura: E.figK === 'poly' ? 'Clic en cada esquina · Enter, doble clic o clic en la primera esquina cierra' : ['rect', 'circ'].includes(E.figK) ? (E.figK === 'circ' ? 'Clic en el centro y después en el borde' : 'Clic en una esquina y después en la opuesta') : 'Clic en cada punto · Enter o doble clic termina · escribe metros para un largo exacto', texto: 'Clic donde va el texto', norte: 'Clic donde va el norte', pan: 'Arrastra para mover la vista',
     sel: E.step === 'etiquetas' ? 'Clic en una etiqueta, cota o texto para editarla · arrástrala para moverla · Supr la quita' : E.step === 'paneles' ? (techoAct() && techoAct().modo === 'manual' ? 'Clic en un lugar vacío del techo para poner un bloque · clic en un bloque para editarlo' : 'Clic en un techo para elegirlo · clic en un panel lo saca o devuelve') : 'Clic para seleccionar · arrastra para mover · Supr borra'
   }[t] || '';
   h.textContent = txt; h.hidden = !txt;
@@ -1048,7 +1095,7 @@ const stepper = (campo, val) => `<span class="stp"><button data-act="stp" data-c
 function nombreSel(s) {
   const p = E.p;
   return { roof: () => `Techo ${p.roofs.findIndex(r => r.id === s.id) + 1}`, zona: () => 'Zona', equipo: () => EQUIPOS[(p.equipos.find(e => e.id === s.id) || {}).k]?.n || 'Equipo', ruta: () => { const k = (p.rutas.find(x => x.id === s.id) || {}).k; return k === 'perfil' ? 'Perfil' : k === 'riel' ? 'Riel' : CANAL[k]?.libre ? 'Línea' : 'Canalización'; },
-    fig: () => 'Paneles dibujados', etq: () => 'Etiqueta', multi: () => `${s.items.length} objetos`, cota: () => 'Cota', texto: () => 'Texto', norte: () => 'Norte', det: () => 'Burbuja de detalle', ref: () => 'Referencia', bloque: () => 'Bloque de paneles' }[s.t]?.() || '';
+    fig: () => 'Paneles dibujados', forma: () => NOMBRE_FORMA[((p.figuras || []).find(x => x.id === s.id) || {}).f] || 'Figura', etq: () => 'Etiqueta', multi: () => `${s.items.length} objetos`, cota: () => 'Cota', texto: () => 'Texto', norte: () => 'Norte', det: () => 'Burbuja de detalle', ref: () => 'Referencia', bloque: () => 'Bloque de paneles' }[s.t]?.() || '';
 }
 function propsSel(s, { num, rango, seg }) {
   const p = E.p, del = `<button class="btn sm del" data-act="borrar">${ic('trash', 14)} Borrar</button>`;
@@ -1082,7 +1129,7 @@ function propsSel(s, { num, rango, seg }) {
       ${!CANAL[r.k]?.riel && !CANAL[r.k]?.libre && !['sub', 'subcc'].includes(r.k) ? `<label class="chk"><input type="checkbox" data-campo="ruta.aSuelo" ${r.aSuelo ? 'checked' : ''}> Va a suelo (no aplica la altura mínima)</label>` : ''}
       ${r.k === 'riel' && !escala(p) ? num('ruta.mManual', r.mManual ?? '', { l: 'Largo real del riel', u: 'm' }) : ''}
       <dl class="dl"><dt>Largo</dt><dd>${escala(p) ? fmt(largoM(p, r.pts), 2) + ' m' : r.mManual ? fmt(r.mManual, 2) + ' m (escrito)' : '— (sin escala)'}</dd><dt>Vértices</dt><dd>${r.pts.length}</dd></dl><p class="mut">Arrastra los cuadros azules para mover vértices.</p>${del}`; }
-  if (s.t === 'multi') { const N = { equipo: 'equipo(s)', ruta: 'línea(s) o canalización(es)', cota: 'cota(s)', texto: 'texto(s)', fig: 'figura(s) de paneles', zona: 'zona(s)' }, c = {};
+  if (s.t === 'multi') { const N = { equipo: 'equipo(s)', ruta: 'línea(s) o canalización(es)', cota: 'cota(s)', texto: 'texto(s)', fig: 'figura(s) de paneles', zona: 'zona(s)', forma: 'figura(s)' }, c = {};
     s.items.forEach(x => { c[x.t] = (c[x.t] || 0) + 1; });
     return `<p class="mut">${Object.entries(c).map(([t, n]) => `${n} ${N[t] || t}`).join(' · ')}</p><p class="mut">Arrastra cualquiera para mover todo junto. Mayús + clic suma o quita uno. Supr borra todo lo elegido.</p>${del}`; }
   if (s.t === 'etq') { const ow = duenoEtq(s); if (!ow) return ''; const et = ow.etq || {};
@@ -1100,6 +1147,15 @@ function propsSel(s, { num, rango, seg }) {
         <label class="f"><span>Panel</span><select class="in" data-campo="fig.panel">${PANELES.map(x => `<option value="${x.id}" ${(f.panel || p.panel) === x.id ? 'selected' : ''}>${x.n}</option>`).join('')}</select></label>
         <dl class="dl"><dt>Se suman</dt><dd>${nPanelesFig(f)} paneles</dd></dl>` : ''}
       <p class="mut">Arrastra los cuadros azules para ajustar las esquinas (en perspectiva también).</p>${del}`; }
+  if (s.t === 'forma') { const f = (p.figuras || []).find(x => x.id === s.id); if (!f) return ''; const sc = escala(p), m = v => `${fmt(v * sc / 1000, 2)} m`;
+    const tipos = f.pts.length === 2 ? ['linea', 'flecha', 'rect', 'circ'] : ['linea', 'flecha', 'poly'];
+    const med = !sc ? '' : f.f === 'circ' ? `<dt>Radio</dt><dd>${m(dist(f.pts[0], f.pts[1]))}</dd>` : f.f === 'rect' ? `<dt>Tamaño</dt><dd>${m(Math.abs(f.pts[1][0] - f.pts[0][0]))} × ${m(Math.abs(f.pts[1][1] - f.pts[0][1]))}</dd>` : `<dt>Largo</dt><dd>${fmt(largoM(p, esCerrada(f) ? [...f.pts, f.pts[0]] : f.pts), 2)} m</dd>`;
+    return `<div class="f"><span>Forma</span>${seg('forma.f', f.f, tipos.map(k => [k, NOMBRE_FORMA[k]]))}</div>
+      <div class="f"><span>Color</span><div class="colores">${COLORES_FIG.map(c => `<button data-act="set" data-campo="forma.col" data-v="${c}" aria-pressed="${(f.col || '#FFFFFF') === c}" style="--c:${c}" title="${c === '#FFFFFF' ? 'Blanco (negro al imprimir)' : c}"></button>`).join('')}</div></div>
+      <div class="f"><span>Grosor</span>${seg('forma.gr', f.gr || 1, [[1, 'Fino'], [2, 'Medio'], [3, 'Grueso']])}</div>
+      <label class="chk"><input type="checkbox" data-campo="forma.dash" ${f.dash ? 'checked' : ''}> Segmentada</label>
+      ${esCerrada(f) ? `<div class="f"><span>Relleno</span>${seg('forma.rel', f.rel || '', [['', 'Sin'], ['solido', 'Pintado'], ['diag', '/ / /'], ['cruz', 'x x x'], ['horiz', '≡']])}</div>` : ''}
+      ${med ? `<dl class="dl">${med}</dl>` : ''}<p class="mut">Arrástrala para moverla; los cuadros azules mueven sus puntos.</p>${del}`; }
   if (s.t === 'texto') { const t = p.textos.find(x => x.id === s.id); if (!t) return '';
     const guiaHtml = t.guia ? `<p class="mut">Tiene línea de referencia: arrastra el punto azul del extremo para moverla.</p><button class="btn sm" data-act="guia-quitar">Quitar la línea de referencia</button>` : '';
     const colTx = `<div class="f"><span>Color</span><div class="colores">${[['', 'Automático: blanco en pantalla, negro al imprimir'], ['#FFFFFF', 'Blanco'], ['#FFE14D', 'Amarillo'], ['#111111', 'Negro'], ['#FF3B3B', 'Rojo'], ['#00E5FF', 'Cian'], ['#FF3DFF', 'Magenta'], ['#2FD06B', 'Verde'], ['#FF9E3D', 'Naranjo'], ['#3D6BFF', 'Azul']].map(([c, n]) => `<button data-act="set" data-campo="tx.c" data-v="${c}" aria-pressed="${(t.c || '') === c}" style="--c:${c || 'linear-gradient(135deg,#fff 50%,#111 50%)'}" title="${n}"></button>`).join('')}</div></div>`;
@@ -1236,6 +1292,9 @@ function aplicar(campo, v, desdeChange, vivo) {
   const p = E.p, n = parseNum(v), r = techoAct(), s = E.sel;
   if (campo === '_zonaForma') { E.zonaForma = v; panel(); pista(); return; }
   if (campo === '_figForma') { E.figForma = v; E.tool = 'figpan'; E.temp = null; render(); pista(); return; }
+  if (campo === '_figK') { E.figK = v; E.tool = 'figura'; E.temp = null; refrescarBarra(); pista(); prompt(`${NOMBRE_FORMA[v].toUpperCase()}  Precise el primer punto:`); dibujarTodo(); return; }
+  if (['_figCol', '_figDash', '_figGr', '_figRel'].includes(campo)) { if (campo === '_figCol') E.figCol = v; else if (campo === '_figDash') E.figDash = !!v; else if (campo === '_figGr') E.figGr = +v || 1; else E.figRel = v;
+    if (E.temp && E.temp.tipo === 'poly') { E.temp.col = E.figCol; E.temp.dash = E.figDash ? [10, 6] : []; } refrescarBarra(); dibujarTodo(); return; }
   if (campo === '_sinEscala') { antes(); p.sinEscala = !!v; despues(); render(); return; }
   if (campo === '_fotoAlpha') return;
   if (vivo) { if (!enVivo) { antes(); enVivo = true; } } else { if (!enVivo) antes(); enVivo = false; }
@@ -1274,6 +1333,9 @@ function aplicar(campo, v, desdeChange, vivo) {
   else if (pre === 'eq' && k === 'etqVer') { const e = obj.eq(); if (!e) return; (e.etq ||= {}).oculta = !v; }
   else if (pre === 'ruta' && k === 'dash') { const rt = obj.ruta(); if (!rt) return; if (v) rt.dash = true; else delete rt.dash; }
   else if (pre === 'ruta') { const rt = obj.ruta(); if (!rt) return; if (k === 'mManual') { if (n > 0) rt.mManual = n; else delete rt.mManual; } else rt[k] = v; }
+  else if (pre === 'forma') { const f = (p.figuras || []).find(x => s && x.id === s.id); if (!f) return;
+    if (k === 'col') f.col = v; else if (k === 'dash') { if (v) f.dash = true; else delete f.dash; } else if (k === 'gr') { if (+v > 1) f.gr = +v; else delete f.gr; }
+    else if (k === 'rel') { if (v) f.rel = v; else delete f.rel; } else if (k === 'f' && NOMBRE_FORMA[v]) { f.f = v; if (!esCerrada(f)) delete f.rel; } }
   else if (pre === 'fig') { const f = (p.figPaneles || []).find(x => s && x.id === s.id); if (!f) return;
     if (k === 'tipo') f.tipo = v; else if (k === 'contar') { if (v) f.contar = true; else delete f.contar; } else if (k === 'panel') f.panel = v;
     else if (k === 'n') { if (n != null && n >= 0) f.n = Math.round(n); else delete f.n; } else f[k] = Math.max(1, Math.round(+v || 1)); }

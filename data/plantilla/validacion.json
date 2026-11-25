@@ -1,5 +1,5 @@
 {
- "fecha": "2026-11-24",
+ "fecha": "2026-11-25",
  "plantilla": "16a67de5",
  "nota": "Cada celda con fórmula de Información proyecto y Cuadro de carga, calculada por el motor y comparada con el valor que guardó Excel. Las sobrescritas a mano y las que dependen de la fecha de hoy no se comparan.",
  "proyectos": [

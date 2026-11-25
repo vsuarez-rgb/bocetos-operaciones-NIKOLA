@@ -125,3 +125,10 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - Los dibujos a mano (`p.uni.libre`) guardan su hoja en `vb`. Los anteriores siguen en 262 × 314 y se ven igual, dentro de cualquier recuadro. La lámina A1 antigua sigue con el unilineal vertical.
 - En la lámina 02 del juego A1, el unilineal ocupa casi toda la hoja (640 × 446 mm), con la simbología y las notas a la izquierda.
 - Los números de los strings dentro de los paneles miden 0,22 del lado del panel, así que salen igual en el dibujo, el informe y la lámina. Antes en la lámina tenían un tope fijo en mm y no se leían.
+
+## Figuras libres (26-11-2026)
+
+- Herramienta **Figura** en la barra izquierda, disponible en todos los pasos de dibujo. Mientras está activa, la barra de arriba muestra sus opciones: forma, color, segmentada, grosor (fino, medio o grueso) y relleno para las formas cerradas (pintado o achurado, igual que «Rellenar» de los equipos).
+- Se guardan en `p.figuras` (también por hoja): `{ id, f, pts, col, dash?, gr?, rel? }`. `f` puede ser `linea` o `flecha` (puntos abiertos; la punta va en el último), `poly` (cerrada), `rect` (2 esquinas opuestas) o `circ` (centro y un punto del borde). Los campos son opcionales y los proyectos anteriores no cambian.
+- Se seleccionan, mueven, estiran desde sus puntos y se editan en el panel derecho (forma, color, grosor, trazo, relleno y su medida si la hoja tiene escala). El blanco sale negro al imprimir. Capa nueva **FIGURAS**; en el DXF van en la capa FIGURAS (el círculo como CIRCLE).
+- «Otra línea» del paso Equipos sigue igual (es una canalización libre con etiqueta).

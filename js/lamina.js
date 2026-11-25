@@ -8,7 +8,7 @@
 import { esc, fmt, ic, toast, descargar, dist, centroid, hull } from './util.js';
 import { CANAL, EQUIPOS, PANELES } from './catalogo.js';
 import { escala, panelDe, inversorDe, calcCA, zonaPoly, CAIDA_MAX, medidaEquipo } from './geom.js';
-import { dibujar, cargarImg, colorString, vistaNitida } from './render.js';
+import { dibujar, cargarImg, colorString, vistaNitida, rectDe, esCerrada } from './render.js';
 import { hoy } from './store.js';
 import { dibujoLibre, VB_UNI, vbLibre } from './uni-dibujo.js';
 
@@ -289,7 +289,7 @@ function notas(p, D, x, y, w) {
 async function imagenPlanta(p, R, SI, vw, vh) {
   await cargarImg(p.img);
   const pts = [];
-  p.roofs.forEach(r => pts.push(...r.poly)); p.equipos.forEach(e => pts.push([e.x, e.y])); p.rutas.forEach(r => pts.push(...r.pts)); if (p.norte) pts.push([p.norte.x, p.norte.y]);
+  p.roofs.forEach(r => pts.push(...r.poly)); p.equipos.forEach(e => pts.push([e.x, e.y])); p.rutas.forEach(r => pts.push(...r.pts)); (p.figuras || []).forEach(f => pts.push(...f.pts)); if (p.norte) pts.push([p.norte.x, p.norte.y]);
   let x0 = 0, y0 = 0, x1 = p.w || 1000, y1 = p.h || 750;
   if (pts.length > 1) { x0 = Math.min(...pts.map(q => q[0])); x1 = Math.max(...pts.map(q => q[0])); y0 = Math.min(...pts.map(q => q[1])); y1 = Math.max(...pts.map(q => q[1])); const m = Math.max(x1 - x0, y1 - y0) * .12; x0 -= m; x1 += m; y0 -= m; y1 += m; }
   // misma proporción que el viewport de la lámina
@@ -486,7 +486,7 @@ async function imprimir(p) {
 /* ---------- DXF (AutoCAD R12, unidades mm, Y hacia arriba) ---------- */
 function dxf(p, R, SI) {
   const s = escala(p) || 1, X = q => (q[0] * s).toFixed(1), Y = q => ((p.h - q[1]) * s).toFixed(1);
-  const capas = [['TECHOS', 7], ['ZONAS', 1], ['PANELES', 3], ['STRINGS', 4], ['CANAL-CC', 5], ['CANAL-CA', 1], ['CANAL-SUB', 30], ['TIERRA', 8], ['EQUIPOS', 6], ['COTAS', 2], ['TEXTOS', 7]];
+  const capas = [['TECHOS', 7], ['ZONAS', 1], ['PANELES', 3], ['STRINGS', 4], ['CANAL-CC', 5], ['CANAL-CA', 1], ['CANAL-SUB', 30], ['TIERRA', 8], ['EQUIPOS', 6], ['COTAS', 2], ['TEXTOS', 7], ['FIGURAS', 2]];
   let e = '';
   const poly = (pts, capa, cerrar = true, color) => { e += `0\nPOLYLINE\n8\n${capa}\n${color ? `62\n${color}\n` : ''}66\n1\n70\n${cerrar ? 1 : 0}\n`; pts.forEach(q => { e += `0\nVERTEX\n8\n${capa}\n10\n${X(q)}\n20\n${Y(q)}\n30\n0\n`; }); e += '0\nSEQEND\n'; };
   const txt = (q, h, t, capa, c = false, ang = 0) => { e += `0\nTEXT\n8\n${capa}\n10\n${X(q)}\n20\n${Y(q)}\n30\n0\n40\n${h}\n1\n${String(t).replace(/\n/g, ' ')}\n${ang ? `50\n${ang}\n` : ''}${c ? `72\n1\n11\n${X(q)}\n21\n${Y(q)}\n31\n0\n` : ''}`; };
@@ -498,6 +498,9 @@ function dxf(p, R, SI) {
   SI.lista.forEach((x, i) => { const pts = x.st.panels.map(k => R.porKey.get(k)).filter(Boolean).flatMap(pn => pn.q); if (pts.length > 2) { const h = hull(pts); poly(h, 'STRINGS', true, cols[i % cols.length]); const top = h.reduce((m, q) => q[1] < m[1] ? q : m, h[0]); txt([top[0], top[1] - 400 / s], 300, `String ${i + 1}`, 'STRINGS'); } });
   p.rutas.forEach(r => poly(r.pts, { cc: 'CANAL-CC', ca: 'CANAL-CA', sub: 'CANAL-SUB', tie: 'TIERRA' }[r.k] || 'CANAL-CA', false));
   p.equipos.forEach(q => { const Q = EQUIPOS[q.k] || EQUIPOS.inv, md = medidaEquipo(p, q), w = md.w / s, h = md.h / s, a = (q.ang || 0) * Math.PI / 180; const pts = [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]].map(v => [q.x + v[0] * Math.cos(a) - v[1] * Math.sin(a), q.y + v[0] * Math.sin(a) + v[1] * Math.cos(a)]); poly(pts, 'EQUIPOS'); txt([q.x + w / 2 + 100 / s, q.y], 200, q.rotulo || Q.n, 'EQUIPOS'); });
+  (p.figuras || []).forEach(f => { if (f.pts.length < 2) return;
+    if (f.f === 'circ') e += `0\nCIRCLE\n8\nFIGURAS\n10\n${X(f.pts[0])}\n20\n${Y(f.pts[0])}\n30\n0\n40\n${(dist(f.pts[0], f.pts[1]) * s).toFixed(1)}\n`;
+    else poly(f.f === 'rect' ? rectDe(f.pts[0], f.pts[1]) : f.pts, 'FIGURAS', esCerrada(f)); });
   p.cotas.forEach(c => { poly([c.a, c.b], 'COTAS', false); txt([(c.a[0] + c.b[0]) / 2, (c.a[1] + c.b[1]) / 2], 200, `${fmt(dist(c.a, c.b) * s / 1000, 2)} m`, 'COTAS', true); });
   p.textos.forEach(t => { const h = t.h || 400, ang = t.guia ? 0 : (t.ang || 0), a = ang * Math.PI / 180, d = h / s * 1.45;   // un TEXT por renglón, con su giro
     String(t.s).split('\n').forEach((l, i) => txt([t.p[0] + i * d * Math.sin(a), t.p[1] + i * d * Math.cos(a)], h, l, 'TEXTOS', false, ang)); });

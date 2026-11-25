@@ -81,6 +81,7 @@ const IC = {
   drone: '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><rect x="9" y="9" width="6" height="6" rx="1"/>',
   crop: '<path d="M6 2v16h16M2 6h16v16"/>', folder: '<path d="M3 6h6l2 2h10v11H3z"/>', moon: '<path d="M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z"/>', sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>',
   print: '<path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M6 14h12v7H6z"/>', inverter: '<rect x="4" y="4" width="16" height="16"/><path d="M4 20L20 4M7 8c1-1.5 2-1.5 3 0s2 1.5 3 0M13 16h5"/>',
+  shape: '<circle cx="8" cy="8" r="5"/><rect x="12" y="12" width="9" height="9"/><path d="M3 21l6-6"/>',
   rot: '<path d="M20 12a8 8 0 11-3-6.2"/><path d="M20 4v5h-5"/>'
 };
 export const ic = (n, s = 18) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || ''}</svg>`;

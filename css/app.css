@@ -525,7 +525,7 @@ select.fi-ctl { background: #1C2228; border-color: var(--ed-line); cursor: point
 .sb-b[aria-pressed="true"] { border-color: var(--nk-amarillo); color: var(--nk-amarillo); background: rgba(250,183,4,.1); }
 .sb-b i.sb-sw { width: 12px; height: 12px; border: 2px solid; border-radius: 3px; }
 .sb-chk { cursor: pointer; } .sb-chk input { accent-color: var(--nk-amarillo); margin: 0; }
-.sb-seg .seg { padding: 1px; } .sb-seg .seg button { padding: 3px 9px; font-size: 11.5px; }
+.sb-seg .seg { padding: 1px; } .sb-seg .seg button { padding: 3px 9px; font-size: 11.5px; white-space: nowrap; }
 .sb-stp { display: inline-flex; align-items: center; gap: 4px; color: var(--ed-mut); } .sb-stp .stp button { width: 24px; height: 24px; }
 .subbar-h { color: var(--ed-mut); font-size: 11px; }
 /* Menú "Insertar" de la barra superior */

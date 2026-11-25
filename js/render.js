@@ -233,6 +233,8 @@ export function dibujar(g, p, V, o) {
     if (sel) grips(g, [[c[0] - w / 2, c[1] - h / 2], [c[0] + w / 2, c[1] - h / 2], [c[0] + w / 2, c[1] + h / 2], [c[0] - w / 2, c[1] + h / 2], c]);
   });
 
+  if (vis('figuras')) figuras(g, p, T, o, u, plot);
+
   // Nivel de piso (para medir alturas en la vista de frente)
   if (p.suelo != null) { const y = p.suelo * k - V.oy, x0 = -V.ox, x1 = (p.w || 1000) * k - V.ox;
     g.setLineDash([10 * u, 5 * u]); g.lineWidth = 1.2 * u; g.strokeStyle = plot ? '#555' : 'rgba(255,255,255,.75)'; g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke(); g.setLineDash([]);
@@ -291,6 +293,34 @@ export function dibujar(g, p, V, o) {
   if (p.norte && (vis('textos') || plot)) dibujarNorte(g, T([p.norte.x, p.norte.y]), p.norte.ang, 34 * UD * (p.norte.tam || 1), plot, o.sel && o.sel.t === 'norte');
 
   if (o.temp) o.temp(g, T);
+}
+
+/* Figuras libres (barra izquierda, en cualquier paso): p.figuras = [{ id, f, pts, col, dash, gr, rel }]
+   f: 'linea' | 'flecha' (puntos abiertos) · 'poly' (cerrada) · 'rect' (2 esquinas opuestas) · 'circ' (centro y un punto del borde).
+   gr: grosor 1 fino, 2 medio, 3 grueso · rel: relleno ('solido', 'diag', 'cruz', 'horiz') en las cerradas. El blanco sale negro al imprimir. */
+export const NOMBRE_FORMA = { linea: 'Línea', flecha: 'Flecha', rect: 'Rectángulo', circ: 'Círculo', poly: 'Figura libre' };
+export const esCerrada = f => ['rect', 'circ', 'poly'].includes(f.f);
+export const rectDe = (a, b) => [[a[0], a[1]], [b[0], a[1]], [b[0], b[1]], [a[0], b[1]]];
+const GROSOR_FORMA = { 1: 1.2, 2: 2.2, 3: 3.6 };
+function figuras(g, p, T, o, u, plot) {
+  (p.figuras || []).forEach(f => {
+    const P = f.pts.map(T); if (P.length < 2) return;
+    const sel = esSel(o, 'forma', f.id), col = plot && (!f.col || f.col === '#FFFFFF') ? '#111' : (f.col || '#FFFFFF');
+    const trazar = () => { g.beginPath(); if (f.f === 'circ') g.arc(P[0][0], P[0][1], dist(P[0], P[1]), 0, Math.PI * 2); else path(g, f.f === 'rect' ? rectDe(P[0], P[1]) : P, esCerrada(f)); };
+    if (esCerrada(f) && f.rel) {                       // relleno: recortado a la figura
+      const L = f.f === 'circ' ? [[P[0][0] - dist(P[0], P[1]), P[0][1] - dist(P[0], P[1])], [P[0][0] + dist(P[0], P[1]), P[0][1] + dist(P[0], P[1])]] : P;
+      const xs = L.map(q => q[0]), ys = L.map(q => q[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      g.save(); trazar(); g.clip(); g.translate((x0 + x1) / 2, (y0 + y1) / 2); rellenoArea(g, f.rel, x1 - x0, y1 - y0, col, u); g.restore();
+    }
+    const lw = (GROSOR_FORMA[f.gr] || GROSOR_FORMA[1]) * u;
+    if (sel) { trazar(); g.lineWidth = lw + 5; g.strokeStyle = 'rgba(250,183,4,.35)'; g.stroke(); }
+    trazar(); g.setLineDash(f.dash ? [10 * u, 6 * u] : []); g.lineWidth = lw; g.lineJoin = 'round'; g.lineCap = 'round'; g.strokeStyle = col; g.stroke(); g.setLineDash([]); g.lineCap = 'butt';
+    if (f.f === 'flecha') {                            // punta en el último punto
+      const a = P[P.length - 2], b = P[P.length - 1], L = dist(a, b) || 1, ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, s = Math.max(7 * UD, lw * 4);
+      g.beginPath(); g.moveTo(b[0], b[1]); g.lineTo(b[0] - ux * s - uy * s * .4, b[1] - uy * s + ux * s * .4); g.lineTo(b[0] - ux * s + uy * s * .4, b[1] - uy * s - ux * s * .4); g.closePath(); g.fillStyle = col; g.fill();
+    }
+    if (sel) grips(g, P);
+  });
 }
 
 /* Perfil de estructura: rectángulo angosto por tramo (se lee como un riel; es un solo perfil) */
