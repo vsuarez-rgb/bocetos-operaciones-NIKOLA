@@ -155,6 +155,19 @@ export const PLANTILLAS_INCLUIDAS = [
     { tipo: 'unilineal', x: 190, y: 28, w: 640, h: 446 },
     { tipo: 'notas', x: 16, y: 300, w: 168, h: 170 }
   ]),
+  // Proyectos grandes: el unilineal en dos láminas, como el estándar «unilineal AC / DC nuevo»
+  pagina('lam-uni-ac', 'Láminas A1', 'Diagrama unilineal AC', 'A1', 'horizontal', [
+    { tipo: 'cajetin', x: 0, y: 0, w: 841, h: 594, int: true, escala: 'NO A ESCALA' },
+    { tipo: 'simbologia', x: 16, y: 32, w: 160, h: 62 },
+    { tipo: 'unilineal', x: 190, y: 28, w: 640, h: 446, parte: 'ac' },
+    { tipo: 'notas', x: 16, y: 300, w: 168, h: 170 }
+  ]),
+  pagina('lam-uni-dc', 'Láminas A1', 'Diagrama unilineal DC', 'A1', 'horizontal', [
+    { tipo: 'cajetin', x: 0, y: 0, w: 841, h: 594, escala: 'NO A ESCALA' },
+    { tipo: 'simbologia', x: 16, y: 32, w: 160, h: 62 },
+    { tipo: 'unilineal', x: 190, y: 28, w: 640, h: 446, parte: 'dc' },
+    { tipo: 'notas', x: 16, y: 300, w: 168, h: 170 }
+  ]),
   pagina('lam-cc', 'Láminas A1', 'Cuadro de generación CC', 'A1', 'horizontal', [
     { tipo: 'cajetin', x: 0, y: 0, w: 841, h: 594, escala: 'NO A ESCALA' },
     { tipo: 'cuadro', x: 16, y: 40, w: 809, h: 260, cuadro: 'cc' },

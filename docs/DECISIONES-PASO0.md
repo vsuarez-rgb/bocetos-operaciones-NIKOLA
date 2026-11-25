@@ -171,3 +171,11 @@ La Fase 1 agregó un "Montaje del techo" (rieles / fija / ajustable / perfiles) 
 - **Batería**: DC SWITCH propio arriba, «+ / –» y 5 líneas (módulo, modelo, energía, potencia máx., tensión); lo que falta sale «—». Campos opcionales `uni.extras.batPmax`, `batV`.
 - **EV en el tablero general**: interruptor + diferencial 30 mA Tipo A-SI + el cargador dibujado bajo el tablero (`extras.evDif`, `evMarca`, `evKw`). El tablero de electromovilidad se alimenta bajando desde la barra del tablero general.
 - Las claves de texto antiguas se conservan donde se pudo (`ev.prot`, `sg.titulo`, `bat.*`).
+
+## Unilineal como los planos de Ops · E4: dos láminas (AC y DC) en proyectos grandes (26-11-2026)
+
+- Como el estándar «unilineal AC / DC nuevo» (ON 841), pero **solo en proyectos grandes** (decisión del usuario): trifásico, algún MPPT con más de un string o más de 4 MPPT (`esGrande` en `js/lamina.js`). Los proyectos chicos siguen con una sola lámina.
+- `p.uni.laminas` (opcional): `'una'` o `'dos'` fuerza la elección; vacío = automático. Se elige en el paso Unilineal («Láminas del unilineal»), con botones para ver la lámina AC o la DC. Un unilineal convertido a dibujo a mano sigue siendo uno solo.
+- **Lámina AC**: empalme, tierra, tableros, Smart Guard, EV e inversor (solo su lado AC, con la nota «ver unilineal DC»).
+- **Lámina DC**: recuadro «HACIA TABLERO …», inversor completo con entradas, DC SWITCH, VACANTE, strings con su tierra y batería. Hoja más chica (260 × 182, misma proporción), así se ve un 30 % más grande, y el inversor puede usar más ancho para muchas entradas.
+- `unilinealSVG(p, R, SI, parte)` con `parte` = `'ac'` | `'dc'`. El bloque «Unilineal» del informe tiene «Qué parte» (todo, solo AC o solo DC). Plantillas nuevas `lam-uni-ac` y `lam-uni-dc`; el «Juego de láminas A1» las usa en lugar de `lam-unilineal` cuando el proyecto va en dos láminas.

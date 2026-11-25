@@ -12,7 +12,7 @@ import { esc, ic, toast, uid } from '../util.js';
 import { leerAjuste, guardarAjuste } from '../ajustes.js';
 import { listaHojas, TIPOS_HOJA } from '../hojas.js';
 import { calcular, calcStrings } from '../geom.js';
-import { panelLamina } from '../lamina.js';
+import { panelLamina, unilinealEnDos } from '../lamina.js';
 import { TAMANOS, TIPOS_BLOQUE, PLANTILLAS_INCLUIDAS, PAQUETES, SECCIONES, seccionDe, medida, copiarPagina, nuevoBloque, paginaEnBlanco, esFijo } from './modelo.js';
 import { htmlPagina, datosInforme, CSS_PAGINA, MM, olvidarVistas, imagenHoja } from './pagina.js';
 
@@ -193,7 +193,7 @@ function propsBloque(b) {
   if (b.tipo === 'cuadro') h += sel('cuadro', 'Cuadro', [['cc', 'Generación CC (strings)'], ['ca', 'Generación CA (inversor)'], ['caida', 'Caída de tensión del alimentador']]);
   if (b.tipo === 'notas') h += '<p class="mut">Las notas se escriben abajo, en «Datos de las láminas › Notas». Las de cantidad de módulos y potencias se agregan solas.</p>';
   if (b.tipo === 'simbologia') h += '<p class="mut">La simbología de las láminas. Agrándala o achícala desde la esquina.</p>';
-  if (b.tipo === 'unilineal') h += '<p class="mut">Es el unilineal del proyecto, el mismo de la lámina A1. Se edita en la pestaña «Unilineal» (datos, partes y cualquier texto con un clic).</p>';
+  if (b.tipo === 'unilineal') h += sel('parte', 'Qué parte', [['', 'Todo el unilineal'], ['ac', 'Solo lado AC (empalme, tableros, inversor)'], ['dc', 'Solo lado DC (inversor, strings, batería)']]) + '<p class="mut">Es el unilineal del proyecto, el mismo de la lámina A1. Se edita en la pestaña «Unilineal» (datos, partes y cualquier texto con un clic). En proyectos grandes el juego de láminas lo separa en AC y DC.</p>';
   h += `<div class="row">${num('x', 'X (mm)')}${num('y', 'Y (mm)')}</div><div class="row">${num('w', 'Ancho (mm)')}${num('h', 'Alto (mm)')}</div>
     ${b.tipo !== 'lamina' ? chk('borde', 'Con marco') : ''}
     <label class="chk"><input type="checkbox" data-in="b.fijo" ${esFijo(b) ? 'checked' : ''}> Fijo en la página (el mouse no lo mueve)</label>
@@ -268,7 +268,8 @@ function salirPlantilla() {
 function agregarPaquete(id) {
   const q = PAQUETES.find(x => x.id === id); if (!q) return;
   if (S.plantilla) salirPlantilla();
-  const nuevas = q.paginas.map(pid => incluida(pid)).filter(Boolean).map(x => copiarPagina(x, { desde: x.id }));
+  const ids = q.paginas.flatMap(pid => pid === 'lam-unilineal' && unilinealEnDos(S.p) ? ['lam-uni-ac', 'lam-uni-dc'] : [pid]);   // proyectos grandes: unilineal AC + DC
+  const nuevas = ids.map(pid => incluida(pid)).filter(Boolean).map(x => copiarPagina(x, { desde: x.id }));
   informe().paginas.push(...nuevas); S.pag = nuevas[0]?.id || S.pag; S.sel = null; cambio(); pintar();
   toast(`${nuevas.length} páginas de «${q.nombre}» agregadas`);
 }

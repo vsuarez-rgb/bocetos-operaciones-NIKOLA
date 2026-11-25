@@ -129,7 +129,7 @@ async function interior(b, ctx) {
         ${b.titulo ? `<thead><tr><th colspan="${n}" class="tb-tit c-${b.tituloColor || 'negro'}"${editor ? ' data-celda="t"' : ''}>${rellenar(b.titulo, datos, { editor })}</th></tr></thead>` : ''}
         <tbody>${filas.map((f, i) => `<tr>${Array.from({ length: n }, (_, j) => celda(f[j] ?? '', b.cabecera && i === 0, i, j)).join('')}</tr>`).join('')}</tbody></table>`;
     }
-    case 'unilineal': { const R = calcular(p); return unilinealSVG(p, R, calcStrings(p, R)); }
+    case 'unilineal': { const R = calcular(p); return unilinealSVG(p, R, calcStrings(p, R), b.parte || undefined); }
     case 'lamina': {
       const R = calcular(p), SI = calcStrings(p, R);
       const svg = await (b.lamina === '02' ? lamina02 : lamina01)(p, R, SI);

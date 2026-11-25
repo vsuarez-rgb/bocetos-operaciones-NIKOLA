@@ -144,9 +144,19 @@ const LW = .13, FU = 1.7, FT = 2.8, FSERIF = "'Times New Roman',Times,serif";
 const anchoT = (s, f) => String(s).length * f * .47;     // ancho aproximado de un texto (para las guías)
 const codo = (x1, y1, x2, y2, c = UC.cond) => { const r = 2, sx = Math.sign(x2 - x1) || 1; return `<path d="M${x1} ${y1}H${x2 - sx * r}Q${x2} ${y1} ${x2} ${y1 + r}V${y2}" fill="none" stroke="${c}" stroke-width="${LW}"/>`; };
 
-function unilineal(p, D, SI, x0, y0, w, h) {
+/* E4 · Unilineal en dos láminas (AC y DC) solo en proyectos grandes, como el estándar «unilineal AC / DC nuevo».
+   Grande = trifásico, algún MPPT con más de un string o más de 4 MPPT. p.uni.laminas: 'una' | 'dos' fuerza la elección. */
+export function esGrande(p) {
+  const I = inversorDe(p), porMppt = {};
+  (p.strings || []).forEach(st => { porMppt[st.mppt || 1] = (porMppt[st.mppt || 1] || 0) + 1; });
+  return I.fase === 'Trifásico' || Math.max(0, ...Object.values(porMppt)) > 1 || (I.mppt || 1) > 4;
+}
+export const unilinealEnDos = p => !p.uni?.libre && !baseUni(p).soloEV && (p.uni?.laminas === 'dos' || (p.uni?.laminas !== 'una' && esGrande(p)));
+
+/* parte: undefined = todo en una lámina · 'ac' = empalme, tableros e inversor (lado AC) · 'dc' = inversor, strings y batería */
+function unilineal(p, D, SI, x0, y0, w, h, parte) {
   if (p.uni?.libre) { const vb = vbLibre(p.uni.libre); return `<svg x="${x0}" y="${y0}" width="${w}" height="${h}" viewBox="0 0 ${vb[0]} ${vb[1]}" preserveAspectRatio="xMidYMid meet">${dibujoLibre(p.uni.libre)}</svg>`; }   // editado a mano: tal cual quedó
-  const I = D.inv, ca = D.ca, L = D.L, C = UC, U = opcUni(p), B = baseUni(p);
+  const I = D.inv, ca = D.ca, L = D.L, C = UC, U = opcUni(p), B = baseUni(p), soloAC = parte === 'ac', soloDC = parte === 'dc';
   const X = { bat: B.bat || U.extras.bat, sg: B.sg || U.extras.sg, ev: !B.soloEV && !B.evTablero && U.extras.ev };
   const TU = (k, x, y, def, size, o = {}) => { const v = U.textos[k] != null ? U.textos[k] : def; return T(x, y, v, size, { ...o, attr: `data-u="${esc(k)}"${U.textos[k] != null ? ' data-mod="1"' : ''}` }); };
   const fase = B.fase || I.fase, polos = fase === 'Trifásico' ? '4' : '2';
@@ -186,7 +196,7 @@ function unilineal(p, D, SI, x0, y0, w, h) {
 
   /* ---- Empalme (arriba a la izquierda) y límites del proyecto ---- */
   const ew = 32, eh = 34, ex = x0 + 30, ey = y0 + 3, yE = ey + 16;
-  if (!B.offgrid) {
+  if (!B.offgrid && !soloDC) {
     s += Rc(ex, ey, ew, eh, { st: C.equipo, sw: LW }) + Ln(ex, ey + 8, ex + ew, ey + 8, { st: C.equipo, sw: LW });
     s += TU('emp.titulo', ex + ew / 2, ey + 3.4, `EMPALME ${fase.toUpperCase()}`, 1.5, { a: 'middle', b: true, it: false, ff: FSERIF }) + TU('emp.tipo', ex + ew / 2, ey + 6.4, L.empalme || 'TIPO (pendiente)', 1.4, { a: 'middle', b: true, it: false, ff: FSERIF });
     s += Rc(ex + 4, yE - 4, 7, 8, { st: C.med, sw: LW }) + T(ex + 7.5, yE + 1.5, 'M', 4.2, { a: 'middle', it: false, b: true, fill: C.med, ff: FSERIF });
@@ -201,21 +211,21 @@ function unilineal(p, D, SI, x0, y0, w, h) {
     // límites: todo menos el empalme (con un escalón), rótulo arriba a la derecha
     const xa = ex + ew + 6, xb = x0 + w - 2, ya = y0 + 1, yb = y0 + h - 1, yc = ey + eh + 4, xl = x0 + 2;
     s += `<path d="M${xa} ${ya}H${xb}V${yb}H${xl}V${yc}H${xa}Z" fill="none" stroke="${C.guia}" stroke-width="${LW}"/>` + TU('limites', xb - 3, ya + 5, 'LÍMITES DEL PROYECTO', 2.4, { a: 'end' });
-  } else s += TU('og.titulo', cx, ey + 4, 'SISTEMA AISLADO (OFF GRID) · SIN CONEXIÓN A LA RED', 2.4, { a: 'middle', b: true, ff: FSERIF });
+  } else if (!soloDC) s += TU('og.titulo', cx, ey + 4, 'SISTEMA AISLADO (OFF GRID) · SIN CONEXIÓN A LA RED', 2.4, { a: 'middle', b: true, ff: FSERIF });
   // tierra de servicio y protección: punto en el conductor, guía segmentada hasta los símbolos
-  if (U.tierra !== false && !B.offgrid) { const tx0 = cx, ty0 = yE + 7, gx = cx + 28;
+  if (U.tierra !== false && !B.offgrid && !soloDC) { const tx0 = cx, ty0 = yE + 7, gx = cx + 28;
     s += `<circle cx="${tx0}" cy="${ty0}" r=".55" fill="#111"/>` + Ln(tx0, ty0, gx + 7, ty0, { st: '#111', sw: LW, dash: '3 1.2' }) + tierraP(gx, ty0) + tierra(gx + 7, ty0);
     const lt = [['tierra.1', 'Tierra de servicio y protección'], ['tierra.2', 'existente'], ['tierra.3', L.tierraCond || 'Evaflex 2x6 mm² (N+T)'], ['tierra.4', `L = ${L.tierraL || '—'} m`], ['tierra.5', `R = ${L.tierraR || '—'} Ω`], ['tierra.6', L.tierraMet || 'Método de pinza']];
     s += lt.map(([k, d], i) => TU(k, gx + 9, ty0 + 9 + i * 2.1, d, FU, { a: 'end' })).join(''); }
 
   /* ---- Alturas: bloques fijos y huecos repartidos (el dibujo llena la hoja) ---- */
   const conTFV = !!B.tfv;
-  const hTG = B.soloEV ? 40 : conTFV ? (X.ev ? 38 : 30) : 44, hTFV = 28, hInv = conTFV ? 40 : 44, hStr = conTFV ? 46 : 50, hArr = B.offgrid ? 12 : ey + eh - y0 + 2;
+  const hTG = B.soloEV ? 40 : conTFV ? (X.ev ? 38 : 30) : 44, hTFV = 28, hInv = soloAC ? 16 : conTFV ? 40 : 44, hStr = soloAC ? 0 : conTFV ? 46 : 50, hArr = B.offgrid ? 12 : ey + eh - y0 + 2;
   const nGap = B.soloEV ? 2 : conTFV ? 3 : 2;
   const gap = Math.max(18, Math.min(40, (h - hArr - hTG - (conTFV ? hTFV : 0) - (B.soloEV ? 30 : hInv + hStr)) / nGap));
   const tw = Math.min(w * .42, 120), tx = cx - tw / 2;
   const ty = y0 + hArr + gap;
-  if (!B.offgrid) s += codo(ex + ew, yE, cx, ty) + cond(cx, ty - Math.max(14.5, gap * .62), ca.tramos[1], I, 'c2', TU, -1);
+  if (!B.offgrid && !soloDC) s += codo(ex + ew, yE, cx, ty) + cond(cx, ty - Math.max(14.5, gap * .62), ca.tramos[1], I, 'c2', TU, -1);
 
   /* ---- Solo cargador (electromovilidad, sin fotovoltaico) ---- */
   if (B.soloEV) {
@@ -232,7 +242,10 @@ function unilineal(p, D, SI, x0, y0, w, h) {
 
   /* ---- Tablero(s): TGyFV (sin TFV) o TG + TFV separados ---- */
   let yFin;                                                   // donde baja la línea al inversor
-  if (!conTFV) {
+  if (soloDC) {                                               // lámina DC: arriba solo la llegada desde el tablero (ver lámina AC)
+    yFin = y0 + 13;
+    s += Rc(cx - 24, y0 + 3, 48, 10, { st: C.cond, sw: LW }) + TU('dc.hacia1', cx, y0 + 7.2, conTFV ? 'HACIA TABLERO FOTOVOLTAICO' : 'HACIA TABLERO GENERAL Y FV', FU, { a: 'middle', it: false }) + TU('dc.hacia2', cx, y0 + 10.4, '(ver unilineal AC)', 1.4, { a: 'middle' });
+  } else if (!conTFV) {
     s += tablero(tx, ty, tw, hTG, 'tg', B.offgrid ? 'TABLERO GENERAL (TG)' : 'TABLERO GENERAL y FOTOVOLTAICO (TGyFV)', 'izq');
     s += ln(cx, ty, cx, ty + 4) + prot(cx, ty + 8, 'tg.disy', `${L.disyuntor || disyDef(D)}`) + ln(cx, ty + 12, cx, ty + 16);
     s += ln(tx + 8, ty + 16, tx + tw - 8, ty + 16, C.barra) + TU('tg.barra', tx + tw - 9, ty + 15.2, 'Barra repartidora de cobre', 1.3, { a: 'end' });
@@ -254,7 +267,7 @@ function unilineal(p, D, SI, x0, y0, w, h) {
     s += ln(cx, t2, cx, t2 + 4) + prot(cx, t2 + 8, 'tg.disy', `${L.disyuntor || disyDef(D)}`) + ln(cx, t2 + 12, cx, t2 + 16) + difer(cx, t2 + 16, 'tg.dif', `${L.diferencial || difDef(D)}`);
     yFin = t2 + 19;
   }
-  if (X.sg && !B.offgrid) s += smartGuard(conTFV ? ty + 14 : ty + 16);
+  if (X.sg && !B.offgrid && !soloDC) s += smartGuard(conTFV ? ty + 14 : ty + 16);
   /* Smart Guard: tablero magenta propio arriba a la derecha (como en el ON 909). GRID desde la acometida,
      BACKUP → ② consumos con respaldo, NON BACKUP → ③ consumos sin respaldo, FV ↔ barra del tablero general. */
   function smartGuard(yB) {
@@ -284,16 +297,18 @@ function unilineal(p, D, SI, x0, y0, w, h) {
   }
 
   /* ---- Inversor: marco magenta, símbolo en el eje, MPPT y DC SWITCH ---- */
-  const iy = yFin + gap + (conTFV ? hTFV - 19 : hTG - 32), nM = I.mppt, iw = Math.min(w * .62, Math.max(96, nM * 32)), ix = cx - iw / 2, ih = hInv;
-  s += ln(cx, yFin, cx, iy + 4) + cond(cx, yFin + (iy - yFin) * .5, ca.tramos[0], I, 'c1', TU, 1);
+  const nIn = Math.max(1, I.strPorMppt || 1), nM = I.mppt;
+  const iy = soloDC ? y0 + 30 : yFin + gap + (conTFV ? hTFV - 19 : hTG - 32), iw = soloDC ? Math.min(w * (X.bat ? .6 : .86), Math.max(110, nM * nIn * 26)) : Math.min(w * .62, Math.max(96, nM * 32)), ix = cx - iw / 2, ih = soloDC ? 44 : hInv;
+  s += ln(cx, yFin, cx, iy + 4) + (soloDC ? '' : cond(cx, yFin + (iy - yFin) * .5, ca.tramos[0], I, 'c1', TU, 1));
   s += Rc(ix, iy, iw, ih, { st: C.equipo, sw: LW });
   s += TU('inv.1', ix + 2.5, iy + 3.6, B.offgrid ? 'INVERSOR HÍBRIDO (OFF GRID)' : 'INVERSOR', FU) + TU('inv.2', ix + 2.5, iy + 5.8, `${I.marca} ${I.modelo}${(p.cantInv || 1) > 1 ? ` (x${p.cantInv})` : ''}`, FU) + TU('inv.3', ix + 2.5, iy + 8, `POT. NOMINAL ${I.kw} kW`, FU) + TU('inv.4', ix + 2.5, iy + 10.2, 'Perfil de red: Chile (CL)', FU);
   s += Rc(cx - 3.5, iy + 4, 7, 7, { st: C.equipo, sw: LW }) + Ln(cx - 3.5, iy + 11, cx + 3.5, iy + 4, { st: C.equipo, sw: LW }) + T(cx - 2.7, iy + 6.6, '~', 2.2, { it: false, fill: C.equipo }) + T(cx + .6, iy + 10.4, '=', 2, { it: false, fill: C.equipo });
+  if (soloAC) return s + TU('inv.verDC', cx + 6, iy + 9, 'Entradas DC, strings y batería: ver unilineal DC', FU);
   const paso = (iw - 14) / nM, sx = i => ix + 10 + paso * (i + .5), yBus = iy + 16;
   s += ln(cx, iy + 11, cx, yBus) + ln(sx(0) - 4, yBus, sx(nM - 1) + 4, yBus, C.barra);
   /* Entradas: cada MPPT con su sub-barra y una entrada por string (interruptor verde en el DC SWITCH);
      las que no tienen string salen como «VACANTE», como en el unilineal DC nuevo */
-  const nIn = Math.max(1, I.strPorMppt || 1), off = Math.min(14, paso / (nIn + .5)), xIn = (i, j) => sx(i) + j * off, yIn = nIn > 1 ? iy + 26.5 : iy + 24.4;
+  const off = Math.min(14, paso / (nIn + .5)), xIn = (i, j) => sx(i) + j * off, yIn = nIn > 1 ? iy + 26.5 : iy + 24.4;
   const sy = iy + ih + 4, fs = nM > 5 ? 1.35 : FU, dcsw = U.dcSwitch !== false;
   const lista = SI.lista.length ? SI.lista : Array.from({ length: nM }, (_, i) => ({ st: { id: 'v' + i, mppt: i + 1, num: 1 }, vacio: true, nombre: `A.${i + 1}.1` }));
   const usadas = new Set(lista.map(x => `${Math.min(nM - 1, (x.st.mppt || 1) - 1)}:${(x.st.num || 1) - 1}`));
@@ -407,10 +422,14 @@ async function imagenPlanta(p, R, SI, vw, vh) {
 
 /* ---------- Lámina 01 y 02 ---------- */
 /* Solo el diagrama unilineal, como SVG independiente (bloque "Unilineal" del informe) */
-export function unilinealSVG(p, R, SI) {
-  const D = datos(p, R, SI), [w, h] = p.uni?.libre ? vbLibre(p.uni.libre) : VB_UNI;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%"><rect width="${w}" height="${h}" fill="#fff"/>${p.uni?.libre ? unilineal(p, D, SI, 0, 0, w, h) : unilineal(p, D, SI, 0, 4, w, h - 4)}</svg>`;
+/* parte: 'ac' | 'dc' para el unilineal en dos láminas (ver unilinealEnDos). La hoja DC es más chica
+   (260 × 182, misma proporción) para que el inversor y los strings se vean más grandes. */
+export function unilinealSVG(p, R, SI, parte) {
+  const D = datos(p, R, SI), dc = parte === 'dc' && !p.uni?.libre, [w, h] = p.uni?.libre ? vbLibre(p.uni.libre) : dc ? VB_DC : VB_UNI;
+  const dib = p.uni?.libre ? unilineal(p, D, SI, 0, 0, w, h) : dc ? unilineal(p, D, SI, 0, 24, w, h - 24, 'dc') : unilineal(p, D, SI, 0, 4, w, h - 4, parte === 'ac' ? 'ac' : undefined);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%"><rect width="${w}" height="${h}" fill="#fff"/>${dib}</svg>`;
 }
+export const VB_DC = [260, 182];
 export async function lamina01(p, R, SI) {
   const D = datos(p, R, SI), vx = 400, vy = M + 2, vw = W - M - 2 - vx, vh = 340;
   const img = await imagenPlanta(p, R, SI, vw, vh);

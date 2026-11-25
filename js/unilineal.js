@@ -12,11 +12,13 @@
 import { esc, fmt, ic, toast, parseNum } from './util.js';
 import { INVERSORES } from './catalogo.js';
 import { calcular, calcStrings, calcCA, inversorDe } from './geom.js';
-import { unilinealSVG, opcUni, BASES_UNI, baseUni, baseSugerida } from './lamina.js';
+import { unilinealSVG, opcUni, BASES_UNI, baseUni, baseSugerida, unilinealEnDos, esGrande, VB_DC } from './lamina.js';
 import { leerAjuste, guardarAjuste } from './ajustes.js';
 import { COLORES_LINEA, SIMBOLOS, BLOQUES_INCLUIDOS, dibujoLibreEditor, descomponer, mover, clonar, normalizar, elemsSimbolo, svgElem, VB_UNI, vbLibre } from './uni-dibujo.js';
 
-const vbAct = () => libre() ? vbLibre(libre()) : VB_UNI;   // hoja del unilineal (mm)
+/* En proyectos grandes el unilineal va en dos láminas (AC y DC): S.parte dice cuál se está viendo */
+const parteAct = () => !libre() && unilinealEnDos(S.p) ? (S.parte || 'ac') : undefined;
+const vbAct = () => libre() ? vbLibre(libre()) : parteAct() === 'dc' ? VB_DC : VB_UNI;   // hoja del unilineal (mm)
 /* Editor: tool = sel | linea | texto | sim | bloque; sel = índices elegidos; temp = línea en curso */
 const S = { p: null, el: null, cb: {}, zoom: null, z: 1, tool: 'sel', color: 'ca', sim: 'interruptor', bloque: null, sel: new Set(), temp: null, hist: [], fut: [], orto: true, menu: null, bloques: [], ocultos: [], mouse: null, D: null };
 const uni = () => (S.p.uni ||= {});
@@ -40,8 +42,8 @@ function dibujarSVG() {
   const L = libre();
   const VB = vbAct();
   if (L) pap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB[0]} ${VB[1]}" width="100%" height="100%" class="uni-ed"><rect width="${VB[0]}" height="${VB[1]}" fill="#fff"/>${dibujoLibreEditor(L, S.sel)}<g id="uniTemp"></g></svg>`;
-  else { const R = calcular(S.p), SI = calcStrings(S.p, R); pap.innerHTML = unilinealSVG(S.p, R, SI).replace('</svg>', '<g id="uniTemp"></g></svg>'); }
-  const nb = S.el.querySelector('#uniBase'); if (nb) nb.textContent = baseUni(S.p).n + (L ? ' (editado a mano)' : '');
+  else { const R = calcular(S.p), SI = calcStrings(S.p, R); pap.innerHTML = unilinealSVG(S.p, R, SI, parteAct()).replace('</svg>', '<g id="uniTemp"></g></svg>'); }
+  const nb = S.el.querySelector('#uniBase'); if (nb) nb.textContent = baseUni(S.p).n + (L ? ' (editado a mano)' : '') + (parteAct() ? ` · lámina ${parteAct().toUpperCase()}` : '');
   const ay = S.el.querySelector('#uniAyuda'); if (ay) ay.textContent = ayuda();
   temporal();
   ajustar();
@@ -269,6 +271,10 @@ export function panelUnilineal(p) {
   let h = sec('Unilineal base', `<label class="f"><span>Base</span><select class="in" data-uni="u.base"><option value="" ${!p.uni?.base ? 'selected' : ''}>Sugerido por el inversor: ${esc(sug.n)}</option>${grupos.map(g => `<optgroup label="${esc(g)}">${BASES_UNI.filter(b => b.g === g).map(b => `<option value="${b.id}" ${p.uni?.base === b.id ? 'selected' : ''}>${esc(b.n)}</option>`).join('')}</optgroup>`).join('')}</select></label>
     <button class="btn sm" data-act="uni-bases">Ver todos los unilineales base</button>
     ${(o => o ? `<div class="aviso warn">${ic('alert', 15)}<span>Esta base no calza con el inversor del proyecto (${esc(inv.modelo)}).</span></div><button class="btn sm" data-act="uni-inv" data-id="${o.id}">Cambiar el inversor a ${esc(o.modelo)}</button>` : '')(invDeBase(B, p))}`);
+  const dos = unilinealEnDos(p), pa = dos ? (S.parte || 'ac') : null;
+  h += sec('Láminas del unilineal', `<label class="f"><span>En cuántas láminas</span><select class="in" data-uni="u.laminas"><option value="" ${!U.laminas ? 'selected' : ''}>Automático: ${esGrande(p) ? 'dos (AC y DC), proyecto grande' : 'una, proyecto chico'}</option><option value="una" ${U.laminas === 'una' ? 'selected' : ''}>Una lámina</option><option value="dos" ${U.laminas === 'dos' ? 'selected' : ''}>Dos láminas: AC y DC</option></select></label>
+    ${dos ? `<div class="row"><button class="btn sm${pa === 'ac' ? ' pri' : ''}" data-act="uni-parte" data-k="ac">Ver lámina AC</button><button class="btn sm${pa === 'dc' ? ' pri' : ''}" data-act="uni-parte" data-k="dc">Ver lámina DC</button></div>` : ''}
+    <p class="mut">Grande = trifásico, algún MPPT con más de un string o más de 4 MPPT. Con dos láminas, el juego de láminas A1 trae «Unilineal AC» y «Unilineal DC».</p>`, dos);
   h += sec('Unilineal', `<p class="mut">Se arma solo con los datos del proyecto. Cambia los datos aquí o haz clic en cualquier texto del diagrama para escribirlo a mano. Es el mismo unilineal de las láminas A1 y del bloque «Unilineal» del informe.</p>
     <div class="kpis"><div><b>${SI.lista.length}</b><span>strings</span></div><div><b>${inv.mppt}</b><span>MPPT</span></div><div><b>${fmt(inv.kw * (p.cantInv || 1), 1)}</b><span>kW nom.</span></div></div>`);
   h += sec('Inversor', `<label class="f"><span>Modelo</span><select class="in" data-uni="p.inversor">${['Monofásico', 'Trifásico'].map(fa => `<optgroup label="${fa}s">${INVERSORES.filter(x => x.fase === fa).map(x => `<option value="${x.id}" ${inv.id === x.id ? 'selected' : ''}>${esc(x.modelo)} · ${x.kw} kW</option>`).join('')}</optgroup>`).join('')}</select></label>
@@ -330,6 +336,7 @@ export function accionUnilineal(a, b) {
   if (a === 'uni-orto') { S.orto = !S.orto; barra(); }
   if (a === 'uni-regenerar') { if (confirm('¿Volver a armar el unilineal desde la base con los datos del proyecto? Se pierde lo dibujado a mano (se puede deshacer con Ctrl+Z).')) { antes(); delete uni().libre; S.sel.clear(); S.tool = 'sel'; listo(); barra(); } }
   if (a === 'uni-bases') galeria();
+  if (a === 'uni-parte') { S.parte = b.dataset.k; S.zoom = null; dibujarSVG(); S.cb.panel && S.cb.panel(); }
   if (a === 'uni-inv') { S.p.inversor = b.dataset.id; listo(); toast('Inversor cambiado; revisa los strings en el paso Strings'); }
   if (a === 'uni-z') { const k = +b.dataset.k, fit = S.zoom ? null : S.z; S.zoom = k === 0 ? null : Math.max(.3, Math.min(12, (S.zoom || fit || 1) * (k > 0 ? 1.25 : .8))); ajustar(); }
   if (a === 'uni-reset') { delete uni().textos?.[b.dataset.k]; listo(); }
@@ -345,6 +352,7 @@ document.addEventListener('change', ev => {
   if (pre === 'p') { if (campo === 'cantInv') p.cantInv = Math.max(1, Math.round(parseNum(v) || 1)); else p[campo] = v; }
   else if (pre === 'L') { if (campo.startsWith('largo_')) { const n = parseNum(v); if (n != null && isFinite(n)) L[campo] = n; else delete L[campo]; } else L[campo] = v; }
   else if (pre === 'u' && campo === 'base') { if (v) U.base = v; else delete U.base; }
+  else if (pre === 'u' && campo === 'laminas') { if (v) U.laminas = v; else delete U.laminas; S.zoom = null; }
   else if (pre === 'u') { if (v) delete U[campo]; else U[campo] = false; }
   else if (pre === 'x') { U.extras ||= {}; if (typeof v === 'boolean') { if (v) U.extras[campo] = true; else delete U.extras[campo]; } else if (String(v).trim()) U.extras[campo] = String(v).trim(); else delete U.extras[campo]; }
   else if (pre === 's') {
@@ -353,7 +361,7 @@ document.addEventListener('change', ev => {
     else if (c === 'largo') { const n = parseNum(v); if (n != null && isFinite(n)) st.largo = n; else delete st.largo; }
     else if (c === 'seccion') st.seccion = parseNum(v) || 6;
   }
-  listo(typeof v === 'boolean' || k === 'u.base' ||['p.inversor', 'p.cantInv'].includes(k) || pre === 's' || pre === 'L');
+  listo(typeof v === 'boolean' || k === 'u.base' || k === 'u.laminas' ||['p.inversor', 'p.cantInv'].includes(k) || pre === 's' || pre === 'L');
 });
 
 /* ---------- Clic en un texto del diagrama: escribirlo ahí mismo ---------- */
